@@ -1,0 +1,10 @@
+{
+  "name": "Plano de Parto PET Saúde",
+  "short_name": "Plano PET",
+  "start_url": ".",
+  "display": "standalone",
+  "background_color": "#FFF7F8",
+  "theme_color": "#143D63",
+  "description": "Assistente virtual Petita para Plano de Parto PET Saúde UFCG",
+  "orientation": "portrait-primary"
+}

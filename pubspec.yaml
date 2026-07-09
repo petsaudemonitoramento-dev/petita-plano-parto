@@ -1,0 +1,30 @@
+name: plano_parto_pet_saude
+description: Aplicativo chatbot para construção do Plano de Parto PET Saúde UFCG.
+publish_to: 'none'
+version: 0.1.0+1
+
+environment:
+  sdk: '>=3.2.0 <4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+  cupertino_icons: ^1.0.8
+  shared_preferences: ^2.2.3
+  pdf: ^3.10.8
+  printing: ^5.12.0
+  flutter_markdown: ^0.7.3
+
+flutter:
+  uses-material-design: true
+  assets:
+    - assets/images/petita.png
+    - assets/images/pet_saude_logo.png
+    - assets/images/pet_saude_avatar.png
+    - assets/images/ufcg_logo.png
+    - assets/data/faq.json
+    - assets/data/birth_plan_flow.json
+    - assets/legal/termos_uso.md
+    - assets/legal/politica_privacidade.md
+    - assets/legal/aviso_responsabilidade.md
+    - assets/legal/termo_consentimento_isencao.pdf

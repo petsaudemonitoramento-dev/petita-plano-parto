@@ -1,0 +1,50 @@
+[
+  {
+    "id": "plano_parto_definicao",
+    "category": "Plano de Parto",
+    "question": "O que é plano de parto?",
+    "keywords": ["plano de parto", "o que é", "definição", "direitos"],
+    "answer": "O Plano de Parto é um documento em que a gestante registra suas preferências para o trabalho de parto, parto, pós-parto imediato e cuidados com o bebê. Ele ajuda a equipe de saúde a conhecer seus desejos, sempre considerando a segurança clínica.",
+    "riskLevel": "baixo"
+  },
+  {
+    "id": "acompanhante",
+    "category": "Direitos",
+    "question": "Posso ter acompanhante?",
+    "keywords": ["acompanhante", "parceiro", "mãe", "familiar", "internação"],
+    "answer": "Sim. Você pode registrar no plano quem deseja como acompanhante durante a internação, trabalho de parto e parto, conforme organização e normas do serviço de saúde.",
+    "riskLevel": "baixo"
+  },
+  {
+    "id": "doula",
+    "category": "Apoio",
+    "question": "Posso ter doula?",
+    "keywords": ["doula", "apoio", "acompanhamento"],
+    "answer": "A presença de doula pode ser registrada como preferência, quando o serviço permitir e conforme as regras locais. O app permite indicar esse desejo no plano.",
+    "riskLevel": "baixo"
+  },
+  {
+    "id": "dor",
+    "category": "Alívio da dor",
+    "question": "Quais métodos ajudam no alívio da dor?",
+    "keywords": ["dor", "massagem", "banho", "respiração", "bola", "analgesia"],
+    "answer": "Podem ser registrados métodos como massagens, técnicas de respiração, banho de chuveiro, bola de parto, movimentação livre e analgesia quando disponível e indicada pela equipe.",
+    "riskLevel": "baixo"
+  },
+  {
+    "id": "sinais_alerta",
+    "category": "Sinais de atenção",
+    "question": "Quais sinais são urgentes?",
+    "keywords": ["sangramento", "dor forte", "febre", "perda de líquido", "pressão alta", "dor de cabeça", "visão", "movimentos do bebê", "urgência"],
+    "answer": "Sangramento, dor intensa, febre, perda de líquido, falta de ar, convulsão, pressão alta, dor de cabeça forte com alteração visual ou diminuição dos movimentos do bebê são sinais de alerta. Procure imediatamente uma unidade de saúde, maternidade ou emergência.",
+    "riskLevel": "alto"
+  },
+  {
+    "id": "pdf",
+    "category": "Plano final",
+    "question": "Consigo gerar PDF do plano?",
+    "keywords": ["pdf", "baixar", "imprimir", "compartilhar", "plano pronto"],
+    "answer": "Sim. Após responder às etapas guiadas pela Petita, o app organiza as informações em um Plano de Parto final e permite gerar um PDF para salvar, imprimir ou compartilhar com a equipe de saúde.",
+    "riskLevel": "baixo"
+  }
+]
