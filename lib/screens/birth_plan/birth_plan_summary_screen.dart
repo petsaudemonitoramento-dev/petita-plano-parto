@@ -52,18 +52,25 @@ class _BirthPlanSummaryScreenState extends State<BirthPlanSummaryScreen> {
   Widget build(BuildContext context) {
     if (_loading) return const Scaffold(body: Center(child: CircularProgressIndicator()));
     final answerMap = {for (final a in _answers) a.questionId: a.values.join(', ')};
+    final resumoDados = [
+      answerMap['nome_gestante'] ?? 'Laís Vitória de Sousa',
+      answerMap['ubs_referencia'] ?? 'UBS - Estação Velha',
+      "DPP ${answerMap['dpp'] ?? '18/11/2026'}",
+    ].join(' • ');
     return Scaffold(
       appBar: AppBar(title: const Text('Meu Plano de Parto')),
       body: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(20),
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            SectionCard(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: const [
-              Text('Plano de Parto PET Saúde', style: TextStyle(fontSize: 24, fontWeight: FontWeight.w900, color: AppColors.petDarkBlue)),
-              SizedBox(height: 8),
-              Text('Resumo das preferências registradas pela gestante durante a conversa com a Petita.'),
-              SizedBox(height: 8),
-              Text('Dados de demonstração: Laís Vitória de Sousa • UBS Estação Velha • DPP 18/11/2026', style: TextStyle(fontWeight: FontWeight.w700)),
+            SectionCard(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              const Text('Plano de Parto PET Saúde', style: TextStyle(fontSize: 24, fontWeight: FontWeight.w900, color: AppColors.petDarkBlue)),
+              const SizedBox(height: 8),
+              const Text('Resumo das preferências registradas pela gestante durante a conversa com a Petita.'),
+              const SizedBox(height: 8),
+              Text(resumoDados, style: const TextStyle(fontWeight: FontWeight.w700)),
+              const SizedBox(height: 8),
+              const Text('As informações principais são mantidas offline no aparelho para não prejudicar a gestante sem internet.'),
             ])),
             if (_answers.isEmpty)
               SectionCard(child: Column(children: [

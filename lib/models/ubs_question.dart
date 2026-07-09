@@ -1,9 +1,11 @@
 class UbsQuestion {
-  UbsQuestion({
+  const UbsQuestion({
     required this.id,
     required this.anonymousUserId,
     required this.question,
     required this.createdAt,
+    this.ubsCode,
+    this.ubsName,
     this.answer,
     this.answeredAt,
   });
@@ -12,6 +14,8 @@ class UbsQuestion {
   final String anonymousUserId;
   final String question;
   final DateTime createdAt;
+  final String? ubsCode;
+  final String? ubsName;
   final String? answer;
   final DateTime? answeredAt;
 
@@ -22,6 +26,8 @@ class UbsQuestion {
         'anonymousUserId': anonymousUserId,
         'question': question,
         'createdAt': createdAt.toIso8601String(),
+        'ubsCode': ubsCode,
+        'ubsName': ubsName,
         'answer': answer,
         'answeredAt': answeredAt?.toIso8601String(),
       };
@@ -32,6 +38,8 @@ class UbsQuestion {
       anonymousUserId: json['anonymousUserId'] as String,
       question: json['question'] as String,
       createdAt: DateTime.parse(json['createdAt'] as String),
+      ubsCode: json['ubsCode'] as String?,
+      ubsName: json['ubsName'] as String?,
       answer: json['answer'] as String?,
       answeredAt: json['answeredAt'] == null ? null : DateTime.parse(json['answeredAt'] as String),
     );
@@ -42,6 +50,8 @@ class UbsQuestion {
         anonymousUserId: anonymousUserId,
         question: question,
         createdAt: createdAt,
+        ubsCode: ubsCode,
+        ubsName: ubsName,
         answer: answer ?? this.answer,
         answeredAt: answeredAt ?? this.answeredAt,
       );

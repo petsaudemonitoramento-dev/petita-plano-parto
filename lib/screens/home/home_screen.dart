@@ -82,6 +82,8 @@ class _HomeScreenState extends State<HomeScreen> {
                         const SizedBox(height: 18),
                         AppButton(label: 'Começar com a Petita', icon: Icons.favorite, onPressed: _startChat),
                         const SizedBox(height: 10),
+                        AppButton(label: 'Perfil da gestante', icon: Icons.person_outline, outlined: true, onPressed: () => Navigator.pushNamed(context, AppRoutes.profile)),
+                        const SizedBox(height: 10),
                         AppButton(label: 'Ver meu plano', icon: Icons.description_outlined, outlined: true, onPressed: () => Navigator.pushNamed(context, AppRoutes.summary)),
                       ],
                     ),
@@ -94,7 +96,13 @@ class _HomeScreenState extends State<HomeScreen> {
                     ],
                   ),
                   const SizedBox(height: 10),
-                  AppButton(label: 'Sobre o aplicativo', outlined: true, onPressed: () => Navigator.pushNamed(context, AppRoutes.about)),
+                  Row(
+                    children: [
+                      Expanded(child: AppButton(label: 'Admin', outlined: true, onPressed: () => Navigator.pushNamed(context, AppRoutes.admin))),
+                      const SizedBox(width: 10),
+                      Expanded(child: AppButton(label: 'Sobre', outlined: true, onPressed: () => Navigator.pushNamed(context, AppRoutes.about))),
+                    ],
+                  ),
                   const SizedBox(height: 20),
                   Text('${AppInfo.institution} • ${AppInfo.version} • Desenvolvido por ${AppInfo.developer}', textAlign: TextAlign.center, style: const TextStyle(fontSize: 12, color: AppColors.petDarkBlue)),
                 ],

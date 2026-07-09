@@ -4,7 +4,6 @@ import '../../config/app_theme.dart';
 import '../../models/birth_plan_answer.dart';
 import '../../models/birth_plan_question.dart';
 import '../../models/chat_message.dart';
-import '../../models/ubs_question.dart';
 import '../../services/birth_plan_flow_service.dart';
 import '../../services/chatbot_service.dart';
 import '../../services/faq_search_service.dart';
@@ -67,6 +66,10 @@ class _ChatScreenState extends State<ChatScreen> {
 
     if (text == 'Montar meu plano') {
       _startPlanFlow();
+      return;
+    }
+    if (text == 'Criar cadastro local' || text == 'Abrir cadastro') {
+      Navigator.pushNamed(context, AppRoutes.profile);
       return;
     }
     if (text == 'Enviar dúvida à UBS' || text == 'Ainda tenho dúvida') {
@@ -136,41 +139,33 @@ class _ChatScreenState extends State<ChatScreen> {
   }
 
   Future<void> _askUbsQuestion() async {
-    final text = await showDialog<String>(
-      context: context,
-      builder: (context) {
-        final dialogController = TextEditingController();
-        return AlertDialog(
-          title: const Text('Enviar dúvida à Equipe UBS'),
-          content: Column(mainAxisSize: MainAxisSize.min, children: [
-            const Text('Este canal é apenas para dúvidas não urgentes. Evite inserir nome, CPF, telefone ou informações que identifiquem você diretamente.'),
-            const SizedBox(height: 12),
-            TextField(controller: dialogController, maxLines: 4, decoration: const InputDecoration(hintText: 'Digite sua dúvida...')),
-          ]),
-          actions: [
-            TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancelar')),
-            ElevatedButton(onPressed: () => Navigator.pop(context, dialogController.text), child: const Text('Enviar')),
-          ],
-        );
-      },
-    );
-    if (text == null || text.trim().isEmpty) return;
-    await _storage.saveUbsQuestion(UbsQuestion(
-      id: DateTime.now().millisecondsSinceEpoch.toString(),
-      anonymousUserId: 'GES-${DateTime.now().millisecondsSinceEpoch.toString().substring(7)}',
-      question: text.trim(),
-      createdAt: DateTime.now(),
-    ));
     setState(() => _messages.add(const ChatMessage(
-          text: 'Sua dúvida foi registrada para a Equipe UBS como demonstração local. Em uma versão online, ela seria enviada com identificação reduzida para resposta profissional.',
+          text: 'Funcionalidade online temporariamente indisponível. Estamos trabalhando no envio de dúvidas para a Equipe UBS.\n\nEnquanto estiver offline, você pode continuar usando as atividades principais: conversar com a Petita pela base local, montar/editar o Plano de Parto e gerar o PDF. Para urgências, procure imediatamente um serviço de saúde.',
           isUser: false,
+          options: ['Sinais de atenção', 'Montar meu plano', 'Criar cadastro local'],
         )));
+    _scrollToBottom();
   }
 
   void _handleOption(String option) {
     if (option == 'Ver meu plano') {
       Navigator.pushNamed(context, AppRoutes.summary);
       return;
+    }
+
+    if (_currentQuestion >= 0 && !_questions[_currentQuestion].multiple) {
+      final current = _questions[_currentQuestion];
+      if (current.id == 'ubs_referencia' && option == 'Outra UBS') {
+        setState(() {
+          _messages.add(const ChatMessage(text: 'Outra UBS', isUser: true));
+          _messages.add(const ChatMessage(
+            text: 'Sem problema. Digite o nome da sua UBS de referência no campo de mensagem para registrar no plano.',
+            isUser: false,
+          ));
+        });
+        _scrollToBottom();
+        return;
+      }
     }
 
     if (_currentQuestion >= 0 && _questions[_currentQuestion].multiple) {

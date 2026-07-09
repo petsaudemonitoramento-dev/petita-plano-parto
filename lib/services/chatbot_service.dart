@@ -7,35 +7,42 @@ class ChatbotService {
   final FaqSearchService _faqSearchService;
 
   ChatMessage welcome() {
-    return ChatMessage(
+    return const ChatMessage(
       isUser: false,
-      text: 'Olá! Eu sou a Petita 💗\nVou te ajudar a tirar dúvidas sobre o Plano de Parto e montar seu plano passo a passo.',
-      options: const ['Montar meu plano', 'O que é plano de parto?', 'Sinais de atenção', 'Enviar dúvida à UBS'],
+      text: 'Olá! Eu sou a Petita 💗\nVou te ajudar a tirar dúvidas sobre o Plano de Parto, montar seu plano passo a passo e preparar seu cadastro local para acessar depois.',
+      options: ['Montar meu plano', 'Criar cadastro local', 'O que é plano de parto?', 'Sinais de atenção', 'Enviar dúvida à UBS'],
     );
   }
 
   Future<ChatMessage> respond(String userText) async {
     final lower = userText.toLowerCase();
+    if (lower.contains('cadastro') || lower.contains('login') || lower.contains('entrar')) {
+      return const ChatMessage(
+        isUser: false,
+        text: 'O cadastro da gestante está preparado em modo local/offline. Na etapa online, ele será sincronizado com o Supabase para permitir recuperar o plano e enviar dúvidas à UBS.',
+        options: ['Abrir cadastro', 'Montar meu plano'],
+      );
+    }
     if (lower.contains('montar')) {
-      return ChatMessage(
+      return const ChatMessage(
         isUser: false,
         text: 'Vamos montar seu plano juntas. Toque em "Montar meu plano" para iniciar o fluxo guiado.',
-        options: const ['Montar meu plano'],
+        options: ['Montar meu plano'],
       );
     }
     if (lower.contains('ubs') || lower.contains('profissional')) {
-      return ChatMessage(
+      return const ChatMessage(
         isUser: false,
-        text: 'Posso registrar uma dúvida não urgente para a Equipe UBS. Esse canal não substitui atendimento e não deve ser usado em urgências.',
-        options: const ['Enviar dúvida à UBS', 'Sinais de atenção'],
+        text: 'O envio de dúvidas para a Equipe UBS será uma funcionalidade online. O app continuará funcionando offline para montar, editar e gerar seu Plano de Parto, mas o envio de dúvidas precisará de internet e autenticação.',
+        options: ['Enviar dúvida à UBS', 'Sinais de atenção'],
       );
     }
     final faq = await _faqSearchService.search(userText);
     if (faq == null) {
-      return ChatMessage(
+      return const ChatMessage(
         isUser: false,
-        text: 'Ainda não encontrei uma resposta segura na minha base validada. Você pode reformular a pergunta ou enviar uma dúvida não urgente à Equipe UBS.',
-        options: const ['Enviar dúvida à UBS', 'Sinais de atenção', 'Montar meu plano'],
+        text: 'Ainda não encontrei uma resposta segura na minha base validada. Você pode reformular a pergunta. A busca aprofundada por documentos cadastrados ficará disponível na versão online.',
+        options: ['Sinais de atenção', 'Montar meu plano', 'Criar cadastro local'],
       );
     }
     return ChatMessage(

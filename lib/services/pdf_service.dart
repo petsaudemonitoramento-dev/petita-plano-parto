@@ -8,7 +8,7 @@ import '../models/birth_plan_question.dart';
 
 class PdfService {
   static final PdfColor _pink = PdfColor.fromHex('#F05A7E');
-  static final PdfColor _lightPink = PdfColor.fromHex('#FFF7F8');
+  static final PdfColor _softPink = PdfColor.fromHex('#FFF7F8');
   static final PdfColor _borderPink = PdfColor.fromHex('#F6A6B8');
   static final PdfColor _darkBlue = PdfColor.fromHex('#143D63');
   static final PdfColor _petBlue = PdfColor.fromHex('#49A3D8');
@@ -37,8 +37,8 @@ class PdfService {
     doc.addPage(
       pw.Page(
         pageFormat: PdfPageFormat.a4,
-        margin: const pw.EdgeInsets.fromLTRB(18, 16, 18, 14),
-        build: (context) => _buildSinglePage(
+        margin: const pw.EdgeInsets.fromLTRB(18, 14, 18, 12),
+        build: (context) => _singlePage(
           logoUfcg: logoUfcg,
           logoPet: logoPet,
           logoPetAvatar: logoPetAvatar,
@@ -50,7 +50,7 @@ class PdfService {
     return doc.save();
   }
 
-  pw.Widget _buildSinglePage({
+  pw.Widget _singlePage({
     required pw.MemoryImage logoUfcg,
     required pw.MemoryImage logoPet,
     required pw.MemoryImage logoPetAvatar,
@@ -59,111 +59,99 @@ class PdfService {
   }) {
     final nome = _value(map, 'nome_gestante', 'Laís Vitória de Sousa');
     final dpp = _value(map, 'dpp', '18/11/2026');
-    final ubs = _value(map, 'ubs_referencia', 'UBS Estação Velha');
+    final ubs = _value(map, 'ubs_referencia', 'UBS - Estação Velha');
     final acompanhante = _value(map, 'acompanhante_principal', 'Esposo/parceiro');
     final data = _todayPtBr();
 
-    return pw.Container(
-      decoration: pw.BoxDecoration(color: PdfColors.white),
-      child: pw.Column(
-        crossAxisAlignment: pw.CrossAxisAlignment.stretch,
-        children: [
-          _header(logoUfcg, logoPet, petita),
-          pw.SizedBox(height: 6),
-          _dataBox(nome: nome, dpp: dpp, ubs: ubs, acompanhante: acompanhante, data: data),
-          pw.SizedBox(height: 10),
-          pw.Row(
-            crossAxisAlignment: pw.CrossAxisAlignment.start,
-            children: [
-              _sectionCard('♥', '2) Acompanhante e apoio', _acompanhanteBullets(map, acompanhante), width: 176),
-              pw.SizedBox(width: 8),
-              _sectionCard('↟', '3) Trabalho de parto', _trabalhoBullets(map), width: 176),
-              pw.SizedBox(width: 8),
-              _sectionCard('✿', '4) Alívio da dor', _alivioBullets(map), width: 176),
-            ],
-          ),
-          pw.SizedBox(height: 8),
-          pw.Row(
-            crossAxisAlignment: pw.CrossAxisAlignment.start,
-            children: [
-              _sectionCard('◌', '5) Nascimento', _nascimentoBullets(map), width: 176),
-              pw.SizedBox(width: 8),
-              _sectionCard('♡', '6) Cuidados com o bebê', _bebeBullets(map), width: 176),
-              pw.SizedBox(width: 8),
-              _sectionCard('╱', '7) Em caso de cesárea', _cesareaBullets(map), width: 176),
-            ],
-          ),
-          pw.SizedBox(height: 8),
-          _observationsBox(map),
-          pw.SizedBox(height: 8),
-          _noteBox(),
-          pw.SizedBox(height: 16),
-          pw.Row(
-            mainAxisAlignment: pw.MainAxisAlignment.spaceAround,
-            children: [_signature('Gestante'), _signature('Profissional/Equipe')],
-          ),
-          pw.Spacer(),
-          _footer(logoPetAvatar),
-        ],
-      ),
+    return pw.Column(
+      crossAxisAlignment: pw.CrossAxisAlignment.stretch,
+      children: [
+        _header(logoUfcg: logoUfcg, logoPet: logoPet, petita: petita),
+        pw.SizedBox(height: 5),
+        _dataBox(nome: nome, dpp: dpp, ubs: ubs, acompanhante: acompanhante, data: data),
+        pw.SizedBox(height: 8),
+        pw.Row(
+          crossAxisAlignment: pw.CrossAxisAlignment.start,
+          children: [
+            _sectionCard(number: 2, title: 'Acompanhante e apoio', bullets: _acompanhanteBullets(map, acompanhante)),
+            pw.SizedBox(width: 8),
+            _sectionCard(number: 3, title: 'Trabalho de parto', bullets: _trabalhoBullets(map)),
+            pw.SizedBox(width: 8),
+            _sectionCard(number: 4, title: 'Alívio da dor', bullets: _alivioBullets(map)),
+          ],
+        ),
+        pw.SizedBox(height: 8),
+        pw.Row(
+          crossAxisAlignment: pw.CrossAxisAlignment.start,
+          children: [
+            _sectionCard(number: 5, title: 'Nascimento', bullets: _nascimentoBullets(map)),
+            pw.SizedBox(width: 8),
+            _sectionCard(number: 6, title: 'Cuidados com o bebê', bullets: _bebeBullets(map)),
+            pw.SizedBox(width: 8),
+            _sectionCard(number: 7, title: 'Em caso de cesárea', bullets: _cesareaBullets(map)),
+          ],
+        ),
+        pw.SizedBox(height: 8),
+        _observationsBox(map),
+        pw.SizedBox(height: 7),
+        _noteBox(),
+        pw.SizedBox(height: 14),
+        pw.Row(
+          mainAxisAlignment: pw.MainAxisAlignment.spaceAround,
+          children: [_signature('Gestante'), _signature('Profissional/Equipe')],
+        ),
+        pw.Spacer(),
+        _footer(logoPetAvatar),
+      ],
     );
   }
 
-  pw.Widget _header(pw.MemoryImage logoUfcg, pw.MemoryImage logoPet, pw.MemoryImage petita) {
+  pw.Widget _header({required pw.MemoryImage logoUfcg, required pw.MemoryImage logoPet, required pw.MemoryImage petita}) {
     return pw.Column(children: [
       pw.Row(
         crossAxisAlignment: pw.CrossAxisAlignment.start,
         mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
         children: [
-          pw.Container(
-            width: 116,
+          pw.SizedBox(
+            width: 112,
             child: pw.Column(children: [
-              pw.Image(logoUfcg, height: 64, fit: pw.BoxFit.contain),
+              pw.Image(logoUfcg, height: 58, fit: pw.BoxFit.contain),
               pw.SizedBox(height: 2),
-              pw.Text('Universidade Federal\nde Campina Grande', textAlign: pw.TextAlign.center, style: pw.TextStyle(fontSize: 7.5, color: _darkBlue)),
+              pw.Text('Universidade Federal\nde Campina Grande', textAlign: pw.TextAlign.center, style: pw.TextStyle(fontSize: 7.4, color: _darkBlue)),
             ]),
           ),
-          pw.Container(
-            width: 300,
+          pw.SizedBox(
+            width: 306,
             child: pw.Column(children: [
               pw.Text('Plano de Parto', textAlign: pw.TextAlign.center, style: pw.TextStyle(fontSize: 29, fontWeight: pw.FontWeight.bold, color: _darkBlue)),
-              pw.RichText(
-                text: pw.TextSpan(children: [
-                  pw.TextSpan(text: 'PET ', style: pw.TextStyle(fontSize: 25, fontWeight: pw.FontWeight.bold, color: _petOrange)),
-                  pw.TextSpan(text: 'Saúde', style: pw.TextStyle(fontSize: 25, fontWeight: pw.FontWeight.bold, color: _petBlue)),
-                ]),
-              ),
+              pw.RichText(text: pw.TextSpan(children: [
+                pw.TextSpan(text: 'PET ', style: pw.TextStyle(fontSize: 25, fontWeight: pw.FontWeight.bold, color: _petOrange)),
+                pw.TextSpan(text: 'Saúde', style: pw.TextStyle(fontSize: 25, fontWeight: pw.FontWeight.bold, color: _petBlue)),
+              ])),
               pw.SizedBox(height: 3),
-              pw.Text('Documento de preferências para o trabalho de parto,\nparto, pós-parto imediato e cuidados com o recém-nascido',
-                  textAlign: pw.TextAlign.center, style: pw.TextStyle(fontSize: 9.2, color: _text)),
+              pw.Text(
+                'Documento de preferências para o trabalho de parto,\nparto, pós-parto imediato e cuidados com o recém-nascido',
+                textAlign: pw.TextAlign.center,
+                style: pw.TextStyle(fontSize: 9.1, color: _text),
+              ),
             ]),
           ),
-          pw.Container(
-            width: 116,
-            child: pw.Column(children: [
-              pw.Image(logoPet, height: 58, fit: pw.BoxFit.contain),
-            ]),
-          ),
+          pw.SizedBox(width: 112, child: pw.Image(logoPet, height: 62, fit: pw.BoxFit.contain)),
         ],
       ),
-      pw.SizedBox(height: 8),
-      pw.Row(children: [
-        pw.Expanded(child: pw.Container(height: 0.8, color: _borderPink)),
-        pw.Padding(padding: const pw.EdgeInsets.symmetric(horizontal: 8), child: pw.Text('♥', style: pw.TextStyle(fontSize: 12, color: _pink))),
-        pw.Expanded(child: pw.Container(height: 0.8, color: _borderPink)),
-      ]),
-      pw.SizedBox(height: 6),
+      pw.SizedBox(height: 7),
+      _dividerWithDot(),
+      pw.SizedBox(height: 5),
       pw.Row(
         mainAxisAlignment: pw.MainAxisAlignment.center,
         children: [
           pw.Text('Gerado pelo aplicativo Plano de Parto ', style: pw.TextStyle(fontSize: 7.8, color: _text)),
           pw.Text('PET ', style: pw.TextStyle(fontSize: 7.8, color: _petOrange, fontWeight: pw.FontWeight.bold)),
           pw.Text('Saúde', style: pw.TextStyle(fontSize: 7.8, color: _petBlue, fontWeight: pw.FontWeight.bold)),
-          pw.Text(' • Assistente virtual Petita', style: pw.TextStyle(fontSize: 7.8, color: _text)),
+          pw.Text('  •  Assistente virtual Petita', style: pw.TextStyle(fontSize: 7.8, color: _text)),
         ],
       ),
-      pw.SizedBox(height: 2),
-      pw.Align(alignment: pw.Alignment.centerRight, child: pw.Image(petita, height: 68, fit: pw.BoxFit.contain)),
+      pw.Align(alignment: pw.Alignment.centerRight, child: pw.Image(petita, height: 60, fit: pw.BoxFit.contain)),
     ]);
   }
 
@@ -173,7 +161,7 @@ class PdfService {
       child: pw.Column(crossAxisAlignment: pw.CrossAxisAlignment.stretch, children: [
         _sectionHeader('1) Dados da gestante'),
         pw.Padding(
-          padding: const pw.EdgeInsets.fromLTRB(12, 8, 12, 8),
+          padding: const pw.EdgeInsets.fromLTRB(12, 7, 12, 8),
           child: pw.Row(crossAxisAlignment: pw.CrossAxisAlignment.start, children: [
             pw.Expanded(child: pw.Column(children: [
               _dataLine('Nome:', nome),
@@ -182,7 +170,7 @@ class PdfService {
               _thinDivider(),
               _dataLine('UBS de referência:', ubs),
             ])),
-            pw.Container(width: 0.8, height: 68, color: _borderPink, margin: const pw.EdgeInsets.symmetric(horizontal: 10)),
+            pw.Container(width: 0.7, height: 62, color: _borderPink, margin: const pw.EdgeInsets.symmetric(horizontal: 10)),
             pw.Expanded(child: pw.Column(children: [
               _dataLine('Acompanhante principal:', acompanhante),
               _thinDivider(),
@@ -195,73 +183,89 @@ class PdfService {
   }
 
   pw.Widget _dataLine(String label, String value) => pw.Padding(
-        padding: const pw.EdgeInsets.symmetric(vertical: 4),
+        padding: const pw.EdgeInsets.symmetric(vertical: 3.8),
         child: pw.Row(crossAxisAlignment: pw.CrossAxisAlignment.start, children: [
+          _smallSquare(),
+          pw.SizedBox(width: 6),
           pw.Text(label, style: pw.TextStyle(fontSize: 8.2, color: _darkBlue, fontWeight: pw.FontWeight.bold)),
           pw.SizedBox(width: 8),
           pw.Expanded(child: pw.Text(value, style: pw.TextStyle(fontSize: 8.2, color: _text))),
         ]),
       );
 
-  pw.Widget _sectionCard(String icon, String title, List<String> bullets, {required double width}) {
-    return pw.Container(
-      width: width,
-      height: 150,
-      decoration: pw.BoxDecoration(border: pw.Border.all(color: _borderPink, width: 0.75), borderRadius: pw.BorderRadius.circular(10), color: PdfColors.white),
-      child: pw.Column(crossAxisAlignment: pw.CrossAxisAlignment.stretch, children: [
-        pw.Container(
-          padding: const pw.EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-          decoration: pw.BoxDecoration(color: _lightPink, borderRadius: const pw.BorderRadius.only(topLeft: pw.Radius.circular(10), topRight: pw.Radius.circular(10))),
-          child: pw.Row(children: [
-            pw.Text(icon, style: pw.TextStyle(fontSize: 12, color: _pink, fontWeight: pw.FontWeight.bold)),
-            pw.SizedBox(width: 5),
-            pw.Expanded(child: pw.Text(title, style: pw.TextStyle(fontSize: 9.3, fontWeight: pw.FontWeight.bold, color: _pink))),
-          ]),
-        ),
-        pw.Container(height: 0.7, color: _borderPink),
-        pw.Padding(
-          padding: const pw.EdgeInsets.fromLTRB(10, 7, 8, 6),
-          child: pw.Column(crossAxisAlignment: pw.CrossAxisAlignment.start, children: bullets.take(6).map(_bullet).toList()),
-        ),
-      ]),
+  pw.Widget _sectionCard({required int number, required String title, required List<String> bullets}) {
+    return pw.Expanded(
+      child: pw.Container(
+        height: 148,
+        decoration: pw.BoxDecoration(border: pw.Border.all(color: _borderPink, width: 0.75), borderRadius: pw.BorderRadius.circular(9), color: PdfColors.white),
+        child: pw.Column(crossAxisAlignment: pw.CrossAxisAlignment.stretch, children: [
+          pw.Container(
+            padding: const pw.EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+            decoration: pw.BoxDecoration(color: _softPink, borderRadius: const pw.BorderRadius.only(topLeft: pw.Radius.circular(9), topRight: pw.Radius.circular(9))),
+            child: pw.Row(children: [
+              _sectionBadge(number),
+              pw.SizedBox(width: 6),
+              pw.Expanded(child: pw.Text('$number) $title', style: pw.TextStyle(fontSize: 9.2, fontWeight: pw.FontWeight.bold, color: _pink))),
+            ]),
+          ),
+          pw.Container(height: 0.65, color: _borderPink),
+          pw.Padding(
+            padding: const pw.EdgeInsets.fromLTRB(10, 7, 8, 6),
+            child: pw.Column(crossAxisAlignment: pw.CrossAxisAlignment.start, children: bullets.take(6).map(_bullet).toList()),
+          ),
+        ]),
+      ),
     );
   }
 
   pw.Widget _sectionHeader(String title) => pw.Container(
         padding: const pw.EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-        decoration: pw.BoxDecoration(color: _lightPink, borderRadius: const pw.BorderRadius.only(topLeft: pw.Radius.circular(10), topRight: pw.Radius.circular(10))),
-        child: pw.Text(title, style: pw.TextStyle(fontSize: 10.2, fontWeight: pw.FontWeight.bold, color: _pink)),
+        decoration: pw.BoxDecoration(color: _softPink, borderRadius: const pw.BorderRadius.only(topLeft: pw.Radius.circular(10), topRight: pw.Radius.circular(10))),
+        child: pw.Row(children: [
+          _sectionBadge(1),
+          pw.SizedBox(width: 7),
+          pw.Text(title, style: pw.TextStyle(fontSize: 10, fontWeight: pw.FontWeight.bold, color: _pink)),
+        ]),
       );
 
   pw.Widget _bullet(String text) => pw.Padding(
         padding: const pw.EdgeInsets.only(bottom: 4),
         child: pw.Row(crossAxisAlignment: pw.CrossAxisAlignment.start, children: [
-          pw.Text('•', style: pw.TextStyle(fontSize: 9.5, color: _pink, fontWeight: pw.FontWeight.bold)),
-          pw.SizedBox(width: 5),
-          pw.Expanded(child: pw.Text(text, style: pw.TextStyle(fontSize: 7.25, color: _text, lineSpacing: 1.3))),
+          pw.Container(width: 3.5, height: 3.5, margin: const pw.EdgeInsets.only(top: 4), decoration: pw.BoxDecoration(color: _pink, shape: pw.BoxShape.circle)),
+          pw.SizedBox(width: 6),
+          pw.Expanded(child: pw.Text(text, style: pw.TextStyle(fontSize: 7.15, color: _text, lineSpacing: 1.25))),
         ]),
       );
 
   pw.Widget _observationsBox(Map<String, List<String>> map) {
     final obs = _value(map, 'observacoes_finais', 'Desejo que minha autonomia, minhas escolhas e meu direito à informação sejam respeitados durante toda a assistência.');
     return pw.Container(
-      decoration: pw.BoxDecoration(border: pw.Border.all(color: _borderPink, width: 0.75), borderRadius: pw.BorderRadius.circular(10), color: PdfColors.white),
+      decoration: pw.BoxDecoration(border: pw.Border.all(color: _borderPink, width: 0.75), borderRadius: pw.BorderRadius.circular(9), color: PdfColors.white),
       child: pw.Column(crossAxisAlignment: pw.CrossAxisAlignment.stretch, children: [
-        _sectionHeader('8) Observações finais'),
-        pw.Padding(padding: const pw.EdgeInsets.fromLTRB(12, 7, 12, 7), child: _bullet('"$obs"')),
+        pw.Container(
+          padding: const pw.EdgeInsets.symmetric(horizontal: 9, vertical: 6),
+          decoration: pw.BoxDecoration(color: _softPink, borderRadius: const pw.BorderRadius.only(topLeft: pw.Radius.circular(9), topRight: pw.Radius.circular(9))),
+          child: pw.Row(children: [
+            _sectionBadge(8),
+            pw.SizedBox(width: 6),
+            pw.Text('8) Observações finais', style: pw.TextStyle(fontSize: 9.4, fontWeight: pw.FontWeight.bold, color: _pink)),
+          ]),
+        ),
+        pw.Container(height: 0.65, color: _borderPink),
+        pw.Padding(padding: const pw.EdgeInsets.fromLTRB(12, 6, 12, 6), child: _bullet('"$obs"')),
       ]),
     );
   }
 
   pw.Widget _noteBox() => pw.Container(
-        padding: const pw.EdgeInsets.all(10),
-        decoration: pw.BoxDecoration(color: PdfColor.fromHex('#FFFDFD'), border: pw.Border.all(color: _borderPink, width: 0.75), borderRadius: pw.BorderRadius.circular(10)),
+        padding: const pw.EdgeInsets.symmetric(horizontal: 12, vertical: 9),
+        decoration: pw.BoxDecoration(color: PdfColor.fromHex('#FFFDFD'), border: pw.Border.all(color: _borderPink, width: 0.75), borderRadius: pw.BorderRadius.circular(9)),
         child: pw.Row(children: [
-          pw.Container(width: 28, height: 28, decoration: pw.BoxDecoration(border: pw.Border.all(color: _pink, width: 1.2), borderRadius: pw.BorderRadius.circular(5))),
+          _clipboardIcon(),
           pw.SizedBox(width: 12),
-          pw.Expanded(child: pw.Text('Este documento expressa preferências da gestante e deve ser considerado pela equipe de saúde sempre que clinicamente possível.', style: pw.TextStyle(fontSize: 9, color: _darkBlue, fontWeight: pw.FontWeight.bold))),
+          pw.Expanded(child: pw.Text('Este documento expressa preferências da gestante e deve ser considerado pela equipe de saúde sempre que clinicamente possível.', style: pw.TextStyle(fontSize: 8.8, color: _darkBlue, fontWeight: pw.FontWeight.bold))),
           pw.SizedBox(width: 10),
-          pw.Text('♡', style: pw.TextStyle(fontSize: 28, color: _pink)),
+          _careIcon(),
         ]),
       );
 
@@ -273,11 +277,7 @@ class PdfService {
 
   pw.Widget _footer(pw.MemoryImage logoPetAvatar) => pw.Row(crossAxisAlignment: pw.CrossAxisAlignment.end, children: [
         pw.Expanded(child: pw.Column(children: [
-          pw.Row(children: [
-            pw.Expanded(child: pw.Container(height: 0.7, color: _borderPink)),
-            pw.Padding(padding: const pw.EdgeInsets.symmetric(horizontal: 8), child: pw.Text('♥', style: pw.TextStyle(fontSize: 10, color: _pink))),
-            pw.Expanded(child: pw.Container(height: 0.7, color: _borderPink)),
-          ]),
+          _dividerWithDot(),
           pw.SizedBox(height: 6),
           pw.RichText(text: pw.TextSpan(children: [
             pw.TextSpan(text: 'Plano de Parto PET Saúde  •  ', style: pw.TextStyle(fontSize: 8, color: _text)),
@@ -288,6 +288,50 @@ class PdfService {
         pw.SizedBox(width: 8),
         pw.Container(width: 32, height: 32, decoration: pw.BoxDecoration(border: pw.Border.all(color: _borderPink), shape: pw.BoxShape.circle), child: pw.Padding(padding: const pw.EdgeInsets.all(3), child: pw.Image(logoPetAvatar, fit: pw.BoxFit.contain))),
       ]);
+
+  pw.Widget _dividerWithDot() => pw.Row(children: [
+        pw.Expanded(child: pw.Container(height: 0.7, color: _borderPink)),
+        pw.Padding(padding: const pw.EdgeInsets.symmetric(horizontal: 8), child: pw.Container(width: 7, height: 7, decoration: pw.BoxDecoration(color: _pink, shape: pw.BoxShape.circle))),
+        pw.Expanded(child: pw.Container(height: 0.7, color: _borderPink)),
+      ]);
+
+  pw.Widget _sectionBadge(int number) => pw.Container(
+        width: 12,
+        height: 12,
+        decoration: pw.BoxDecoration(color: _pink, shape: pw.BoxShape.circle),
+        alignment: pw.Alignment.center,
+        child: pw.Text(number.toString(), style: pw.TextStyle(fontSize: 6.4, color: PdfColors.white, fontWeight: pw.FontWeight.bold)),
+      );
+
+  pw.Widget _smallSquare() => pw.Container(width: 8, height: 8, decoration: pw.BoxDecoration(border: pw.Border.all(color: _pink, width: 1), borderRadius: pw.BorderRadius.circular(2)));
+
+  pw.Widget _clipboardIcon() => pw.Container(
+        width: 28,
+        height: 28,
+        decoration: pw.BoxDecoration(border: pw.Border.all(color: _pink, width: 1.2), borderRadius: pw.BorderRadius.circular(5)),
+        child: pw.Padding(
+          padding: const pw.EdgeInsets.all(5),
+          child: pw.Column(mainAxisAlignment: pw.MainAxisAlignment.spaceAround, children: [
+            pw.Container(height: 1.2, color: _pink),
+            pw.Container(height: 1.2, color: _pink),
+            pw.Container(height: 1.2, color: _pink),
+          ]),
+        ),
+      );
+
+  pw.Widget _careIcon() => pw.SizedBox(
+        width: 32,
+        height: 28,
+        child: pw.Column(mainAxisAlignment: pw.MainAxisAlignment.center, children: [
+          pw.Container(width: 13, height: 13, decoration: pw.BoxDecoration(border: pw.Border.all(color: _pink, width: 1.2), shape: pw.BoxShape.circle)),
+          pw.SizedBox(height: 2),
+          pw.Row(mainAxisAlignment: pw.MainAxisAlignment.center, children: [
+            pw.Container(width: 14, height: 1.2, color: _pink),
+            pw.SizedBox(width: 3),
+            pw.Container(width: 14, height: 1.2, color: _pink),
+          ]),
+        ]),
+      );
 
   pw.Widget _thinDivider() => pw.Container(height: 0.5, color: PdfColor.fromHex('#FDECEF'));
 
@@ -320,15 +364,15 @@ class PdfService {
     final alimentacao = _values(map, 'alimentacao', ['líquidos e, se permitido, alimentação leve']).join(', ');
     final ambiente = _values(map, 'ambiente', ['ambiente calmo, acolhedor e com privacidade']).join(', ');
     return [
-      _value(map, 'movimentacao', 'Desejo livre movimentação durante o trabalho de parto.').replaceFirst('Sim, ', ''),
+      _sentence(_value(map, 'movimentacao', 'Desejo livre movimentação durante o trabalho de parto.').replaceFirst('Sim, ', '')),
       'Desejo ingerir $alimentacao.',
       'Desejo $ambiente.',
-      _value(map, 'informacao_procedimentos', 'Desejo ser informada antes de qualquer procedimento.').replaceFirst('Sim, ', ''),
+      _sentence(_value(map, 'informacao_procedimentos', 'Desejo ser informada antes de qualquer procedimento.').replaceFirst('Sim, ', '')),
     ];
   }
 
   List<String> _alivioBullets(Map<String, List<String>> map) =>
-      _values(map, 'alivio_dor', ['Preferência por métodos não farmacológicos', 'Banho morno/chuveiro', 'Massagem', 'Técnicas de respiração', 'Bola de parto', 'Analgesia, se necessário e disponível']).map((e) => e.endsWith('.') ? e : '$e.').toList();
+      _values(map, 'alivio_dor', ['Preferência por métodos não farmacológicos', 'Banho morno/chuveiro', 'Massagem', 'Técnicas de respiração', 'Bola de parto', 'Analgesia, se necessário e disponível']).map(_sentence).toList();
 
   List<String> _nascimentoBullets(Map<String, List<String>> map) {
     final positions = _values(map, 'posicao_nascimento', ['vertical', 'semi-sentada ou cócoras']).join(', ').toLowerCase();
@@ -336,7 +380,7 @@ class PdfService {
     return [
       'Posições preferidas: $positions.',
       'Desejo liberdade para escolher a posição de parir, quando clinicamente possível.',
-      cordao.toLowerCase().startsWith('sim') ? 'Desejo clampeamento oportuno do cordão umbilical.' : cordao,
+      cordao.toLowerCase().startsWith('sim') ? 'Desejo clampeamento oportuno do cordão umbilical.' : _sentence(cordao),
       'Desejo contato imediato com o bebê após o nascimento, se ambos estiverem bem.',
     ];
   }
@@ -346,9 +390,9 @@ class PdfService {
     final cuidados = _value(map, 'cuidados_nao_urgentes', 'Sim, evitar procedimentos não urgentes antes do primeiro contato');
     final bullets = <String>[];
     for (final item in primeiraHora.take(2)) {
-      bullets.add(item.endsWith('.') ? item : '$item.');
+      bullets.add(_sentence(item));
     }
-    bullets.add(cuidados.toLowerCase().startsWith('sim') ? 'Evitar procedimentos não urgentes antes do primeiro contato, quando possível.' : cuidados);
+    bullets.add(cuidados.toLowerCase().startsWith('sim') ? 'Evitar procedimentos não urgentes antes do primeiro contato, quando possível.' : _sentence(cuidados));
     bullets.add('Presença do acompanhante nos primeiros cuidados.');
     return bullets;
   }
@@ -356,8 +400,10 @@ class PdfService {
   List<String> _cesareaBullets(Map<String, List<String>> map) =>
       _values(map, 'cesarea', ['Ser informada sobre a indicação e participar da decisão', 'Presença do acompanhante, se possível', 'Contato pele a pele e amamentação precoce assim que houver condições']).map((e) {
         if (e == 'Contato pele a pele quando houver condições') return 'Desejo contato pele a pele e amamentação precoce assim que houver condições.';
-        return e.endsWith('.') ? e : 'Desejo ${e[0].toLowerCase()}${e.substring(1)}.';
+        return _sentence(e.startsWith('Desejo') ? e : 'Desejo ${e[0].toLowerCase()}${e.substring(1)}');
       }).take(4).toList();
+
+  String _sentence(String value) => value.trim().endsWith('.') ? value.trim() : '${value.trim()}.';
 
   String _todayPtBr() {
     final now = DateTime.now();

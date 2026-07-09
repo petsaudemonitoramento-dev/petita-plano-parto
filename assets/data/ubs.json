@@ -1,0 +1,23 @@
+[
+  {
+    "code": "UBS-EV-001",
+    "name": "UBS - Estação Velha",
+    "city": "Campina Grande",
+    "state": "PB",
+    "active": true
+  },
+  {
+    "code": "UBS-AAV-002",
+    "name": "UBS - Antônio Aurélio Ventura (Cinza)",
+    "city": "Campina Grande",
+    "state": "PB",
+    "active": true
+  },
+  {
+    "code": "UBS-RBF-003",
+    "name": "UBS - Romualdo Brito de Figueiredo",
+    "city": "Campina Grande",
+    "state": "PB",
+    "active": true
+  }
+]

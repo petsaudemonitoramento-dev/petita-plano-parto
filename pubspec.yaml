@@ -24,6 +24,7 @@ flutter:
     - assets/images/ufcg_logo.png
     - assets/data/faq.json
     - assets/data/birth_plan_flow.json
+    - assets/data/ubs.json
     - assets/legal/termos_uso.md
     - assets/legal/politica_privacidade.md
     - assets/legal/aviso_responsabilidade.md

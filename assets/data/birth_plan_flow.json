@@ -16,106 +16,185 @@
   {
     "id": "ubs_referencia",
     "section": "Dados da gestante",
-    "question": "Qual é a sua UBS de referência?",
-    "options": ["UBS Estação Velha", "UBS Malvinas III", "Outra UBS"],
-    "multiple": false
+    "question": "Escolha sua UBS de referência. Se sua UBS não aparecer, você pode digitar o nome no campo de mensagem.",
+    "options": [
+      "UBS - Estação Velha",
+      "UBS - Antônio Aurélio Ventura (Cinza)",
+      "UBS - Romualdo Brito de Figueiredo",
+      "Outra UBS"
+    ],
+    "multiple": false,
+    "allowOther": true
   },
   {
     "id": "acompanhante_principal",
     "section": "Acompanhante e apoio",
     "question": "Quem você deseja que seja seu acompanhante principal durante o trabalho de parto e o parto?",
-    "options": ["Esposo/parceiro", "Mãe", "Filha(o) maior de 18 anos", "Amiga(o)", "Outro familiar", "Prefiro não ter acompanhante"],
+    "options": [
+      "Esposo/parceiro",
+      "Mãe",
+      "Filha(o) maior de 18 anos",
+      "Amiga(o)",
+      "Outro familiar",
+      "Prefiro não ter acompanhante"
+    ],
     "multiple": false
   },
   {
     "id": "doula",
     "section": "Acompanhante e apoio",
     "question": "Você deseja registrar a presença de doula, se possível?",
-    "options": ["Sim, desejo presença de doula, se possível", "Não desejo registrar doula", "Quero conversar com a equipe"],
+    "options": [
+      "Sim, desejo presença de doula, se possível",
+      "Não desejo registrar doula",
+      "Quero conversar com a equipe"
+    ],
     "multiple": false
   },
   {
     "id": "apoio_comunicacao",
     "section": "Acompanhante e apoio",
     "question": "Você deseja registrar apoio emocional, privacidade e comunicação clara durante toda a assistência?",
-    "options": ["Sim, desejo apoio emocional, privacidade e comunicação clara", "Quero decidir no momento", "Não desejo registrar"],
+    "options": [
+      "Sim, desejo apoio emocional, privacidade e comunicação clara",
+      "Quero decidir no momento",
+      "Não desejo registrar"
+    ],
     "multiple": false
   },
   {
     "id": "movimentacao",
     "section": "Trabalho de parto",
     "question": "Durante o trabalho de parto, você deseja ter liberdade para se movimentar?",
-    "options": ["Sim, desejo livre movimentação", "Prefiro decidir no momento", "Não desejo registrar"],
+    "options": [
+      "Sim, desejo livre movimentação",
+      "Prefiro decidir no momento",
+      "Não desejo registrar"
+    ],
     "multiple": false
   },
   {
     "id": "alimentacao",
     "section": "Trabalho de parto",
     "question": "Se for permitido pela equipe, quais opções você gostaria de registrar para alimentação e hidratação?",
-    "options": ["Água", "Suco de frutas", "Chás", "Água de coco", "Alimentação leve", "Não desejo registrar"],
+    "options": [
+      "Água",
+      "Suco de frutas",
+      "Chás",
+      "Água de coco",
+      "Alimentação leve",
+      "Não desejo registrar"
+    ],
     "multiple": true
   },
   {
     "id": "ambiente",
     "section": "Trabalho de parto",
     "question": "Que tipo de ambiente você deseja, se possível?",
-    "options": ["Ambiente calmo e acolhedor", "Pouca luminosidade", "Pouco barulho", "Privacidade", "Música de minha escolha", "Não desejo registrar"],
+    "options": [
+      "Ambiente calmo e acolhedor",
+      "Pouca luminosidade",
+      "Pouco barulho",
+      "Privacidade",
+      "Música de minha escolha",
+      "Não desejo registrar"
+    ],
     "multiple": true
   },
   {
     "id": "informacao_procedimentos",
     "section": "Trabalho de parto",
     "question": "Você deseja ser informada antes de qualquer procedimento realizado com você ou com o bebê?",
-    "options": ["Sim, desejo ser informada antes de qualquer procedimento", "Quero conversar com a equipe", "Não desejo registrar"],
+    "options": [
+      "Sim, desejo ser informada antes de qualquer procedimento",
+      "Quero conversar com a equipe",
+      "Não desejo registrar"
+    ],
     "multiple": false
   },
   {
     "id": "alivio_dor",
     "section": "Alívio da dor",
     "question": "Quais métodos de alívio da dor você gostaria de ter como opção? Você pode selecionar mais de um.",
-    "options": ["Métodos não farmacológicos", "Banho morno/chuveiro", "Massagem", "Técnicas de respiração", "Bola de parto", "Analgesia, se necessário e disponível"],
+    "options": [
+      "Métodos não farmacológicos",
+      "Banho morno/chuveiro",
+      "Massagem",
+      "Técnicas de respiração",
+      "Bola de parto",
+      "Analgesia, se necessário e disponível"
+    ],
     "multiple": true
   },
   {
     "id": "posicao_nascimento",
     "section": "Nascimento",
     "question": "Quais posições você gostaria de registrar como preferência para o nascimento, quando clinicamente possível?",
-    "options": ["Vertical", "Semi-sentada", "Cócoras", "De quatro apoios", "Decidir no momento", "Não desejo registrar"],
+    "options": [
+      "Vertical",
+      "Semi-sentada",
+      "Cócoras",
+      "De quatro apoios",
+      "Decidir no momento",
+      "Não desejo registrar"
+    ],
     "multiple": true
   },
   {
     "id": "cordao_umbilical",
     "section": "Nascimento",
     "question": "Você deseja registrar o clampeamento oportuno do cordão umbilical, quando possível?",
-    "options": ["Sim, desejo clampeamento oportuno", "Quero conversar com a equipe", "Não desejo registrar"],
+    "options": [
+      "Sim, desejo clampeamento oportuno",
+      "Quero conversar com a equipe",
+      "Não desejo registrar"
+    ],
     "multiple": false
   },
   {
     "id": "bebe_primeira_hora",
     "section": "Cuidados com o bebê",
     "question": "Assim que o bebê nascer, o que você gostaria que acontecesse, se estiver tudo bem? Você pode selecionar mais de um.",
-    "options": ["Contato pele a pele imediato", "Amamentação na primeira hora de vida", "Permanecer com o bebê no colo", "Receber o bebê quando me sentir pronta", "Não desejo registrar"],
+    "options": [
+      "Contato pele a pele imediato",
+      "Amamentação na primeira hora de vida",
+      "Permanecer com o bebê no colo",
+      "Receber o bebê quando me sentir pronta",
+      "Não desejo registrar"
+    ],
     "multiple": true
   },
   {
     "id": "cuidados_nao_urgentes",
     "section": "Cuidados com o bebê",
     "question": "Você deseja que os cuidados não urgentes com o bebê sejam realizados após o primeiro contato, quando possível?",
-    "options": ["Sim, evitar procedimentos não urgentes antes do primeiro contato", "Quero conversar com a equipe", "Não desejo registrar"],
+    "options": [
+      "Sim, evitar procedimentos não urgentes antes do primeiro contato",
+      "Quero conversar com a equipe",
+      "Não desejo registrar"
+    ],
     "multiple": false
   },
   {
     "id": "cesarea",
     "section": "Em caso de cesárea",
     "question": "Caso seja necessária cesárea, quais preferências você deseja registrar? Você pode selecionar mais de uma.",
-    "options": ["Ser informada sobre a indicação e participar da decisão", "Presença do acompanhante, se possível", "Contato pele a pele quando houver condições", "Amamentação precoce quando houver condições", "Manter braços livres, se possível"],
+    "options": [
+      "Ser informada sobre a indicação e participar da decisão",
+      "Presença do acompanhante, se possível",
+      "Contato pele a pele quando houver condições",
+      "Amamentação precoce quando houver condições",
+      "Manter braços livres, se possível"
+    ],
     "multiple": true
   },
   {
     "id": "observacoes_finais",
     "section": "Observações finais",
     "question": "Deseja adicionar alguma observação final ao seu Plano de Parto? Você pode digitar sua frase ou tocar na sugestão abaixo.",
-    "options": ["Desejo que minha autonomia, minhas escolhas e meu direito à informação sejam respeitados durante toda a assistência."],
+    "options": [
+      "Desejo que minha autonomia, minhas escolhas e meu direito à informação sejam respeitados durante toda a assistência."
+    ],
     "multiple": false
   }
 ]
