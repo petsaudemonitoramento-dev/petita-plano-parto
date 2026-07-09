@@ -7,6 +7,8 @@ import '../models/birth_plan_answer.dart';
 import '../models/birth_plan_question.dart';
 
 class PdfService {
+  // O PDF não usa glyphs de ícones/emoji. Os marcadores e ícones são vetoriais
+  // ou imagens de assets para evitar quadrados/erros de fonte na exportação.
   static final PdfColor _pink = PdfColor.fromHex('#F05A7E');
   static final PdfColor _softPink = PdfColor.fromHex('#FFF7F8');
   static final PdfColor _borderPink = PdfColor.fromHex('#F6A6B8');
@@ -95,7 +97,7 @@ class PdfService {
         _observationsBox(map),
         pw.SizedBox(height: 7),
         _noteBox(),
-        pw.SizedBox(height: 14),
+        pw.SizedBox(height: 30),
         pw.Row(
           mainAxisAlignment: pw.MainAxisAlignment.spaceAround,
           children: [_signature('Gestante'), _signature('Profissional/Equipe')],
@@ -148,7 +150,7 @@ class PdfService {
           pw.Text('Gerado pelo aplicativo Plano de Parto ', style: pw.TextStyle(fontSize: 7.8, color: _text)),
           pw.Text('PET ', style: pw.TextStyle(fontSize: 7.8, color: _petOrange, fontWeight: pw.FontWeight.bold)),
           pw.Text('Saúde', style: pw.TextStyle(fontSize: 7.8, color: _petBlue, fontWeight: pw.FontWeight.bold)),
-          pw.Text('  •  Assistente virtual Petita', style: pw.TextStyle(fontSize: 7.8, color: _text)),
+          pw.Text('  -  Assistente virtual Petita', style: pw.TextStyle(fontSize: 7.8, color: _text)),
         ],
       ),
       pw.Align(alignment: pw.Alignment.centerRight, child: pw.Image(petita, height: 60, fit: pw.BoxFit.contain)),
@@ -264,8 +266,6 @@ class PdfService {
           _clipboardIcon(),
           pw.SizedBox(width: 12),
           pw.Expanded(child: pw.Text('Este documento expressa preferências da gestante e deve ser considerado pela equipe de saúde sempre que clinicamente possível.', style: pw.TextStyle(fontSize: 8.8, color: _darkBlue, fontWeight: pw.FontWeight.bold))),
-          pw.SizedBox(width: 10),
-          _careIcon(),
         ]),
       );
 
@@ -280,9 +280,9 @@ class PdfService {
           _dividerWithDot(),
           pw.SizedBox(height: 6),
           pw.RichText(text: pw.TextSpan(children: [
-            pw.TextSpan(text: 'Plano de Parto PET Saúde  •  ', style: pw.TextStyle(fontSize: 8, color: _text)),
+            pw.TextSpan(text: 'Plano de Parto PET Saúde - ', style: pw.TextStyle(fontSize: 8, color: _text)),
             pw.TextSpan(text: 'PET ', style: pw.TextStyle(fontSize: 8, color: _petOrange, fontWeight: pw.FontWeight.bold)),
-            pw.TextSpan(text: 'Saúde UFCG  •  Versão ${AppInfo.version}', style: pw.TextStyle(fontSize: 8, color: _text)),
+            pw.TextSpan(text: 'Saúde UFCG - Versão ${AppInfo.version}', style: pw.TextStyle(fontSize: 8, color: _text)),
           ])),
         ])),
         pw.SizedBox(width: 8),
@@ -380,7 +380,7 @@ class PdfService {
     return [
       'Posições preferidas: $positions.',
       'Desejo liberdade para escolher a posição de parir, quando clinicamente possível.',
-      cordao.toLowerCase().startsWith('sim') ? 'Desejo clampeamento oportuno do cordão umbilical.' : _sentence(cordao),
+      cordao.toLowerCase().startsWith('sim') ? 'Desejo aguardar alguns instantes antes de cortar o cordão umbilical, se mãe e bebê estiverem bem.' : _sentence(cordao),
       'Desejo contato imediato com o bebê após o nascimento, se ambos estiverem bem.',
     ];
   }

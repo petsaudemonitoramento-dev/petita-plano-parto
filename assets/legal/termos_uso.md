@@ -4,7 +4,17 @@
 
 ## Finalidade do aplicativo
 
-O aplicativo tem como objetivo auxiliar gestantes a compreenderem o Plano de Parto, registrarem preferências e acessarem orientações previamente estruturadas.
+O aplicativo tem como objetivo auxiliar gestantes a compreenderem o Plano de Parto, registrarem preferências e acessarem orientações previamente estruturadas com apoio da assistente virtual Petita.
+
+## Conta online
+
+A gestante pode usar o aplicativo sem internet para construir e gerar seu Plano de Parto. Para sincronizar dados, recuperar o plano posteriormente ou enviar dúvidas para a UBS, pode ser solicitado cadastro com e-mail e senha.
+
+O e-mail informado poderá ser usado futuramente para avisar sobre respostas da UBS ou comunicações relacionadas ao uso do aplicativo.
+
+## Dúvidas para a UBS
+
+O canal de dúvidas é destinado a situações não urgentes. As respostas dependem da disponibilidade da Equipe UBS e podem não ser imediatas. A Equipe UBS visualiza a dúvida de forma anonimizada, sem dados diretamente identificáveis da paciente.
 
 ## Limitações
 

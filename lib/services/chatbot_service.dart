@@ -19,7 +19,7 @@ class ChatbotService {
     if (lower.contains('cadastro') || lower.contains('login') || lower.contains('entrar')) {
       return const ChatMessage(
         isUser: false,
-        text: 'O cadastro da gestante está preparado em modo local/offline. Na etapa online, ele será sincronizado com o Supabase para permitir recuperar o plano e enviar dúvidas à UBS.',
+        text: 'O cadastro da gestante funciona offline e também pode ser conectado ao Supabase. Com login online, você poderá sincronizar o plano e enviar dúvidas não urgentes à UBS.',
         options: ['Abrir cadastro', 'Montar meu plano'],
       );
     }
@@ -33,7 +33,7 @@ class ChatbotService {
     if (lower.contains('ubs') || lower.contains('profissional')) {
       return const ChatMessage(
         isUser: false,
-        text: 'O envio de dúvidas para a Equipe UBS será uma funcionalidade online. O app continuará funcionando offline para montar, editar e gerar seu Plano de Parto, mas o envio de dúvidas precisará de internet e autenticação.',
+        text: 'O envio de dúvidas para a Equipe UBS está disponível para gestantes conectadas, com UBS oficial selecionada e aceite dos avisos de que este canal não é para urgências.',
         options: ['Enviar dúvida à UBS', 'Sinais de atenção'],
       );
     }
@@ -41,7 +41,7 @@ class ChatbotService {
     if (faq == null) {
       return const ChatMessage(
         isUser: false,
-        text: 'Ainda não encontrei uma resposta segura na minha base validada. Você pode reformular a pergunta. A busca aprofundada por documentos cadastrados ficará disponível na versão online.',
+        text: 'Ainda não encontrei uma resposta segura na minha base validada. Você pode reformular a pergunta ou encaminhar a dúvida, de forma anônima, para a Equipe UBS vinculada ao seu perfil.',
         options: ['Sinais de atenção', 'Montar meu plano', 'Criar cadastro local'],
       );
     }

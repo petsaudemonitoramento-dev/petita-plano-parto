@@ -1,77 +1,54 @@
-# Plano de Parto PET Saúde — v4 offline-first
+# Plano de Parto PET Saúde — Petita
 
-Aplicativo Flutter do **PET Saúde UFCG** com a assistente virtual **Petita**, criado para orientar gestantes e construir um Plano de Parto em formato PDF.
+Aplicativo Flutter offline-first para construção guiada do Plano de Parto com a assistente virtual Petita, integração Supabase, fluxo Multi UBS e envio de dúvidas anonimizadas para a Equipe UBS.
 
-## Principais recursos desta versão
+## Versão
 
-- Chatbot local com a Petita.
-- Fluxo guiado de perguntas para montar o Plano de Parto.
-- PDF em A4 de uma página, seguindo o modelo visual combinado.
-- Correção dos ícones quebrados no PDF: o documento agora usa formas simples e compatíveis com o gerador PDF.
-- Cadastro local/offline da paciente, preparado para login online futuro.
-- Multi UBS preparado com códigos oficiais:
-  - `UBS-EV-001` — UBS - Estação Velha
-  - `UBS-AAV-002` — UBS - Antônio Aurélio Ventura (Cinza)
-  - `UBS-RBF-003` — UBS - Romualdo Brito de Figueiredo
-- Área Equipe UBS preparada, mas temporariamente indisponível até a implantação online.
-- Área Administrador preparada para cadastrar UBS localmente e registrar documentos da base da Petita.
-- Arquitetura preparada para Supabase, mantendo funcionamento offline das funções principais.
+`0.1.3-beta` / build `8` — V5.3
 
-## Funcionamento offline-first
+## Destaques da V5.3
 
-Mesmo sem internet, a gestante poderá:
+- Painel Administrativo bloqueado até login confirmado com conta administradora.
+- Interface administrativa tratada como área restrita, sem mensagens provisórias para a usuária.
+- Equipe UBS entra com e-mail e senha; novas contas precisam ser liberadas pelo administrador.
+- Administrador pode liberar uma conta como Equipe UBS e vincular à UBS correta.
+- Fluxo de dúvida ajustado: Petita tenta responder primeiro pela base validada; se a resposta não resolver, a gestante pode encaminhar a dúvida de forma anônima para a UBS.
+- PDF ajustado: rodapé sem caracteres especiais que geravam ícones quebrados, bloco de assinatura mais espaçado e aviso inferior sem símbolo quebrado.
+- Texto sobre cordão umbilical/clampeamento mais simples para gestantes sem linguagem técnica pesada.
+- Supabase conectado para cadastro/login por e-mail e senha.
+- UBS manual permanece no Plano de Parto/PDF, mas dúvidas só são encaminhadas quando há UBS oficial vinculada.
 
-- conversar com a Petita usando a base local;
-- montar o Plano de Parto;
-- editar respostas;
-- visualizar o plano;
-- gerar e compartilhar o PDF;
-- ler termos e avisos de responsabilidade;
-- salvar cadastro local no aparelho.
+## Autenticação
 
-Funcionalidades que ficarão dependentes da versão online:
+O app usa Supabase Auth para autenticação por e-mail e senha. O e-mail fica disponível no perfil online para identificação da conta e para uso futuro em avisos de resposta da UBS. As senhas são tratadas pelo Supabase Auth e não devem ser armazenadas em texto puro em tabelas públicas.
 
-- login sincronizado;
-- recuperação de conta;
-- envio de dúvidas para equipe UBS;
-- recebimento de respostas da UBS;
-- upload real de documentos;
-- busca aprofundada em documentos cadastrados;
-- controle real de acesso por UBS.
+## SQL adicional obrigatório para V5.3
 
-## Backend recomendado
+Depois de substituir os arquivos, execute no SQL Editor do Supabase:
 
-Como o fluxo do projeto já considera uso prévio de Supabase, a recomendação para a próxima etapa é:
+`documentos/supabase_patch_v5_3_admin_acesso.sql`
 
-- Supabase Auth para login;
-- Supabase Postgres para perfis, UBS, planos, perguntas e respostas;
-- Supabase Storage para documentos enviados pelo administrador;
-- banco/local storage no app para manter o modo offline.
+Esse patch remove a liberação aberta de Equipe UBS e cria uma função restrita ao administrador para vincular uma conta existente à UBS correta.
 
-## Rodar no VS Code
+## Rodar localmente
 
 ```powershell
 cd "C:\apppetita\plano_parto_pet_saude"
+flutter clean
 flutter pub get
-flutter run -d chrome
+flutter run -d chrome --release
 ```
 
-## Gerar versão web local
+Se o debug do Chrome falhar, use:
 
 ```powershell
-flutter build web
+flutter build web --release
 cd build\web
 python -m http.server 8080 --bind 0.0.0.0
 ```
 
-No PC: `http://localhost:8080`
+Depois abra `http://localhost:8080` no computador.
 
-No celular na mesma rede: `http://SEU-IP:8080`
+## Observação de segurança
 
-## Gerar APK futuramente
-
-Depois de configurar Android Studio/SDK:
-
-```powershell
-flutter build apk --release
-```
+A secret key/service role do Supabase nunca deve ser colocada no Flutter. O app cliente usa apenas a chave pública/publishable.

@@ -1,7 +1,7 @@
 name: plano_parto_pet_saude
 description: Aplicativo chatbot para construção do Plano de Parto PET Saúde UFCG.
 publish_to: 'none'
-version: 0.1.0+1
+version: 0.1.3+8
 
 environment:
   sdk: '>=3.2.0 <4.0.0'
@@ -14,6 +14,7 @@ dependencies:
   pdf: ^3.10.8
   printing: ^5.12.0
   flutter_markdown: ^0.7.3
+  supabase_flutter: ^2.8.0
 
 flutter:
   uses-material-design: true

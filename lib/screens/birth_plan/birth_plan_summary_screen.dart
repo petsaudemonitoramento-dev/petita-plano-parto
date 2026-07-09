@@ -5,6 +5,7 @@ import '../../models/birth_plan_question.dart';
 import '../../services/birth_plan_flow_service.dart';
 import '../../services/pdf_service.dart';
 import '../../services/storage_service.dart';
+import '../../services/supabase_service.dart';
 import '../../widgets/app_button.dart';
 import '../../widgets/section_card.dart';
 
@@ -17,6 +18,7 @@ class BirthPlanSummaryScreen extends StatefulWidget {
 
 class _BirthPlanSummaryScreenState extends State<BirthPlanSummaryScreen> {
   final _storage = StorageService();
+  final _online = SupabaseService();
   List<BirthPlanQuestion> _questions = [];
   List<BirthPlanAnswer> _answers = [];
   bool _loading = true;
@@ -45,6 +47,26 @@ class _BirthPlanSummaryScreenState extends State<BirthPlanSummaryScreen> {
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Não foi possível gerar/compartilhar o PDF: $e')));
+    }
+  }
+
+
+  Future<void> _syncOnline() async {
+    final answerMap = {for (final a in _answers) a.questionId: a.values.join(', ')};
+    final profile = await _storage.loadProfile();
+    try {
+      await _online.syncBirthPlan(
+        patientName: answerMap['nome_gestante'] ?? profile?.name ?? 'Gestante',
+        ubsCode: profile?.ubsCode,
+        dppBr: answerMap['dpp'],
+        companion: answerMap['acompanhante_principal'],
+        answers: _answers,
+      );
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Plano de Parto sincronizado com Supabase.')));
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Não foi possível sincronizar agora. O plano continua salvo offline. Detalhe: $e')));
     }
   }
 
@@ -87,6 +109,8 @@ class _BirthPlanSummaryScreenState extends State<BirthPlanSummaryScreen> {
             ]))),
             const SizedBox(height: 10),
             AppButton(label: 'Gerar PDF no modelo oficial', icon: Icons.picture_as_pdf, onPressed: _generatePdf),
+            const SizedBox(height: 10),
+            AppButton(label: 'Sincronizar plano online', icon: Icons.cloud_upload_outlined, outlined: true, onPressed: _syncOnline),
             const SizedBox(height: 10),
             AppButton(label: 'Limpar plano local', outlined: true, icon: Icons.delete_outline, onPressed: () async { await _storage.clearAnswers(); await _load(); }),
           ]),

@@ -143,10 +143,10 @@
   {
     "id": "cordao_umbilical",
     "section": "Nascimento",
-    "question": "Você deseja registrar o clampeamento oportuno do cordão umbilical, quando possível?",
+    "question": "Depois que o bebê nasce, o cordão umbilical liga o bebê à placenta por alguns instantes. Quando mãe e bebê estão bem, muitas equipes podem esperar um pouco antes de cortar esse cordão. Você deseja registrar essa preferência?",
     "options": [
-      "Sim, desejo clampeamento oportuno",
-      "Quero conversar com a equipe",
+      "Sim, desejo aguardar alguns instantes antes de cortar o cordão, se estiver tudo bem",
+      "Quero conversar com a equipe sobre isso",
       "Não desejo registrar"
     ],
     "multiple": false
