@@ -116,11 +116,7 @@ class PdfService {
         children: [
           pw.SizedBox(
             width: 112,
-            child: pw.Column(children: [
-              pw.Image(logoUfcg, height: 58, fit: pw.BoxFit.contain),
-              pw.SizedBox(height: 2),
-              pw.Text('Universidade Federal\nde Campina Grande', textAlign: pw.TextAlign.center, style: pw.TextStyle(fontSize: 7.4, color: _darkBlue)),
-            ]),
+            child: pw.Image(logoUfcg, height: 58, fit: pw.BoxFit.contain),
           ),
           pw.SizedBox(
             width: 306,

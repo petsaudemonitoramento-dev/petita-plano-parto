@@ -85,6 +85,8 @@ class _HomeScreenState extends State<HomeScreen> {
                         AppButton(label: 'Perfil da gestante', icon: Icons.person_outline, outlined: true, onPressed: () => Navigator.pushNamed(context, AppRoutes.profile)),
                         const SizedBox(height: 10),
                         AppButton(label: 'Ver meu plano', icon: Icons.description_outlined, outlined: true, onPressed: () => Navigator.pushNamed(context, AppRoutes.summary)),
+                        const SizedBox(height: 10),
+                        AppButton(label: 'Minhas dúvidas', icon: Icons.forum_outlined, outlined: true, onPressed: () => Navigator.pushNamed(context, AppRoutes.myQuestions)),
                       ],
                     ),
                   ),

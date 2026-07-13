@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import '../../config/app_routes.dart';
 import '../../config/app_theme.dart';
@@ -29,6 +30,9 @@ class _ChatScreenState extends State<ChatScreen> {
   List<BirthPlanAnswer> _answers = [];
   int _currentQuestion = -1;
   bool _loading = true;
+  bool _petitaSearching = false;
+  int _typingDots = 1;
+  Timer? _typingTimer;
   _QuestionDialogResult? _pendingUbsQuestion;
   final Set<String> _multiSelection = <String>{};
 
@@ -37,6 +41,32 @@ class _ChatScreenState extends State<ChatScreen> {
     super.initState();
     _chatbot = ChatbotService(FaqSearchService());
     _init();
+  }
+
+  @override
+  void dispose() {
+    _typingTimer?.cancel();
+    _controller.dispose();
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  void _setPetitaSearching(bool value) {
+    _typingTimer?.cancel();
+    if (!mounted) return;
+    setState(() {
+      _petitaSearching = value;
+      _typingDots = 1;
+    });
+    if (value) {
+      _typingTimer = Timer.periodic(const Duration(milliseconds: 430), (_) {
+        if (mounted) {
+          setState(() => _typingDots = _typingDots == 3 ? 1 : _typingDots + 1);
+          _scrollToBottom();
+        }
+      });
+    }
+    _scrollToBottom();
   }
 
   Future<void> _init() async {
@@ -107,9 +137,19 @@ class _ChatScreenState extends State<ChatScreen> {
       Navigator.pushNamed(context, AppRoutes.summary);
       return;
     }
+    if (text == 'Minhas dúvidas') {
+      Navigator.pushNamed(context, AppRoutes.myQuestions);
+      return;
+    }
 
-    final reply = await _chatbot.respond(text);
-    setState(() => _messages.add(reply));
+    _setPetitaSearching(true);
+    try {
+      final reply = await _chatbot.respond(text);
+      if (!mounted) return;
+      setState(() => _messages.add(reply));
+    } finally {
+      _setPetitaSearching(false);
+    }
     _scrollToBottom();
   }
 
@@ -198,10 +238,15 @@ class _ChatScreenState extends State<ChatScreen> {
   }
 
   Future<void> _askUbsQuestion() async {
+    final canProceed = await _ensurePatientCanAskUbsQuestion();
+    if (!canProceed) return;
+
+    final onlineCategories = await _online.listKnowledgeCategories();
+    final categoryNames = onlineCategories.map((item) => item.name).where((name) => name.trim().isNotEmpty).toList();
     final result = await showDialog<_QuestionDialogResult>(
       context: context,
       barrierDismissible: false,
-      builder: (_) => const _QuestionToUbsDialog(),
+      builder: (_) => _QuestionToUbsDialog(categories: categoryNames),
     );
     if (result == null) return;
 
@@ -218,17 +263,85 @@ class _ChatScreenState extends State<ChatScreen> {
       }
     });
 
-    final reply = await _chatbot.respond(result.question);
-    final answerText = reply.text.contains('Ainda não encontrei uma resposta segura')
-        ? 'Eu não encontrei uma resposta suficientemente segura na minha base validada para essa dúvida. Posso encaminhar sua pergunta, de forma anônima, para a Equipe UBS vinculada ao seu perfil.'
-        : '${reply.text}\n\nEssa resposta foi satisfatória para você?';
+    _setPetitaSearching(true);
+    try {
+      final reply = await _chatbot.respond(result.question, category: result.category);
+      final answerText = reply.text.contains('Ainda não encontrei uma resposta segura')
+          ? 'Eu não encontrei uma resposta suficientemente segura na minha base validada para essa dúvida. Posso encaminhar sua pergunta, de forma anônima, para a Equipe UBS vinculada ao seu perfil.'
+          : '${reply.text}\n\nEssa resposta foi satisfatória para você?';
 
-    setState(() => _messages.add(ChatMessage(
-          text: answerText,
-          isUser: false,
-          options: const ['Resposta satisfatória', 'Enviar para Equipe UBS'],
-        )));
+      if (!mounted) return;
+      setState(() => _messages.add(ChatMessage(
+            text: answerText,
+            isUser: false,
+            options: const ['Resposta satisfatória', 'Enviar para Equipe UBS'],
+          )));
+    } finally {
+      _setPetitaSearching(false);
+    }
     _scrollToBottom();
+  }
+
+  Future<bool> _ensurePatientCanAskUbsQuestion() async {
+    if (!_online.isLoggedIn) {
+      await _showAccessRequiredDialog(
+        title: 'Cadastro necessário',
+        message:
+            'Para enviar uma dúvida à Equipe UBS, a paciente precisa estar cadastrada e conectada com e-mail e senha.\n\nVocê ainda pode conversar com a Petita, montar seu Plano de Parto e gerar o PDF offline, mas o envio de dúvidas para a UBS só funciona com cadastro online.',
+      );
+      return false;
+    }
+
+    final status = await _online.checkConnection();
+    if (!status.connected) {
+      await _showAccessRequiredDialog(
+        title: 'Conexão necessária',
+        message:
+            'Para enviar uma dúvida à Equipe UBS, o app precisa estar online.\n\nVerifique sua internet e tente novamente. Em caso de urgência ou sinais de alerta, procure uma maternidade, pronto atendimento ou serviço de urgência.',
+      );
+      return false;
+    }
+
+    try {
+      final profile = await _online.loadOnlineProfile();
+      if (profile == null || profile.role != 'patient') {
+        await _showAccessRequiredDialog(
+          title: 'Conta de paciente necessária',
+          message:
+              'O envio de dúvidas é exclusivo para contas de paciente/gestante cadastradas.\n\nEntre com o e-mail e a senha da gestante no Perfil para continuar.',
+        );
+        return false;
+      }
+      return true;
+    } catch (_) {
+      await _showAccessRequiredDialog(
+        title: 'Não foi possível confirmar o cadastro',
+        message:
+            'Não consegui confirmar seu cadastro online agora. Entre novamente com e-mail e senha no Perfil e tente enviar a dúvida depois.',
+      );
+      return false;
+    }
+  }
+
+  Future<void> _showAccessRequiredDialog({required String title, required String message}) async {
+    if (!mounted) return;
+    await showDialog<void>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(title),
+        content: Text(message),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Entendi')),
+          FilledButton(
+            onPressed: () {
+              Navigator.pop(context);
+              Navigator.pushNamed(context, AppRoutes.profile);
+            },
+            child: const Text('Ir para Perfil'),
+          ),
+        ],
+      ),
+    );
   }
 
   Future<void> _submitPendingUbsQuestion() async {
@@ -290,7 +403,7 @@ class _ChatScreenState extends State<ChatScreen> {
       setState(() => _messages.add(ChatMessage(
             text: 'Sua dúvida foi enviada de forma anonimizada para a Equipe UBS.\n\nCódigo da dúvida: $publicCode\n\nA equipe verá a dúvida, a UBS vinculada, a autopercepção de risco e os sinais informados, mas não verá seu nome, e-mail ou outros dados pessoais.',
             isUser: false,
-            options: const ['Montar meu plano', 'Ver meu plano'],
+            options: const ['Minhas dúvidas', 'Montar meu plano', 'Ver meu plano'],
           )));
     } catch (e) {
       setState(() => _messages.add(ChatMessage(
@@ -323,6 +436,10 @@ class _ChatScreenState extends State<ChatScreen> {
   Future<void> _handleOption(String option) async {
     if (option == 'Ver meu plano') {
       Navigator.pushNamed(context, AppRoutes.summary);
+      return;
+    }
+    if (option == 'Minhas dúvidas') {
+      Navigator.pushNamed(context, AppRoutes.myQuestions);
       return;
     }
     if (option == 'Perfil da gestante' || option == 'Abrir cadastro' || option == 'Criar cadastro local') {
@@ -403,8 +520,11 @@ class _ChatScreenState extends State<ChatScreen> {
               child: ListView.builder(
                 controller: _scrollController,
                 padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
-                itemCount: _messages.length,
+                itemCount: _messages.length + (_petitaSearching ? 1 : 0),
                 itemBuilder: (context, index) {
+                  if (_petitaSearching && index == _messages.length) {
+                    return _PetitaTypingBubble(dotCount: _typingDots);
+                  }
                   final msg = _messages[index];
                   return Column(crossAxisAlignment: msg.isUser ? CrossAxisAlignment.end : CrossAxisAlignment.start, children: [
                     _PetitaChatBubble(text: msg.text, isUser: msg.isUser),
@@ -557,6 +677,52 @@ class _PetitaChatBubble extends StatelessWidget {
   }
 }
 
+class _PetitaTypingBubble extends StatelessWidget {
+  const _PetitaTypingBubble({required this.dotCount});
+
+  final int dotCount;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 7),
+      child: Row(crossAxisAlignment: CrossAxisAlignment.end, children: [
+        CircleAvatar(
+          radius: 17,
+          backgroundColor: AppColors.softPink,
+          child: ClipOval(child: Image.asset('assets/images/petita.png', fit: BoxFit.cover)),
+        ),
+        const SizedBox(width: 8),
+        Flexible(
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: const BorderRadius.only(
+                topLeft: Radius.circular(20),
+                topRight: Radius.circular(20),
+                bottomLeft: Radius.circular(6),
+                bottomRight: Radius.circular(20),
+              ),
+              border: Border.all(color: AppColors.softPink),
+            ),
+            child: Text.rich(
+              TextSpan(children: [
+                const TextSpan(text: 'Petita está buscando uma resposta', style: TextStyle(fontWeight: FontWeight.w600)),
+                TextSpan(
+                  text: List.filled(dotCount, '.').join(),
+                  style: const TextStyle(fontWeight: FontWeight.w900, color: AppColors.primaryPink),
+                ),
+              ]),
+              softWrap: true,
+            ),
+          ),
+        ),
+      ]),
+    );
+  }
+}
+
 class _ChoicePill extends StatelessWidget {
   const _ChoicePill({required this.label, required this.icon, required this.onTap, this.selected = false, this.primary = false});
   final String label;
@@ -580,10 +746,18 @@ class _ChoicePill extends StatelessWidget {
           border: Border.all(color: AppColors.primaryPink.withOpacity(0.7)),
           boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.025), blurRadius: 6, offset: const Offset(0, 3))],
         ),
+        constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width - 96),
         child: Row(mainAxisSize: MainAxisSize.min, children: [
           Icon(icon, size: 18, color: filled ? Colors.white : AppColors.primaryPink),
           const SizedBox(width: 7),
-          Text(label, style: TextStyle(color: filled ? Colors.white : AppColors.primaryPink, fontWeight: FontWeight.w900)),
+          Flexible(
+            child: Text(
+              label,
+              softWrap: true,
+              overflow: TextOverflow.visible,
+              style: TextStyle(color: filled ? Colors.white : AppColors.primaryPink, fontWeight: FontWeight.w900),
+            ),
+          ),
         ]),
       ),
     );
@@ -600,18 +774,33 @@ class _ChatInput extends StatelessWidget {
     return SafeArea(
       top: false,
       child: Container(
-        padding: const EdgeInsets.fromLTRB(14, 8, 14, 14),
+        padding: const EdgeInsets.fromLTRB(14, 8, 14, 10),
         color: AppColors.background,
-        child: Row(children: [
-          Expanded(
-            child: TextField(
-              controller: controller,
-              decoration: const InputDecoration(hintText: 'Digite sua mensagem...'),
-              onSubmitted: (_) => onSend(),
+        child: Column(mainAxisSize: MainAxisSize.min, children: [
+          Row(children: [
+            Expanded(
+              child: TextField(
+                controller: controller,
+                minLines: 1,
+                maxLines: 4,
+                decoration: const InputDecoration(hintText: 'Digite sua mensagem...'),
+                onSubmitted: (_) => onSend(),
+              ),
             ),
+            const SizedBox(width: 8),
+            FloatingActionButton.small(
+              onPressed: onSend,
+              backgroundColor: AppColors.primaryPink,
+              foregroundColor: Colors.white,
+              child: const Icon(Icons.send),
+            ),
+          ]),
+          const SizedBox(height: 6),
+          const Text(
+            'A Petita pode cometer erros. Confirme informações importantes com a equipe de saúde.',
+            textAlign: TextAlign.center,
+            style: TextStyle(fontSize: 10.5, color: Color(0xFF777777), height: 1.2),
           ),
-          const SizedBox(width: 8),
-          FloatingActionButton.small(onPressed: onSend, backgroundColor: AppColors.primaryPink, foregroundColor: Colors.white, child: const Icon(Icons.send)),
         ]),
       ),
     );
@@ -692,7 +881,9 @@ class _ConfirmAnonymousSendDialogState extends State<_ConfirmAnonymousSendDialog
 }
 
 class _QuestionToUbsDialog extends StatefulWidget {
-  const _QuestionToUbsDialog();
+  const _QuestionToUbsDialog({required this.categories});
+
+  final List<String> categories;
 
   @override
   State<_QuestionToUbsDialog> createState() => _QuestionToUbsDialogState();
@@ -720,6 +911,12 @@ class _QuestionToUbsDialogState extends State<_QuestionToUbsDialog> {
   bool get _canSend => _questionController.text.trim().isNotEmpty && _urgencyAck;
 
   @override
+  void initState() {
+    super.initState();
+    if (widget.categories.isNotEmpty) _category = widget.categories.first;
+  }
+
+  @override
   Widget build(BuildContext context) {
     final highRisk = _risk == 'high' || _warningSigns.isNotEmpty;
     return AlertDialog(
@@ -743,15 +940,12 @@ class _QuestionToUbsDialogState extends State<_QuestionToUbsDialog> {
             const SizedBox(height: 14),
             DropdownButtonFormField<String>(
               value: _category,
-              items: const [
-                DropdownMenuItem(value: 'Plano de Parto', child: Text('Plano de Parto')),
-                DropdownMenuItem(value: 'Pré-natal', child: Text('Pré-natal')),
-                DropdownMenuItem(value: 'Sinais e sintomas', child: Text('Sinais e sintomas')),
-                DropdownMenuItem(value: 'Pós-parto', child: Text('Pós-parto')),
-                DropdownMenuItem(value: 'Amamentação', child: Text('Amamentação')),
-                DropdownMenuItem(value: 'Outros', child: Text('Outros')),
-              ],
-              onChanged: (value) => setState(() => _category = value ?? 'Plano de Parto'),
+              items: (widget.categories.isEmpty
+                      ? const ['Plano de Parto', 'Sinais de atenção', 'Trabalho de parto', 'Nascimento', 'Cuidados com o bebê', 'Pós-parto', 'Outros']
+                      : widget.categories)
+                  .map((category) => DropdownMenuItem(value: category, child: Text(category)))
+                  .toList(),
+              onChanged: (value) => setState(() => _category = value ?? _category),
               decoration: const InputDecoration(labelText: 'Categoria da dúvida'),
             ),
             const SizedBox(height: 12),

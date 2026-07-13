@@ -1,0 +1,8 @@
+[functions.process-support-document]
+verify_jwt = true
+
+[functions.ask-petita-rag]
+verify_jwt = false
+
+[functions.delete-support-document]
+verify_jwt = true

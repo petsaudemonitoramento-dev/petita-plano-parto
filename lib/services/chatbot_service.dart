@@ -14,7 +14,7 @@ class ChatbotService {
     );
   }
 
-  Future<ChatMessage> respond(String userText) async {
+  Future<ChatMessage> respond(String userText, {String? category}) async {
     final lower = userText.toLowerCase();
     if (lower.contains('cadastro') || lower.contains('login') || lower.contains('entrar')) {
       return const ChatMessage(
@@ -37,7 +37,7 @@ class ChatbotService {
         options: ['Enviar dúvida à UBS', 'Sinais de atenção'],
       );
     }
-    final faq = await _faqSearchService.search(userText);
+    final faq = await _faqSearchService.search(userText, category: category);
     if (faq == null) {
       return const ChatMessage(
         isUser: false,

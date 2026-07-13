@@ -1,5 +1,9 @@
+import 'dart:typed_data';
+import 'package:file_picker/file_picker.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../models/birth_plan_answer.dart';
+import '../models/patient_question_history.dart';
+import '../models/support_document.dart';
 import '../models/user_profile.dart';
 
 class OnlineStatus {
@@ -35,7 +39,7 @@ class AnonymousQuestion {
 
   factory AnonymousQuestion.fromJson(Map<String, dynamic> json) {
     return AnonymousQuestion(
-      id: json['id'] as String,
+      id: json['id']?.toString() ?? '',
       publicCode: json['public_code'] as String? ?? 'DUV-',
       ubsCode: json['ubs_code'] as String? ?? '',
       questionText: json['question_text'] as String? ?? '',
@@ -43,13 +47,58 @@ class AnonymousQuestion {
       selfRiskLevel: json['self_risk_level'] as String? ?? 'low',
       hasWarningSigns: json['has_warning_signs'] as bool? ?? false,
       warningSigns: List<String>.from(json['warning_signs'] as List? ?? const []),
-      createdAt: DateTime.tryParse(json['created_at'] as String? ?? '') ?? DateTime.now(),
+      createdAt: DateTime.tryParse(json['created_at']?.toString() ?? '') ?? DateTime.now(),
       category: json['category'] as String?,
     );
   }
 }
 
+class KnowledgeCategory {
+  const KnowledgeCategory({required this.name, required this.active});
+  final String name;
+  final bool active;
+
+  factory KnowledgeCategory.fromJson(Map<String, dynamic> json) {
+    return KnowledgeCategory(
+      name: json['name'] as String? ?? '',
+      active: json['active'] as bool? ?? true,
+    );
+  }
+}
+
+class TeamAccessRequest {
+  const TeamAccessRequest({
+    required this.id,
+    required this.name,
+    required this.email,
+    required this.ubsCode,
+    required this.status,
+    required this.createdAt,
+  });
+
+  final String id;
+  final String name;
+  final String email;
+  final String ubsCode;
+  final String status;
+  final DateTime createdAt;
+
+  factory TeamAccessRequest.fromJson(Map<String, dynamic> json) {
+    return TeamAccessRequest(
+      id: json['id']?.toString() ?? '',
+      name: json['name'] as String? ?? '',
+      email: json['email'] as String? ?? '',
+      ubsCode: json['requested_ubs_code'] as String? ?? '',
+      status: json['status'] as String? ?? 'pending',
+      createdAt: DateTime.tryParse(json['created_at']?.toString() ?? '') ?? DateTime.now(),
+    );
+  }
+}
+
 class SupabaseService {
+  static const int maxSupportFileBytes = 20 * 1024 * 1024;
+  static const int supportStorageApplicationLimitBytes = 900 * 1024 * 1024;
+
   SupabaseClient get _client => Supabase.instance.client;
 
   User? get currentUser => _client.auth.currentUser;
@@ -86,8 +135,8 @@ class SupabaseService {
     required String email,
     required String password,
     required String ubsCode,
-  }) {
-    return _client.auth.signUp(
+  }) async {
+    final response = await _client.auth.signUp(
       email: email,
       password: password,
       data: {
@@ -97,6 +146,8 @@ class SupabaseService {
         'requested_ubs_code': ubsCode,
       },
     );
+    await requestUbsTeamAccess(name: name, email: email, ubsCode: ubsCode);
+    return response;
   }
 
   Future<AuthResponse> signIn({required String email, required String password}) {
@@ -115,13 +166,13 @@ class SupabaseService {
 
   UserProfile _profileFromSupabase(Map<String, dynamic> json) {
     return UserProfile(
-      id: json['id'] as String,
+      id: json['id']?.toString() ?? '',
       name: json['name'] as String? ?? '',
       email: json['email'] as String? ?? '',
       role: json['role'] as String? ?? 'patient',
       ubsCode: json['ubs_code'] as String?,
       ubsName: null,
-      createdAt: DateTime.tryParse(json['created_at'] as String? ?? '') ?? DateTime.now(),
+      createdAt: DateTime.tryParse(json['created_at']?.toString() ?? '') ?? DateTime.now(),
     );
   }
 
@@ -197,6 +248,14 @@ class SupabaseService {
     return <String, dynamic>{};
   }
 
+  Future<List<PatientQuestionHistory>> listMyQuestions() async {
+    if (!isLoggedIn) throw Exception('Entre com a conta da gestante para visualizar as dúvidas.');
+    final data = await _client.rpc('list_my_patient_questions');
+    return (data as List? ?? const [])
+        .map((item) => PatientQuestionHistory.fromJson(Map<String, dynamic>.from(item as Map)))
+        .toList();
+  }
+
   Future<List<AnonymousQuestion>> listTeamQuestions() async {
     final data = await _client
         .from('team_questions_anonymous')
@@ -240,15 +299,179 @@ class SupabaseService {
     });
   }
 
-  Future<void> approveUbsTeamByEmail({
-    required String email,
+  Future<void> requestUbsTeamAccess({
     required String name,
+    required String email,
     required String ubsCode,
   }) async {
-    await _client.rpc('approve_ubs_team_by_email', params: {
-      'p_email': email,
-      'p_name': name,
-      'p_ubs_code': ubsCode,
+    final user = currentUser;
+    await _client.from('team_access_requests').insert({
+      'user_id': user?.id,
+      'name': name,
+      'email': email,
+      'requested_ubs_code': ubsCode,
+      'status': 'pending',
     });
+  }
+
+  Future<List<TeamAccessRequest>> listTeamAccessRequests() async {
+    final data = await _client
+        .from('team_access_requests')
+        .select()
+        .eq('status', 'pending')
+        .order('created_at', ascending: true);
+    return (data as List)
+        .map((item) => TeamAccessRequest.fromJson(Map<String, dynamic>.from(item as Map)))
+        .toList();
+  }
+
+  Future<void> decideTeamAccessRequest({required String requestId, required bool approve}) async {
+    await _client.rpc('decide_team_access_request', params: {
+      'p_request_id': requestId,
+      'p_approve': approve,
+    });
+  }
+
+  Future<List<KnowledgeCategory>> listKnowledgeCategories() async {
+    try {
+      final data = await _client.from('knowledge_categories').select().eq('active', true).order('name');
+      return (data as List)
+          .map((item) => KnowledgeCategory.fromJson(Map<String, dynamic>.from(item as Map)))
+          .where((item) => item.name.trim().isNotEmpty)
+          .toList();
+    } catch (_) {
+      return const [];
+    }
+  }
+
+  Future<void> addKnowledgeCategory({required String name}) async {
+    await _client.from('knowledge_categories').insert({'name': name.trim(), 'active': true});
+  }
+
+  Future<RagAnswer?> askPetitaRag({required String question, String? category}) async {
+    try {
+      final response = await _client.functions.invoke(
+        'ask-petita-rag',
+        body: {
+          'question': question,
+          if (category != null && category.trim().isNotEmpty) 'category': category.trim(),
+        },
+      );
+      if (response.status < 200 || response.status >= 300 || response.data == null) return null;
+      return RagAnswer.fromJson(Map<String, dynamic>.from(response.data as Map));
+    } catch (_) {
+      return null;
+    }
+  }
+
+  Future<List<SupportDocument>> listSupportDocuments() async {
+    final data = await _client
+        .from('support_documents')
+        .select()
+        .order('created_at', ascending: false);
+    return (data as List)
+        .map((item) => SupportDocument.fromJson(Map<String, dynamic>.from(item as Map)))
+        .toList();
+  }
+
+  Future<SupportStorageUsage> getSupportStorageUsage() async {
+    try {
+      final data = await _client.rpc('get_support_documents_storage_usage');
+      if (data is Map) {
+        return SupportStorageUsage.fromJson(Map<String, dynamic>.from(data));
+      }
+    } catch (_) {}
+    return const SupportStorageUsage(
+      usedBytes: 0,
+      maxBytes: supportStorageApplicationLimitBytes,
+    );
+  }
+
+  Future<SupportDocument> uploadSupportDocument({
+    required String title,
+    required String category,
+    required PlatformFile file,
+  }) async {
+    final user = currentUser;
+    if (user == null) throw Exception('Entre como administrador para anexar documentos.');
+
+    final extension = (file.extension ?? '').toLowerCase();
+    if (extension != 'pdf' && extension != 'docx') {
+      throw Exception('Envie somente arquivos PDF ou DOCX.');
+    }
+    if (file.size <= 0 || file.size > maxSupportFileBytes) {
+      throw Exception('O arquivo deve ter no máximo 20 MB.');
+    }
+
+    final bytes = file.bytes;
+    if (bytes == null) {
+      throw Exception('Não foi possível ler o arquivo selecionado. Selecione-o novamente.');
+    }
+
+    final usage = await getSupportStorageUsage();
+    if (usage.usedBytes + file.size > usage.maxBytes) {
+      throw Exception('O limite reservado de 900 MB para documentos de apoio seria ultrapassado. Remova um documento antes de continuar.');
+    }
+
+    final mimeType = extension == 'pdf'
+        ? 'application/pdf'
+        : 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
+    final safeName = _safeFileName(file.name);
+    final filePath = '${user.id}/${DateTime.now().microsecondsSinceEpoch}_$safeName';
+
+    await _client.storage.from('support-documents').uploadBinary(
+          filePath,
+          Uint8List.fromList(bytes),
+          fileOptions: FileOptions(contentType: mimeType, upsert: false),
+        );
+
+    try {
+      final inserted = await _client
+          .from('support_documents')
+          .insert({
+            'title': title.trim().isEmpty ? file.name : title.trim(),
+            'category': category,
+            'file_name': file.name,
+            'file_path': filePath,
+            'mime_type': mimeType,
+            'size_bytes': file.size,
+            'status': 'queued',
+            'active': true,
+            'uploaded_by': user.id,
+          })
+          .select()
+          .single();
+
+      final document = SupportDocument.fromJson(Map<String, dynamic>.from(inserted));
+      final response = await _client.functions.invoke(
+        'process-support-document',
+        body: {'document_id': document.id},
+      );
+      if (response.status < 200 || response.status >= 300) {
+        throw Exception('O documento foi enviado, mas o processamento não pôde ser iniciado.');
+      }
+      return document;
+    } catch (e) {
+      await _client.storage.from('support-documents').remove([filePath]);
+      rethrow;
+    }
+  }
+
+  Future<void> deleteSupportDocument(String documentId) async {
+    final response = await _client.functions.invoke(
+      'delete-support-document',
+      body: {'document_id': documentId},
+    );
+    if (response.status < 200 || response.status >= 300) {
+      final detail = response.data?.toString() ?? 'erro desconhecido';
+      throw Exception('Não foi possível remover o documento: $detail');
+    }
+  }
+
+  String _safeFileName(String value) {
+    final normalized = value
+        .replaceAll(RegExp(r'[^a-zA-Z0-9._-]+'), '_')
+        .replaceAll(RegExp(r'_+'), '_');
+    return normalized.isEmpty ? 'documento' : normalized;
   }
 }

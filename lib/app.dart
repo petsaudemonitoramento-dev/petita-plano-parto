@@ -7,6 +7,7 @@ import 'screens/birth_plan/birth_plan_summary_screen.dart';
 import 'screens/chat/chat_screen.dart';
 import 'screens/home/home_screen.dart';
 import 'screens/profile/profile_screen.dart';
+import 'screens/questions/my_questions_screen.dart';
 import 'screens/terms/terms_screen.dart';
 import 'screens/ubs/ubs_team_screen.dart';
 
@@ -31,6 +32,7 @@ class PlanoPartoPetSaudeApp extends StatelessWidget {
         AppRoutes.profile: (_) => const ProfileScreen(),
         AppRoutes.ubs: (_) => const UbsTeamScreen(),
         AppRoutes.admin: (_) => const AdminScreen(),
+        AppRoutes.myQuestions: (_) => const MyQuestionsScreen(),
       },
     );
   }

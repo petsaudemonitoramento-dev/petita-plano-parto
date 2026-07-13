@@ -9,4 +9,5 @@ class AppRoutes {
   static const profile = '/profile';
   static const ubs = '/ubs';
   static const admin = '/admin';
+  static const myQuestions = '/my-questions';
 }

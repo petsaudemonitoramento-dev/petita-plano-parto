@@ -1,28 +1,36 @@
 # Termos de Uso
 
-**Plano de Parto PET Saúde** é um protótipo acadêmico desenvolvido no contexto do PET Saúde UFCG, com finalidade educativa, informativa e de apoio à construção do Plano de Parto.
+O **Plano de Parto PET Saúde** tem finalidade educativa, informativa e de apoio à construção do Plano de Parto.
 
 ## Finalidade do aplicativo
 
-O aplicativo tem como objetivo auxiliar gestantes a compreenderem o Plano de Parto, registrarem preferências e acessarem orientações previamente estruturadas com apoio da assistente virtual Petita.
+O aplicativo auxilia gestantes a compreenderem o Plano de Parto, registrarem preferências e acessarem orientações por meio da assistente virtual Petita.
+
+A Petita consulta uma base de respostas validadas e documentos de apoio cadastrados pela administração. As respostas são produzidas exclusivamente a partir dessas referências e não incluem busca livre na internet.
 
 ## Conta online
 
-A gestante pode usar o aplicativo sem internet para construir e gerar seu Plano de Parto. Para sincronizar dados, recuperar o plano posteriormente ou enviar dúvidas para a UBS, pode ser solicitado cadastro com e-mail e senha.
+A gestante pode utilizar as funções essenciais para construir e gerar seu Plano de Parto sem internet. Para sincronizar dados, consultar respostas da UBS ou enviar dúvidas, é necessário cadastro e acesso com e-mail e senha.
 
-O e-mail informado poderá ser usado futuramente para avisar sobre respostas da UBS ou comunicações relacionadas ao uso do aplicativo.
+O e-mail informado poderá ser utilizado futuramente para avisos relacionados à conta e a respostas da UBS.
+
+## Processamento de dúvidas e documentos
+
+As dúvidas digitadas no chatbot podem ser processadas por serviços de computação em nuvem para localizar trechos semanticamente relacionados nos documentos de apoio cadastrados. A usuária deve evitar inserir nome completo, telefone, endereço, CPF, cartão SUS ou outros dados diretamente identificáveis na mensagem.
+
+Os documentos de apoio são enviados somente por administradores autorizados. Arquivos PDF com texto selecionável e DOCX podem ser convertidos em texto, divididos em trechos e preparados para busca semântica.
 
 ## Dúvidas para a UBS
 
-O canal de dúvidas é destinado a situações não urgentes. As respostas dependem da disponibilidade da Equipe UBS e podem não ser imediatas. A Equipe UBS visualiza a dúvida de forma anonimizada, sem dados diretamente identificáveis da paciente.
+O canal de dúvidas é destinado a situações não urgentes. A Petita tenta responder primeiro com a base cadastrada. Quando a resposta não for satisfatória, a gestante poderá encaminhar a dúvida à Equipe UBS, desde que esteja cadastrada, conectada à internet e vinculada a uma UBS oficial.
+
+As respostas dependem da disponibilidade da Equipe UBS e podem não ser imediatas. A Equipe UBS visualiza a dúvida de forma anonimizada, sem nome, e-mail, telefone, CPF, cartão SUS ou Plano de Parto completo.
 
 ## Limitações
 
-O aplicativo não substitui consulta médica, atendimento de enfermagem, avaliação clínica, diagnóstico ou conduta profissional. As informações são educativas e devem ser interpretadas com apoio da equipe de saúde.
+A Petita pode cometer erros. Informações importantes devem ser confirmadas com a equipe de saúde.
 
-## Uso adequado
-
-A usuária deve utilizar o aplicativo para fins informativos e de organização pessoal do seu Plano de Parto. Situações de urgência devem ser encaminhadas imediatamente a uma unidade de saúde, maternidade ou serviço de emergência.
+O aplicativo não substitui consulta médica, atendimento de enfermagem, avaliação clínica, diagnóstico, prescrição ou conduta profissional. Situações de urgência devem ser encaminhadas imediatamente a uma unidade de saúde, maternidade, pronto atendimento ou serviço de emergência.
 
 ## Desenvolvimento
 
