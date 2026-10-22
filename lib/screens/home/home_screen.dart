@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../../config/app_info.dart';
 import '../../config/app_routes.dart';
 import '../../config/app_theme.dart';
+import '../../services/storage_service.dart';
 import '../../widgets/app_button.dart';
 import '../../widgets/section_card.dart';
 
@@ -15,6 +16,33 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   void _startChat() {
     Navigator.pushNamed(context, AppRoutes.chat);
+  }
+
+  Future<void> _removeConsent() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Retirar aceite e apagar dados locais?'),
+        content: const Text(
+          'O perfil e as respostas do Plano de Parto salvos neste dispositivo serão apagados. '
+          'Será necessário aceitar novamente os termos para preencher o aplicativo. '
+          'Isso não apaga dados que já foram sincronizados com serviços online.',
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancelar')),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Retirar aceite e apagar'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+    await StorageService().revokeConsentAndClearPatientData();
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Aceite retirado e dados locais do plano e perfil apagados.')),
+    );
   }
 
   @override
@@ -83,6 +111,12 @@ class _HomeScreenState extends State<HomeScreen> {
                       const SizedBox(width: 10),
                       Expanded(child: AppButton(label: 'Sobre', outlined: true, onPressed: () => Navigator.pushNamed(context, AppRoutes.about))),
                     ],
+                  ),
+                  const SizedBox(height: 10),
+                  TextButton.icon(
+                    onPressed: _removeConsent,
+                    icon: const Icon(Icons.privacy_tip_outlined, size: 18),
+                    label: const Text('Retirar aceite e apagar dados locais'),
                   ),
                   const SizedBox(height: 20),
                   Text('${AppInfo.institution} • ${AppInfo.version} • Desenvolvido por ${AppInfo.developer}', textAlign: TextAlign.center, style: const TextStyle(fontSize: 12, color: AppColors.petDarkBlue)),
