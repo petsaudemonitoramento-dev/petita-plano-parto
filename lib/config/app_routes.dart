@@ -3,6 +3,7 @@ class AppRoutes {
   static const chat = '/chat';
   static const summary = '/summary';
   static const terms = '/terms';
+  static const initialScience = '/ciencia-inicial';
   static const privacy = '/privacy';
   static const responsibility = '/responsibility';
   static const about = '/about';
