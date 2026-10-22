@@ -3,7 +3,9 @@
     "id": "nome_gestante",
     "section": "Dados da gestante",
     "question": "Para começar, qual nome deve aparecer no seu Plano de Parto?",
-    "options": [],
+    "options": [
+      "Prefiro não informar"
+    ],
     "multiple": false
   },
   {
@@ -11,6 +13,21 @@
     "section": "Dados da gestante",
     "question": "Qual é a sua Data Provável do Parto (DPP)? Exemplo: 18/11/2026.",
     "options": [],
+    "multiple": false
+  },
+  {
+    "id": "semanas_gestacao",
+    "section": "Dados da gestante",
+    "question": "Quantas semanas de gestação você está? (Opcional.)",
+    "options": [
+      "Menos de 12 semanas",
+      "12 a 19 semanas",
+      "20 a 27 semanas",
+      "28 a 36 semanas",
+      "37 semanas ou mais",
+      "Não sei informar",
+      "Prefiro não informar"
+    ],
     "multiple": false
   },
   {
@@ -27,16 +44,44 @@
     "allowOther": true
   },
   {
+    "id": "cenario_parto",
+    "section": "Dados da gestante",
+    "question": "Você gostaria de construir seu plano de parto pensando em qual possibilidade?",
+    "options": [
+      "Parto vaginal",
+      "Cesárea",
+      "Quero considerar os dois cenários"
+    ],
+    "multiple": false
+  },
+  {
+    "id": "prioridade_parto",
+    "section": "Dados da gestante",
+    "question": "O que é mais importante para você durante o nascimento do seu bebê?",
+    "options": [
+      "Sentir-me segura",
+      "Ter autonomia nas decisões",
+      "Ter apoio emocional",
+      "Sentir o mínimo de dor possível",
+      "Ter contato imediato com o bebê",
+      "Outro"
+    ],
+    "multiple": true,
+    "allowOther": true
+  },
+  {
     "id": "acompanhante_principal",
     "section": "Acompanhante e apoio",
     "question": "Quem você deseja que seja seu acompanhante principal durante o trabalho de parto e o parto?",
     "options": [
-      "Esposo/parceiro",
+      "Companheiro(a)",
       "Mãe",
-      "Filha(o) maior de 18 anos",
-      "Amiga(o)",
+      "Pai",
       "Outro familiar",
-      "Prefiro não ter acompanhante"
+      "Amigo(a)",
+      "Doula",
+      "Não gostaria de acompanhante",
+      "Gostaria de decidir no momento"
     ],
     "multiple": false
   },
@@ -45,9 +90,10 @@
     "section": "Acompanhante e apoio",
     "question": "Você deseja registrar a presença de doula, se possível?",
     "options": [
-      "Sim, desejo presença de doula, se possível",
-      "Não desejo registrar doula",
-      "Quero conversar com a equipe"
+      "Sim",
+      "Não",
+      "Já tenho uma doula",
+      "Gostaria de saber mais sobre o papel da doula"
     ],
     "multiple": false
   },
@@ -63,15 +109,60 @@
     "multiple": false
   },
   {
-    "id": "movimentacao",
-    "section": "Trabalho de parto",
-    "question": "Durante o trabalho de parto, você deseja ter liberdade para se movimentar?",
+    "id": "acompanhamento_continuo",
+    "section": "Acompanhante e apoio",
+    "question": "Você gostaria de permanecer acompanhada durante todo o trabalho de parto?",
     "options": [
-      "Sim, desejo livre movimentação",
-      "Prefiro decidir no momento",
-      "Não desejo registrar"
+      "Sim, durante todo o trabalho de parto",
+      "Sim, mas gostaria de decidir no momento",
+      "Não, prefiro ficar sozinha em alguns momentos",
+      "Ainda não sei"
     ],
     "multiple": false
+  },
+  {
+    "id": "comunicacao_equipe",
+    "section": "Acompanhante e apoio",
+    "question": "Como você gostaria que a equipe de saúde se comunicasse com você?",
+    "options": [
+      "Explicando cada procedimento antes de realizá-lo",
+      "Explicando quando houver alguma mudança",
+      "Quero participar de todas as decisões",
+      "Ainda não sei"
+    ],
+    "multiple": false
+  },
+  {
+    "id": "movimentacao",
+    "section": "Trabalho de parto",
+    "question": "Durante o trabalho de parto, você gostaria de caminhar e mudar de posição livremente, se estiver tudo bem com você e o bebê?",
+    "options": [
+      "Sim, gostaria de ter liberdade para me movimentar",
+      "Sim, mas com orientação da equipe",
+      "Prefiro permanecer mais tempo em repouso",
+      "Gostaria de decidir no momento"
+    ],
+    "multiple": false
+  },
+  {
+    "id": "posicao_contracoes",
+    "section": "Trabalho de parto",
+    "question": "Em quais posições você gostaria de ficar durante as contrações? Pode marcar mais de uma.",
+    "options": [
+      "Em pé",
+      "Caminhando",
+      "Sentada",
+      "Agachada/de cócoras",
+      "De joelhos",
+      "Apoiando-me na bola",
+      "De quatro apoios",
+      "Deitada de lado",
+      "Semi-sentada",
+      "Deitada de costas",
+      "Quero mudar de posição conforme a necessidade",
+      "Ainda não sei"
+    ],
+    "multiple": true
   },
   {
     "id": "alimentacao",
@@ -117,12 +208,16 @@
     "section": "Alívio da dor",
     "question": "Quais métodos de alívio da dor você gostaria de ter como opção? Você pode selecionar mais de um.",
     "options": [
-      "Métodos não farmacológicos",
-      "Banho morno/chuveiro",
+      "Banho morno",
       "Massagem",
-      "Técnicas de respiração",
+      "Exercícios respiratórios",
       "Bola de parto",
-      "Analgesia, se necessário e disponível"
+      "Mudança de posições",
+      "Música",
+      "Compressas mornas",
+      "Ambiente com pouca iluminação",
+      "Analgesia medicamentosa, se indicada e disponível",
+      "Quero decidir no momento"
     ],
     "multiple": true
   },
@@ -131,23 +226,61 @@
     "section": "Nascimento",
     "question": "Quais posições você gostaria de registrar como preferência para o nascimento, quando clinicamente possível?",
     "options": [
-      "Vertical",
-      "Semi-sentada",
-      "Cócoras",
+      "De cócoras/agachada",
+      "Em pé",
+      "Sentada",
+      "De joelhos",
       "De quatro apoios",
-      "Decidir no momento",
-      "Não desejo registrar"
+      "De lado",
+      "Semi-sentada",
+      "Deitada de costas",
+      "Outra posição",
+      "Quero decidir no momento"
     ],
-    "multiple": true
+    "multiple": true,
+    "allowOther": true
+  },
+  {
+    "id": "episiotomia",
+    "section": "Nascimento",
+    "question": "Você gostaria que a episiotomia (corte no períneo) fosse evitada durante seu parto?",
+    "options": [
+      "Sim, desejo evitar",
+      "Gostaria que só fosse considerada quando clinicamente indicada, após explicação",
+      "Gostaria de saber mais sobre o procedimento"
+    ],
+    "multiple": false
+  },
+  {
+    "id": "toque_vaginal",
+    "section": "Nascimento",
+    "question": "Em relação aos exames de toque vaginal, o que você gostaria de registrar?",
+    "options": [
+      "Apenas quando forem necessários",
+      "Quero evitar exames repetidos em intervalos curtos",
+      "Gostaria de conversar com a equipe sobre isso"
+    ],
+    "multiple": false
+  },
+  {
+    "id": "kristeller",
+    "section": "Nascimento",
+    "question": "Você gostaria que fosse evitada a manobra de Kristeller (pressão sobre o fundo do útero)?",
+    "options": [
+      "Sim, gostaria de evitá-la",
+      "Quero saber mais sobre essa manobra",
+      "Não tenho preferência"
+    ],
+    "multiple": false
   },
   {
     "id": "cordao_umbilical",
     "section": "Nascimento",
     "question": "Depois que o bebê nasce, o cordão umbilical liga o bebê à placenta por alguns instantes. Quando mãe e bebê estão bem, muitas equipes podem esperar um pouco antes de cortar esse cordão. Você deseja registrar essa preferência?",
     "options": [
-      "Sim, desejo aguardar alguns instantes antes de cortar o cordão, se estiver tudo bem",
-      "Quero conversar com a equipe sobre isso",
-      "Não desejo registrar"
+      "Sim, gostaria de aguardar o clampeamento, se estiver tudo bem",
+      "Gostaria de receber explicações antes de decidir",
+      "Gostaria de decidir no momento"
     ],
     "multiple": false
   },
@@ -156,11 +289,11 @@
     "section": "Cuidados com o bebê",
     "question": "Assim que o bebê nascer, o que você gostaria que acontecesse, se estiver tudo bem? Você pode selecionar mais de um.",
     "options": [
-      "Contato pele a pele imediato",
-      "Amamentação na primeira hora de vida",
-      "Permanecer com o bebê no colo",
-      "Receber o bebê quando me sentir pronta",
-      "Não desejo registrar"
+      "Contato pele a pele imediatamente, se possível",
+      "Amamentação na primeira hora, se possível",
+      "Bebê colocado em meu colo, se possível",
+      "Receber ajuda para iniciar a amamentação",
+      "Gostaria de decidir no momento"
     ],
     "multiple": true
   },
@@ -176,6 +309,31 @@
     "multiple": false
   },
   {
+    "id": "alojamento_conjunto",
+    "section": "Cuidados com o bebê",
+    "question": "Você gostaria que seu bebê permanecesse com você durante a internação, sempre que possível?",
+    "options": [
+      "Sim, gostaria de permanecer com meu bebê",
+      "Sim, exceto quando algum cuidado exigir separação",
+      "Não tenho preferência",
+      "Gostaria de decidir no momento"
+    ],
+    "multiple": false
+  },
+  {
+    "id": "orientacoes_posparto",
+    "section": "Cuidados com o bebê",
+    "question": "Quais orientações você gostaria de receber antes da alta?",
+    "options": [
+      "Cuidados com o bebê",
+      "Amamentação, pega e posições",
+      "Sinais de alerta no pós-parto",
+      "Métodos contraceptivos após o parto",
+      "Todas essas orientações"
+    ],
+    "multiple": true
+  },
+  {
     "id": "cesarea",
     "section": "Em caso de cesárea",
     "question": "Caso seja necessária cesárea, quais preferências você deseja registrar? Você pode selecionar mais de uma.",
@@ -187,6 +345,44 @@
       "Manter braços livres, se possível"
     ],
     "multiple": true
+  },
+  {
+    "id": "privacidade",
+    "section": "Preferências adicionais",
+    "question": "Você gostaria de registrar alguma preferência relacionada à sua privacidade durante o parto?",
+    "options": [
+      "Ter o mínimo possível de pessoas no ambiente",
+      "Que procedimentos sejam feitos com privacidade",
+      "Ser informada antes da entrada de outras pessoas",
+      "Não tenho preferência",
+      "Outra preferência"
+    ],
+    "multiple": true,
+    "allowOther": true
+  },
+  {
+    "id": "registros_fotograficos",
+    "section": "Preferências adicionais",
+    "question": "Você gostaria de registrar alguma preferência sobre fotografias do nascimento?",
+    "options": [
+      "Que meu acompanhante registre o nascimento, se permitido",
+      "Tirar uma foto após o nascimento",
+      "Prefiro não realizar fotografias",
+      "Não tenho preferência"
+    ],
+    "multiple": false
+  },
+  {
+    "id": "preferencias_culturais",
+    "section": "Preferências adicionais",
+    "question": "Você gostaria de registrar alguma preferência cultural ou religiosa relacionada ao nascimento? Se desejar, pode escrever.",
+    "options": [
+      "Sim, vou descrever",
+      "Não",
+      "Prefiro não informar"
+    ],
+    "multiple": false,
+    "allowOther": true
   },
   {
     "id": "observacoes_finais",
