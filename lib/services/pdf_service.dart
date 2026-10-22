@@ -59,10 +59,10 @@ class PdfService {
     required pw.MemoryImage petita,
     required Map<String, List<String>> map,
   }) {
-    final nome = _value(map, 'nome_gestante', 'Laís Vitória de Sousa');
-    final dpp = _value(map, 'dpp', '18/11/2026');
-    final ubs = _value(map, 'ubs_referencia', 'UBS - Estação Velha');
-    final acompanhante = _value(map, 'acompanhante_principal', 'Esposo/parceiro');
+    final nome = _value(map, 'nome_gestante', 'Não informado');
+    final dpp = _value(map, 'dpp', 'Não informada');
+    final ubs = _value(map, 'ubs_referencia', 'Não informada');
+    final acompanhante = _value(map, 'acompanhante_principal', 'Não informado');
     final data = _todayPtBr();
 
     return pw.Column(
@@ -236,7 +236,14 @@ class PdfService {
       );
 
   pw.Widget _observationsBox(Map<String, List<String>> map) {
-    final obs = _value(map, 'observacoes_finais', 'Desejo que minha autonomia, minhas escolhas e meu direito à informação sejam respeitados durante toda a assistência.');
+    final items = <String>[];
+    final obs = _selected(map, 'observacoes_finais');
+    if (obs != null) items.add(obs);
+    final cultura = _selected(map, 'preferencias_culturais');
+    if (cultura != null) items.add('Preferência cultural/religiosa: $cultura');
+    final fotos = _selected(map, 'registros_fotograficos');
+    if (fotos != null) items.add('Fotografias: $fotos');
+    if (items.isEmpty) items.add('Nenhuma observação final registrada.');
     return pw.Container(
       decoration: pw.BoxDecoration(border: pw.Border.all(color: _borderPink, width: 0.75), borderRadius: pw.BorderRadius.circular(9), color: PdfColors.white),
       child: pw.Column(crossAxisAlignment: pw.CrossAxisAlignment.stretch, children: [
@@ -250,7 +257,13 @@ class PdfService {
           ]),
         ),
         pw.Container(height: 0.65, color: _borderPink),
-        pw.Padding(padding: const pw.EdgeInsets.fromLTRB(12, 6, 12, 6), child: _bullet('"$obs"')),
+        pw.Padding(
+          padding: const pw.EdgeInsets.fromLTRB(12, 6, 12, 6),
+          child: pw.Column(
+            crossAxisAlignment: pw.CrossAxisAlignment.start,
+            children: items.take(3).map(_bullet).toList(),
+          ),
+        ),
       ]),
     );
   }
@@ -261,7 +274,7 @@ class PdfService {
         child: pw.Row(children: [
           _clipboardIcon(),
           pw.SizedBox(width: 12),
-          pw.Expanded(child: pw.Text('Este documento expressa preferências da gestante e deve ser considerado pela equipe de saúde sempre que clinicamente possível.', style: pw.TextStyle(fontSize: 8.8, color: _darkBlue, fontWeight: pw.FontWeight.bold))),
+          pw.Expanded(child: pw.Text('Este documento resume preferências registradas pela gestante. Consulte o registro no aplicativo e converse com a equipe sobre suas escolhas, sempre que clinicamente possível.', style: pw.TextStyle(fontSize: 8.8, color: _darkBlue, fontWeight: pw.FontWeight.bold))),
         ]),
       );
 
@@ -332,74 +345,102 @@ class PdfService {
   pw.Widget _thinDivider() => pw.Container(height: 0.5, color: PdfColor.fromHex('#FDECEF'));
 
   String _value(Map<String, List<String>> map, String id, String fallback) {
-    final values = map[id];
-    if (values == null || values.isEmpty) return fallback;
-    final value = values.where((v) => v.trim().isNotEmpty).join(', ');
-    return value.isEmpty ? fallback : value;
+    final selected = _selected(map, id);
+    return selected ?? fallback;
+  }
+
+  String? _selected(Map<String, List<String>> map, String id) {
+    final list = map[id];
+    if (list == null || list.isEmpty) return null;
+    final cleaned = list.map((e) => e.trim()).where((e) => e.isNotEmpty).toList();
+    return cleaned.isEmpty ? null : cleaned.join(', ');
   }
 
   List<String> _values(Map<String, List<String>> map, String id, List<String> fallback) {
     final values = map[id];
-    if (values == null || values.isEmpty) return fallback;
-    final cleaned = values.where((v) => v.trim().isNotEmpty && !v.toLowerCase().contains('não desejo registrar')).toList();
-    return cleaned.isEmpty ? fallback : cleaned;
+    if (values == null || values.isEmpty) return [];
+    return values
+        .map((e) => e.trim())
+        .where((e) => e.isNotEmpty && !e.toLowerCase().contains('não desejo registrar'))
+        .toList();
   }
 
+  List<String> _filled(List<String> bullets) =>
+      bullets.isEmpty ? ['Nenhuma preferência registrada nesta seção.'] : bullets;
+
   List<String> _acompanhanteBullets(Map<String, List<String>> map, String acompanhante) {
-    final doula = _value(map, 'doula', 'Sim, desejo presença de doula, se possível');
-    final apoio = _value(map, 'apoio_comunicacao', 'Sim, desejo apoio emocional, privacidade e comunicação clara');
-    return [
-      'Desejo ter acompanhante durante o trabalho de parto e o parto.',
-      'Acompanhante preferencial: $acompanhante.',
-      apoio.toLowerCase().startsWith('sim') ? 'Desejo apoio emocional, privacidade e comunicação clara durante toda a assistência.' : apoio,
-      doula.toLowerCase().startsWith('sim') ? 'Desejo presença de doula, se possível.' : doula,
-    ];
+    final bullets = <String>[];
+    if (acompanhante != 'Não informado') bullets.add('Acompanhante: $acompanhante.');
+    for (final entry in [
+      ['doula', 'Doula'],
+      ['acompanhamento_continuo', 'Permanência do acompanhante'],
+      ['apoio_comunicacao', 'Apoio'],
+      ['comunicacao_equipe', 'Comunicação com a equipe'],
+    ]) {
+      final text = _selected(map, entry[0]);
+      if (text != null) bullets.add('${entry[1]}: $text.');
+    }
+    return _filled(bullets).take(4).toList();
   }
 
   List<String> _trabalhoBullets(Map<String, List<String>> map) {
-    final alimentacao = _values(map, 'alimentacao', ['líquidos e, se permitido, alimentação leve']).join(', ');
-    final ambiente = _values(map, 'ambiente', ['ambiente calmo, acolhedor e com privacidade']).join(', ');
-    return [
-      _sentence(_value(map, 'movimentacao', 'Desejo livre movimentação durante o trabalho de parto.').replaceFirst('Sim, ', '')),
-      'Desejo ingerir $alimentacao.',
-      'Desejo $ambiente.',
-      _sentence(_value(map, 'informacao_procedimentos', 'Desejo ser informada antes de qualquer procedimento.').replaceFirst('Sim, ', '')),
-    ];
+    final bullets = <String>[];
+    for (final entry in [
+      ['movimentacao', 'Movimentação'],
+      ['alimentacao', 'Alimentação e líquidos'],
+      ['posicao_contracoes', 'Posições nas contrações'],
+      ['ambiente', 'Ambiente'],
+      ['informacao_procedimentos', 'Informação antes dos procedimentos'],
+      ['privacidade', 'Privacidade'],
+    ]) {
+      final text = _selected(map, entry[0]);
+      if (text != null) bullets.add('${entry[1]}: $text.');
+    }
+    return _filled(bullets).take(4).toList();
   }
 
-  List<String> _alivioBullets(Map<String, List<String>> map) =>
-      _values(map, 'alivio_dor', ['Preferência por métodos não farmacológicos', 'Banho morno/chuveiro', 'Massagem', 'Técnicas de respiração', 'Bola de parto', 'Analgesia, se necessário e disponível']).map(_sentence).toList();
+  List<String> _alivioBullets(Map<String, List<String>> map) {
+    final list = _values(map, 'alivio_dor', []);
+    return _filled(list.map(_sentence).toList()).take(5).toList();
+  }
 
   List<String> _nascimentoBullets(Map<String, List<String>> map) {
-    final positions = _values(map, 'posicao_nascimento', ['vertical', 'semi-sentada ou cócoras']).join(', ').toLowerCase();
-    final cordao = _value(map, 'cordao_umbilical', 'Sim, desejo clampeamento oportuno');
-    return [
-      'Posições preferidas: $positions.',
-      'Desejo liberdade para escolher a posição de parir, quando clinicamente possível.',
-      cordao.toLowerCase().startsWith('sim') ? 'Desejo aguardar alguns instantes antes de cortar o cordão umbilical, se mãe e bebê estiverem bem.' : _sentence(cordao),
-      'Desejo contato imediato com o bebê após o nascimento, se ambos estiverem bem.',
-    ];
+    final bullets = <String>[];
+    for (final entry in [
+      ['posicao_nascimento', 'Posição do parto'],
+      ['episiotomia', 'Episiotomia'],
+      ['toque_vaginal', 'Exames de toque'],
+      ['kristeller', 'Manobra de Kristeller'],
+      ['cordao_umbilical', 'Clampeamento do cordão'],
+    ]) {
+      final text = _selected(map, entry[0]);
+      if (text != null) bullets.add('${entry[1]}: $text.');
+    }
+    return _filled(bullets).take(5).toList();
   }
 
   List<String> _bebeBullets(Map<String, List<String>> map) {
-    final primeiraHora = _values(map, 'bebe_primeira_hora', ['Contato pele a pele imediato', 'Amamentação na primeira hora de vida']);
-    final cuidados = _value(map, 'cuidados_nao_urgentes', 'Sim, evitar procedimentos não urgentes antes do primeiro contato');
     final bullets = <String>[];
-    for (final item in primeiraHora.take(2)) {
-      bullets.add(_sentence(item));
+    final primeira = _values(map, 'bebe_primeira_hora', []);
+    if (primeira.isNotEmpty) bullets.add('Primeiros cuidados: ${primeira.join(', ')}.');
+    for (final entry in [
+      ['cuidados_nao_urgentes', 'Cuidados não urgentes'],
+      ['alojamento_conjunto', 'Permanência com o bebê'],
+      ['orientacoes_posparto', 'Orientações antes da alta'],
+    ]) {
+      final text = _selected(map, entry[0]);
+      if (text != null) bullets.add('${entry[1]}: $text.');
     }
-    bullets.add(cuidados.toLowerCase().startsWith('sim') ? 'Evitar procedimentos não urgentes antes do primeiro contato, quando possível.' : _sentence(cuidados));
-    bullets.add('Presença do acompanhante nos primeiros cuidados.');
-    return bullets;
+    return _filled(bullets).take(4).toList();
   }
 
-  List<String> _cesareaBullets(Map<String, List<String>> map) =>
-      _values(map, 'cesarea', ['Ser informada sobre a indicação e participar da decisão', 'Presença do acompanhante, se possível', 'Contato pele a pele e amamentação precoce assim que houver condições']).map((e) {
-        if (e == 'Contato pele a pele quando houver condições') return 'Desejo contato pele a pele e amamentação precoce assim que houver condições.';
-        return _sentence(e.startsWith('Desejo') ? e : 'Desejo ${e[0].toLowerCase()}${e.substring(1)}');
-      }).take(4).toList();
+  List<String> _cesareaBullets(Map<String, List<String>> map) {
+    final list = _values(map, 'cesarea', []);
+    return _filled(list.map(_sentence).toList()).take(4).toList();
+  }
 
-  String _sentence(String value) => value.trim().endsWith('.') ? value.trim() : '${value.trim()}.';
+  String _sentence(String value) =>
+      value.trim().endsWith('.') ? value.trim() : '${value.trim()}.';
 
   String _todayPtBr() {
     final now = DateTime.now();

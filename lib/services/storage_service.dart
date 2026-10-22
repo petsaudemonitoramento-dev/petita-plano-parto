@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/birth_plan_answer.dart';
+import '../models/consent_record.dart';
 import '../models/knowledge_document.dart';
 import '../models/ubs_question.dart';
 import '../models/ubs_unit.dart';
@@ -8,7 +9,8 @@ import '../models/user_profile.dart';
 
 class StorageService {
   static const _answersKey = 'birth_plan_answers';
-  static const _consentKey = 'consent_accepted';
+  static const _consentRecordKey = 'consent_record_v2';
+  static const _legacyConsentKey = 'consent_accepted';
   static const _ubsQuestionsKey = 'ubs_questions';
   static const _profileKey = 'local_user_profile';
   static const _customUbsKey = 'custom_ubs_units';
@@ -34,12 +36,39 @@ class StorageService {
 
   Future<bool> hasConsent() async {
     final prefs = await SharedPreferences.getInstance();
-    return prefs.getBool(_consentKey) ?? false;
+    final raw = prefs.getString(_consentRecordKey);
+    if (raw == null) return false;
+    try {
+      final record = ConsentRecord.fromJson(jsonDecode(raw) as Map<String, dynamic>);
+      return record.isCurrentAndComplete;
+    } catch (_) {
+      return false;
+    }
   }
 
-  Future<void> setConsentAccepted(bool value) async {
+  Future<void> saveConsentAcknowledgements() async {
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setBool(_consentKey, value);
+    final record = ConsentRecord(
+      acceptedTerms: true,
+      acceptedPrivacy: true,
+      acceptedResponsibility: true,
+      acceptedPlanScience: true,
+      acceptedHealthData: true,
+      termsVersion: ConsentRecord.currentVersion,
+      acceptedAt: DateTime.now(),
+    );
+    final saved = await prefs.setString(_consentRecordKey, jsonEncode(record.toJson()));
+    if (!saved) throw StateError('Não foi possível salvar a ciência neste dispositivo.');
+    await prefs.remove(_legacyConsentKey);
+  }
+
+  Future<void> revokeConsentAndClearPatientData() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove(_consentRecordKey);
+    await prefs.remove(_legacyConsentKey);
+    await prefs.remove(_answersKey);
+    await prefs.remove(_profileKey);
+    // Ação local; não remove informações anteriormente sincronizadas na nuvem.
   }
 
   Future<void> saveProfile(UserProfile profile) async {

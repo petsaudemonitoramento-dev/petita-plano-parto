@@ -14,28 +14,35 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
-  final _storage = StorageService();
-  bool _hasConsent = false;
-
-  @override
-  void initState() {
-    super.initState();
-    _loadConsent();
-  }
-
-  Future<void> _loadConsent() async {
-    final value = await _storage.hasConsent();
-    if (mounted) setState(() => _hasConsent = value);
-  }
-
-  Future<void> _startChat() async {
-    if (!_hasConsent) {
-      final accepted = await Navigator.push<bool>(context, MaterialPageRoute(builder: (_) => const ConsentGateScreen()));
-      if (accepted != true) return;
-      await _loadConsent();
-    }
-    if (!mounted) return;
+  void _startChat() {
     Navigator.pushNamed(context, AppRoutes.chat);
+  }
+
+  Future<void> _removeConsent() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Retirar aceite e apagar dados locais?'),
+        content: const Text(
+          'O perfil e as respostas do Plano de Parto salvos neste dispositivo serão apagados. '
+          'Será necessário aceitar novamente os termos para preencher o aplicativo. '
+          'Isso não apaga dados que já foram sincronizados com serviços online.',
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancelar')),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Retirar aceite e apagar'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+    await StorageService().revokeConsentAndClearPatientData();
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Aceite retirado e dados locais do plano e perfil apagados.')),
+    );
   }
 
   @override
@@ -105,6 +112,12 @@ class _HomeScreenState extends State<HomeScreen> {
                       Expanded(child: AppButton(label: 'Sobre', outlined: true, onPressed: () => Navigator.pushNamed(context, AppRoutes.about))),
                     ],
                   ),
+                  const SizedBox(height: 10),
+                  TextButton.icon(
+                    onPressed: _removeConsent,
+                    icon: const Icon(Icons.privacy_tip_outlined, size: 18),
+                    label: const Text('Retirar aceite e apagar dados locais'),
+                  ),
                   const SizedBox(height: 20),
                   Text('${AppInfo.institution} • ${AppInfo.version} • Desenvolvido por ${AppInfo.developer}', textAlign: TextAlign.center, style: const TextStyle(fontSize: 12, color: AppColors.petDarkBlue)),
                 ],
@@ -117,62 +130,3 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 }
 
-class ConsentGateScreen extends StatefulWidget {
-  const ConsentGateScreen({super.key});
-
-  @override
-  State<ConsentGateScreen> createState() => _ConsentGateScreenState();
-}
-
-class _ConsentGateScreenState extends State<ConsentGateScreen> {
-  bool _terms = false;
-  bool _privacy = false;
-  bool _responsibility = false;
-  final _storage = StorageService();
-
-  bool get _canContinue => _terms && _privacy && _responsibility;
-
-  Future<void> _accept() async {
-    await _storage.setConsentAccepted(true);
-    if (mounted) Navigator.pop(context, true);
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text('Consentimento')),
-      body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.all(20),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text('Antes de começar', style: TextStyle(fontSize: 24, fontWeight: FontWeight.w900, color: AppColors.petDarkBlue)),
-              const SizedBox(height: 10),
-              const Text('Leia e confirme os termos para usar o app com segurança. Este aplicativo é educativo e não substitui atendimento profissional.'),
-              const SizedBox(height: 20),
-              _checkTile('Li e aceito os Termos de Uso', _terms, (v) => setState(() => _terms = v ?? false), AppRoutes.terms),
-              _checkTile('Li a Política de Privacidade', _privacy, (v) => setState(() => _privacy = v ?? false), AppRoutes.privacy),
-              _checkTile('Entendo a isenção de responsabilidade em saúde', _responsibility, (v) => setState(() => _responsibility = v ?? false), AppRoutes.responsibility),
-              const Spacer(),
-              AppButton(label: 'Aceitar e continuar', onPressed: _canContinue ? _accept : () {}, icon: Icons.check_circle),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _checkTile(String title, bool value, ValueChanged<bool?> onChanged, String route) {
-    return Card(
-      color: Colors.white,
-      child: CheckboxListTile(
-        value: value,
-        onChanged: onChanged,
-        activeColor: AppColors.primaryPink,
-        title: Text(title, style: const TextStyle(fontWeight: FontWeight.w700)),
-        subtitle: TextButton(onPressed: () => Navigator.pushNamed(context, route), child: const Text('Ver documento')),
-      ),
-    );
-  }
-}

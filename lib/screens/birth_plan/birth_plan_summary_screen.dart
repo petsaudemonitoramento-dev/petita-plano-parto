@@ -42,6 +42,7 @@ class _BirthPlanSummaryScreenState extends State<BirthPlanSummaryScreen> {
   }
 
   Future<void> _generatePdf() async {
+    if (_answers.isEmpty) return;
     try {
       await PdfService().shareBirthPlanPdf(questions: _questions, answers: _answers);
     } catch (e) {
@@ -52,6 +53,24 @@ class _BirthPlanSummaryScreenState extends State<BirthPlanSummaryScreen> {
 
 
   Future<void> _syncOnline() async {
+    if (_answers.isEmpty) return;
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Sincronizar dados com o serviço online?'),
+        content: const Text(
+          'O envio incluirá dados do perfil e as respostas do Plano de Parto, '
+          'que podem conter informações pessoais e de saúde. '
+          'Você pode continuar utilizando a Petita offline sem sincronizar. '
+          'Leia a Política de Privacidade antes de escolher.',
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(dialogContext, false), child: const Text('Manter só neste dispositivo')),
+          FilledButton(onPressed: () => Navigator.pop(dialogContext, true), child: const Text('Confirmar envio')),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
     final answerMap = {for (final a in _answers) a.questionId: a.values.join(', ')};
     final profile = await _storage.loadProfile();
     try {
@@ -75,9 +94,9 @@ class _BirthPlanSummaryScreenState extends State<BirthPlanSummaryScreen> {
     if (_loading) return const Scaffold(body: Center(child: CircularProgressIndicator()));
     final answerMap = {for (final a in _answers) a.questionId: a.values.join(', ')};
     final resumoDados = [
-      answerMap['nome_gestante'] ?? 'Laís Vitória de Sousa',
-      answerMap['ubs_referencia'] ?? 'UBS - Estação Velha',
-      "DPP ${answerMap['dpp'] ?? '18/11/2026'}",
+      answerMap['nome_gestante'] ?? 'Nome não informado',
+      answerMap['ubs_referencia'] ?? 'UBS não informada',
+      "DPP ${answerMap['dpp'] ?? 'não informada'}",
     ].join(' • ');
     return Scaffold(
       appBar: AppBar(title: const Text('Meu Plano de Parto')),
@@ -93,6 +112,8 @@ class _BirthPlanSummaryScreenState extends State<BirthPlanSummaryScreen> {
               Text(resumoDados, style: const TextStyle(fontWeight: FontWeight.w700)),
               const SizedBox(height: 8),
               const Text('As informações principais são mantidas offline no aparelho para não prejudicar a gestante sem internet.'),
+              const SizedBox(height: 8),
+              const Text('O PDF de uma página é uma síntese das principais preferências. Revise todas as respostas abaixo e converse com sua equipe de saúde.'),
             ])),
             if (_answers.isEmpty)
               SectionCard(child: Column(children: [
@@ -100,7 +121,7 @@ class _BirthPlanSummaryScreenState extends State<BirthPlanSummaryScreen> {
                 const SizedBox(height: 10),
                 const Text('Você ainda não construiu seu plano. Volte ao chat e toque em "Montar meu plano".', textAlign: TextAlign.center),
               ])),
-            ..._questions.map((q) => SectionCard(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            ..._questions.where((q) => answerMap.containsKey(q.id)).map((q) => SectionCard(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
               Text(q.section, style: const TextStyle(color: AppColors.primaryPink, fontSize: 18, fontWeight: FontWeight.w900)),
               const SizedBox(height: 5),
               Text(q.question, style: const TextStyle(fontWeight: FontWeight.w700)),
@@ -108,9 +129,11 @@ class _BirthPlanSummaryScreenState extends State<BirthPlanSummaryScreen> {
               Text(answerMap[q.id] ?? 'Não informado', style: const TextStyle(color: AppColors.textPrimary)),
             ]))),
             const SizedBox(height: 10),
-            AppButton(label: 'Gerar PDF no modelo oficial', icon: Icons.picture_as_pdf, onPressed: _generatePdf),
+            if (_answers.isNotEmpty)
+              AppButton(label: 'Gerar PDF (síntese de 1 página)', icon: Icons.picture_as_pdf, onPressed: _generatePdf),
             const SizedBox(height: 10),
-            AppButton(label: 'Sincronizar plano online', icon: Icons.cloud_upload_outlined, outlined: true, onPressed: _syncOnline),
+            if (_answers.isNotEmpty)
+              AppButton(label: 'Sincronizar plano online', icon: Icons.cloud_upload_outlined, outlined: true, onPressed: _syncOnline),
             const SizedBox(height: 10),
             AppButton(label: 'Limpar plano local', outlined: true, icon: Icons.delete_outline, onPressed: () async { await _storage.clearAnswers(); await _load(); }),
           ]),
