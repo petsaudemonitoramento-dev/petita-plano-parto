@@ -54,6 +54,23 @@ class _BirthPlanSummaryScreenState extends State<BirthPlanSummaryScreen> {
 
   Future<void> _syncOnline() async {
     if (_answers.isEmpty) return;
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Sincronizar dados com o serviço online?'),
+        content: const Text(
+          'O envio incluirá dados do perfil e as respostas do Plano de Parto, '
+          'que podem conter informações pessoais e de saúde. '
+          'Você pode continuar utilizando a Petita offline sem sincronizar. '
+          'Leia a Política de Privacidade antes de escolher.',
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(dialogContext, false), child: const Text('Manter só neste dispositivo')),
+          FilledButton(onPressed: () => Navigator.pop(dialogContext, true), child: const Text('Confirmar envio')),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
     final answerMap = {for (final a in _answers) a.questionId: a.values.join(', ')};
     final profile = await _storage.loadProfile();
     try {
