@@ -504,6 +504,7 @@ class _ChatScreenState extends State<ChatScreen> {
   @override
   Widget build(BuildContext context) {
     if (_loading) return const Scaffold(body: Center(child: CircularProgressIndicator()));
+    final activeOptionsIndex = _messages.lastIndexWhere((message) => !message.isUser);
     return Scaffold(
       backgroundColor: AppColors.background,
       body: SafeArea(
@@ -528,7 +529,7 @@ class _ChatScreenState extends State<ChatScreen> {
                   final msg = _messages[index];
                   return Column(crossAxisAlignment: msg.isUser ? CrossAxisAlignment.end : CrossAxisAlignment.start, children: [
                     _PetitaChatBubble(text: msg.text, isUser: msg.isUser),
-                    if (!msg.isUser && msg.options.isNotEmpty)
+                    if (!msg.isUser && msg.options.isNotEmpty && index == activeOptionsIndex)
                       Padding(
                         padding: const EdgeInsets.only(left: 40, top: 4, bottom: 8),
                         child: Wrap(
