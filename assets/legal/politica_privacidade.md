@@ -38,3 +38,11 @@ Somente contas administradoras podem anexar ou remover documentos de apoio. A re
 ## Segurança e limitações
 
 Informações relacionadas à saúde exigem cuidado especial. A Petita pode cometer erros, e informações importantes devem ser confirmadas com a equipe de saúde. O aplicativo não substitui atendimento profissional ou de urgência.
+
+## Ciência inicial e controle local
+
+Antes de preencher o plano ou o perfil, a gestante confirma separadamente que leu os termos, compreendeu o caráter educativo da Petita e concordou com o tratamento local das informações pessoais e de saúde que fornecer para construir e guardar seu plano. O aplicativo registra no próprio dispositivo a data e a versão do aceite.
+
+Na tela inicial, a usuária pode retirar a ciência e apagar o perfil e as respostas do plano armazenados **neste dispositivo**. Isso **não exclui automaticamente** informações anteriormente transmitidas para serviços online, cuja exclusão precisa ser tratada à parte com o responsável pelo aplicativo.
+
+O uso de recursos online pode implicar tratamento de dados por serviços externos conforme descrito acima. O aceite inicial não autoriza a publicação ou o compartilhamento irrestrito de dados sensíveis.
