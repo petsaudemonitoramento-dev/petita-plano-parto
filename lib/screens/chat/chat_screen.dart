@@ -754,6 +754,7 @@ class _ChoicePill extends StatelessWidget {
   final VoidCallback onTap;
   final bool selected;
   final bool primary;
+  final bool help;
 
   @override
   Widget build(BuildContext context) {
@@ -765,21 +766,21 @@ class _ChoicePill extends StatelessWidget {
         duration: const Duration(milliseconds: 160),
         padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 10),
         decoration: BoxDecoration(
-          color: filled ? AppColors.primaryPink : Colors.white,
+          color: filled ? AppColors.primaryPink : (help ? const Color(0xFFFFF0DC) : Colors.white),
           borderRadius: BorderRadius.circular(18),
-          border: Border.all(color: AppColors.primaryPink.withOpacity(0.7)),
+          border: Border.all(color: help ? const Color(0xFFE6A34E) : AppColors.primaryPink.withOpacity(0.7)),
           boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.025), blurRadius: 6, offset: const Offset(0, 3))],
         ),
         constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width - 96),
         child: Row(mainAxisSize: MainAxisSize.min, children: [
-          Icon(icon, size: 18, color: filled ? Colors.white : AppColors.primaryPink),
+          Icon(icon, size: 18, color: filled ? Colors.white : (help ? const Color(0xFF8B5D1D) : AppColors.primaryPink)),
           const SizedBox(width: 7),
           Flexible(
             child: Text(
               label,
               softWrap: true,
               overflow: TextOverflow.visible,
-              style: TextStyle(color: filled ? Colors.white : AppColors.primaryPink, fontWeight: FontWeight.w900),
+              style: TextStyle(color: filled ? Colors.white : (help ? const Color(0xFF8B5D1D) : AppColors.primaryPink), fontWeight: FontWeight.w800),
             ),
           ),
         ]),
