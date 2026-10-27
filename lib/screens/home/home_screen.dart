@@ -63,7 +63,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 Text('PETITA', style: TextStyle(fontSize: 19, letterSpacing: 2, fontWeight: FontWeight.w900, color: Color(0xFF4E237F))),
                 Text('Seu espaço de cuidado', style: TextStyle(fontSize: 11, color: Color(0xFF806D98))),
               ])),
-              Container(width: 46, height: 46, padding: const EdgeInsets.all(5),
+              Container(width: 76, height: 62, padding: const EdgeInsets.all(2),
                 decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(15)),
                 child: Image.asset('assets/images/ufcg_logo.png', fit: BoxFit.contain)),
             ]),
