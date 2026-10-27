@@ -5,6 +5,7 @@ import 'screens/about/about_screen.dart';
 import 'screens/admin/admin_screen.dart';
 import 'screens/birth_plan/birth_plan_summary_screen.dart';
 import 'screens/chat/chat_screen.dart';
+import 'screens/consent/consent_gate_screen.dart';
 import 'screens/home/home_screen.dart';
 import 'screens/profile/profile_screen.dart';
 import 'screens/questions/my_questions_screen.dart';
@@ -23,16 +24,17 @@ class PlanoPartoPetSaudeApp extends StatelessWidget {
       initialRoute: AppRoutes.home,
       routes: {
         AppRoutes.home: (_) => const HomeScreen(),
-        AppRoutes.chat: (_) => const ChatScreen(),
-        AppRoutes.summary: (_) => const BirthPlanSummaryScreen(),
+        AppRoutes.chat: (_) => const ConsentRequiredScreen(child: ChatScreen()),
+        AppRoutes.summary: (_) => const ConsentRequiredScreen(child: BirthPlanSummaryScreen()),
         AppRoutes.terms: (_) => const TermsScreen(initialAsset: 'assets/legal/termos_uso.md', title: 'Termos de Uso'),
+        AppRoutes.initialScience: (_) => const TermsScreen(initialAsset: 'assets/legal/termo_ciencia_inicial.md', title: 'Ciência inicial'),
         AppRoutes.privacy: (_) => const TermsScreen(initialAsset: 'assets/legal/politica_privacidade.md', title: 'Política de Privacidade'),
         AppRoutes.responsibility: (_) => const TermsScreen(initialAsset: 'assets/legal/aviso_responsabilidade.md', title: 'Responsabilidade em Saúde'),
         AppRoutes.about: (_) => const AboutScreen(),
-        AppRoutes.profile: (_) => const ProfileScreen(),
+        AppRoutes.profile: (_) => const ConsentRequiredScreen(child: ProfileScreen()),
         AppRoutes.ubs: (_) => const UbsTeamScreen(),
         AppRoutes.admin: (_) => const AdminScreen(),
-        AppRoutes.myQuestions: (_) => const MyQuestionsScreen(),
+        AppRoutes.myQuestions: (_) => const ConsentRequiredScreen(child: MyQuestionsScreen()),
       },
     );
   }
