@@ -8,8 +8,25 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>Plano de Parto PET Saúde</title>
   <link rel="manifest" href="manifest.json">
+  <style>
+    #mobile-only-notice { display: none; }
+    @media (min-width: 768px) and (pointer: fine) {
+      body { margin: 0; }
+      flutter-view, flt-glass-pane { display: none !important; }
+      #mobile-only-notice {
+        display: flex; position: fixed; inset: 0; z-index: 9999;
+        align-items: center; justify-content: center;
+        background: #fff7fa; color: #25364a; font-family: Arial, sans-serif;
+        text-align: center; padding: 24px; box-sizing: border-box;
+      }
+      #mobile-only-notice section { max-width: 400px; }
+      #mobile-only-notice h1 { font-size: 26px; }
+      #mobile-only-notice p { line-height: 1.6; }
+    }
+  </style>
 </head>
 <body>
+  <div id="mobile-only-notice" role="status"><section><h1>Petita 💗</h1><p>Esta versão de demonstração foi preparada para uso em celular. Abra este endereço no navegador do seu smartphone para construir seu Plano de Parto.</p></section></div>
   <script src="flutter_bootstrap.js" async></script>
 </body>
 </html>
