@@ -69,7 +69,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   borderRadius: BorderRadius.circular(13),
                   child: Transform.scale(
                     scale: 1.25,
-                    child: Image.asset('assets/images/ufcg_logo.png', fit: BoxFit.contain),
+                    child: Image.asset('assets/images/ufcg_avatar.png', fit: BoxFit.contain),
                   ),
                 )),
             ]),
