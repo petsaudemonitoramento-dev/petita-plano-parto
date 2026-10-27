@@ -60,10 +60,9 @@ class _PetitaAnimatedMascotState extends State<PetitaAnimatedMascot>
         builder: (context, _) {
           final t = reduced ? 0.0 : _motion.value;
           final blink = reduced ? 0.0 :
-              math.max(_blink(t, 0.23), math.max(_blink(t, 0.72), _blink(t, 0.76)));
-          // Dois carinhos suaves por ciclo, com pequenas pausas.
-          final stroke = reduced ? 0.0 :
-              math.pow(math.max(0.0, math.sin(t * 2 * math.pi)), 2).toDouble();
+              _blink(t, 0.42);
+          // Não duplicar a mão: a imagem original já contém ambas as mãos.
+          final stroke = 0.0;
           return Stack(alignment: Alignment.center, children: [
             Container(
               width: widget.size + 14,
@@ -99,32 +98,10 @@ class _PetitaMotionPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    final sx = size.width / image.width;
-    final sy = size.height / image.height;
     final full = Rect.fromLTWH(0, 0, image.width.toDouble(), image.height.toDouble());
     canvas.drawImageRect(image, full, Offset.zero & size, Paint()..filterQuality = FilterQuality.high);
 
-    // A mão é retirada da própria ilustração original, sem redesenhar.
-    // O recorte acompanha a curvatura da barriga em um movimento curto.
-    if (stroke > 0.015) {
-      final src = Rect.fromLTWH(
-        image.width * 0.298, image.height * 0.822,
-        image.width * 0.135, image.height * 0.138,
-      );
-      final dst = Rect.fromLTWH(
-        src.left * sx + size.width * 0.045 * stroke,
-        src.top * sy - size.height * 0.027 * stroke,
-        src.width * sx, src.height * sy,
-      );
-      canvas.save();
-      canvas.clipRRect(RRect.fromRectAndRadius(dst, Radius.circular(size.width * 0.035)));
-      canvas.drawImageRect(image, src, dst, Paint()
-        ..filterQuality = FilterQuality.high
-        ..color = Color.fromRGBO(255, 255, 255, 0.75 * stroke));
-      canvas.restore();
-    }
-
-    // Pálpebras no próprio visor; aparecem apenas durante a piscada.
+    // O recorte sobreposto da mão foi removido para evitar duplicação\n    // e deformação da barriga. Uma animação articulada requer camadas reais.\n\n    // Pálpebras no próprio visor; aparecem apenas durante a piscada.
     if (blink > 0.015) {
       final face = Paint()..color = const Color(0xFF25191F).withOpacity(blink * 0.98);
       for (final eye in [const Offset(0.367, 0.367), const Offset(0.593, 0.365)]) {
