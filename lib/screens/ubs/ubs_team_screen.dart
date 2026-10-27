@@ -164,7 +164,7 @@ class _UbsTeamScreenState extends State<UbsTeamScreen> {
 
   Widget _ubsDropdown() {
     return DropdownButtonFormField<String>(
-      value: _selectedUbsCode,
+      initialValue: _selectedUbsCode,
       items: _units.map((unit) => DropdownMenuItem(value: unit.code, child: Text(unit.name))).toList(),
       onChanged: (value) => setState(() => _selectedUbsCode = value),
       decoration: const InputDecoration(labelText: 'UBS vinculada'),

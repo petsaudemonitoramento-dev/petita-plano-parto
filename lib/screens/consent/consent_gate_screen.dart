@@ -22,7 +22,9 @@ class _ConsentRequiredScreenState extends State<ConsentRequiredScreen> {
   }
 
   void _onAccepted() {
-    setState(() => _consentStatus = Future<bool>.value(true));
+    setState(() {
+      _consentStatus = Future<bool>.value(true);
+    });
   }
 
   @override

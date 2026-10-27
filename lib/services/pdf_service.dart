@@ -466,20 +466,6 @@ class PdfService {
         ),
       );
 
-  pw.Widget _careIcon() => pw.SizedBox(
-        width: 32,
-        height: 28,
-        child: pw.Column(mainAxisAlignment: pw.MainAxisAlignment.center, children: [
-          pw.Container(width: 13, height: 13, decoration: pw.BoxDecoration(border: pw.Border.all(color: _pink, width: 1.2), shape: pw.BoxShape.circle)),
-          pw.SizedBox(height: 2),
-          pw.Row(mainAxisAlignment: pw.MainAxisAlignment.center, children: [
-            pw.Container(width: 14, height: 1.2, color: _pink),
-            pw.SizedBox(width: 3),
-            pw.Container(width: 14, height: 1.2, color: _pink),
-          ]),
-        ]),
-      );
-
   pw.Widget _thinDivider() => pw.Container(height: 0.5, color: PdfColor.fromHex('#FDECEF'));
 
   String _value(Map<String, List<String>> map, String id, String fallback) {

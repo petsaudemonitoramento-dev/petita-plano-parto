@@ -220,17 +220,24 @@ class _ProfileScreenState extends State<ProfileScreen> {
               const SizedBox(height: 16),
               const Text('UBS de referência oficial', style: TextStyle(fontWeight: FontWeight.w900, color: AppColors.petDarkBlue)),
               const SizedBox(height: 8),
-              ..._officialUnits.map((unit) => RadioListTile<String>(
-                    value: unit.code,
-                    groupValue: _selectedUbsCode,
-                    activeColor: AppColors.primaryPink,
-                    title: Text(unit.name),
-                    subtitle: Text(unit.code),
-                    onChanged: (value) => setState(() {
-                      _selectedUbsCode = value;
-                      _customUbsController.clear();
-                    }),
-                  )),
+              Material(
+                type: MaterialType.transparency,
+                child: RadioGroup<String>(
+                  groupValue: _selectedUbsCode,
+                  onChanged: (value) => setState(() {
+                    _selectedUbsCode = value;
+                    _customUbsController.clear();
+                  }),
+                  child: Column(children: [
+                    ..._officialUnits.map((unit) => RadioListTile<String>(
+                          value: unit.code,
+                          activeColor: AppColors.primaryPink,
+                          title: Text(unit.name),
+                          subtitle: Text(unit.code),
+                        )),
+                  ]),
+                ),
+              ),
               TextButton.icon(
                 onPressed: () async {
                   setState(() => _selectedUbsCode = null);
@@ -252,7 +259,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   decoration: BoxDecoration(
                     color: const Color(0xFFFFF3E8),
                     borderRadius: BorderRadius.circular(14),
-                    border: Border.all(color: AppColors.petOrange.withOpacity(0.55)),
+                    border: Border.all(color: AppColors.petOrange.withAlpha((255 * 0.55).round())),
                   ),
                   child: const Text(
                     'A UBS digitada aparecerá no Plano de Parto. Porém, dúvidas enviadas pelo chat só poderão ser respondidas quando a gestante estiver vinculada a uma UBS oficial da lista.',
