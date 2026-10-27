@@ -527,7 +527,7 @@ class _ChatScreenState extends State<ChatScreen> {
     if (_loading) return const Scaffold(body: Center(child: CircularProgressIndicator()));
     final activeOptionsIndex = _messages.lastIndexWhere((message) => !message.isUser);
     return Scaffold(
-      backgroundColor: const Color(0xFFFFFAFB),
+      backgroundColor: const Color(0xFFF9F6FF),
       body: SafeArea(
         child: Column(
           children: [
@@ -552,10 +552,9 @@ class _ChatScreenState extends State<ChatScreen> {
                     _PetitaChatBubble(text: msg.text, isUser: msg.isUser),
                     if (!msg.isUser && msg.options.isNotEmpty && index == activeOptionsIndex)
                       Padding(
-                        padding: const EdgeInsets.only(left: 40, top: 4, bottom: 8),
-                        child: Wrap(
-                          spacing: 8,
-                          runSpacing: 8,
+                        padding: const EdgeInsets.only(left: 10, top: 8, bottom: 14),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
                           children: msg.options.map((o) {
                             final isSelected = _currentQuestion >= 0 && _questions[_currentQuestion].multiple && _multiSelection.contains(o);
                             final isFinish = o == 'Concluir seleção';
@@ -615,9 +614,9 @@ class _ChatHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
       decoration: BoxDecoration(
-        color: AppColors.background,
+        gradient: const LinearGradient(colors: [Color(0xFF6332AB), Color(0xFFAB53D8), Color(0xFFE56BAC)]),
         boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 12, offset: const Offset(0, 5))],
       ),
       child: Column(children: [
@@ -625,24 +624,24 @@ class _ChatHeader extends StatelessWidget {
           InkWell(
             onTap: () => Navigator.pop(context),
             borderRadius: BorderRadius.circular(18),
-            child: const Padding(padding: EdgeInsets.all(8), child: Icon(Icons.arrow_back, color: AppColors.primaryPink)),
+            child: const Padding(padding: EdgeInsets.all(8), child: Icon(Icons.arrow_back, color: Colors.white)),
           ),
           Container(padding: const EdgeInsets.all(3), decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16), boxShadow: [BoxShadow(color: AppColors.primaryPink.withOpacity(0.14), blurRadius: 12)]), child: CircleAvatar(radius: 19, backgroundColor: AppColors.softPink, child: ClipOval(child: Image.asset('assets/images/petita.png', fit: BoxFit.cover)))),
           const SizedBox(width: 10),
           const Expanded(
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text('Petita', style: TextStyle(fontWeight: FontWeight.w900, color: AppColors.petDarkBlue, fontSize: 17)),
-              Text('Assistente PET Saúde', style: TextStyle(color: AppColors.textPrimary, fontSize: 12)),
+              Text('Petita', style: TextStyle(fontWeight: FontWeight.w900, color: Colors.white, fontSize: 19)),
+              Text('Com você em cada escolha 💗', style: TextStyle(color: Colors.white, fontSize: 12)),
             ]),
           ),
-          IconButton(onPressed: () => Navigator.pushNamed(context, AppRoutes.profile), icon: const Icon(Icons.person_outline, color: AppColors.petDarkBlue)),
+          IconButton(onPressed: () => Navigator.pushNamed(context, AppRoutes.profile), icon: const Icon(Icons.person_outline, color: Colors.white)),
         ]),
         if (inPlanFlow) ...[
           const SizedBox(height: 10),
           Row(children: [
-            Text(currentSection, style: const TextStyle(fontWeight: FontWeight.w900, color: AppColors.petDarkBlue)),
+            Flexible(child: Text(currentSection, style: const TextStyle(fontWeight: FontWeight.w800, color: Colors.white), overflow: TextOverflow.ellipsis)),
             const Spacer(),
-            Text('$currentStep/$totalSteps', style: const TextStyle(fontSize: 12, color: AppColors.primaryPink, fontWeight: FontWeight.w800)),
+            Text('Etapa $currentStep de $totalSteps', style: const TextStyle(fontSize: 12, color: Colors.white, fontWeight: FontWeight.w800)),
           ]),
           const SizedBox(height: 8),
           ClipRRect(
@@ -650,8 +649,8 @@ class _ChatHeader extends StatelessWidget {
             child: LinearProgressIndicator(
               value: progress,
               minHeight: 8,
-              backgroundColor: AppColors.softPink,
-              valueColor: const AlwaysStoppedAnimation<Color>(AppColors.primaryPink),
+              backgroundColor: Colors.white24,
+              valueColor: const AlwaysStoppedAnimation<Color>(Colors.white),
             ),
           ),
         ],
@@ -668,17 +667,17 @@ class _PetitaChatBubble extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final bubble = Container(
-      constraints: const BoxConstraints(maxWidth: 330),
-      padding: const EdgeInsets.all(14),
+      constraints: const BoxConstraints(maxWidth: 360),
+      padding: const EdgeInsets.symmetric(horizontal: 17, vertical: 16),
       decoration: BoxDecoration(
-        color: isUser ? AppColors.primaryPink.withOpacity(0.78) : Colors.white,
+        color: isUser ? const Color(0xFF8741C6) : Colors.white,
         borderRadius: BorderRadius.only(
           topLeft: const Radius.circular(20),
           topRight: const Radius.circular(20),
           bottomLeft: Radius.circular(isUser ? 20 : 6),
           bottomRight: Radius.circular(isUser ? 6 : 20),
         ),
-        border: isUser ? null : Border.all(color: AppColors.softPink),
+        border: isUser ? null : Border.all(color: const Color(0xFFEDE3F8)),
         boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 8, offset: const Offset(0, 3))],
       ),
       child: Text(text, style: TextStyle(color: isUser ? Colors.white : AppColors.textPrimary, height: 1.28, fontWeight: isUser ? FontWeight.w700 : FontWeight.w500)),
@@ -764,23 +763,23 @@ class _ChoicePill extends StatelessWidget {
       onTap: onTap,
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 160),
-        padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 10),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 15),
         decoration: BoxDecoration(
           color: filled ? AppColors.primaryPink : (help ? const Color(0xFFFFF0DC) : Colors.white),
           borderRadius: BorderRadius.circular(18),
           border: Border.all(color: help ? const Color(0xFFE6A34E) : AppColors.primaryPink.withOpacity(0.7)),
           boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.025), blurRadius: 6, offset: const Offset(0, 3))],
         ),
-        constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width - 96),
-        child: Row(mainAxisSize: MainAxisSize.min, children: [
-          Icon(icon, size: 18, color: filled ? Colors.white : (help ? const Color(0xFF8B5D1D) : AppColors.primaryPink)),
+        constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width - 36),
+        child: Row(mainAxisSize: MainAxisSize.max, children: [
+          Icon(icon, size: 20, color: filled ? Colors.white : (help ? const Color(0xFF8B5D1D) : AppColors.primaryPink)),
           const SizedBox(width: 7),
           Flexible(
             child: Text(
               label,
               softWrap: true,
               overflow: TextOverflow.visible,
-              style: TextStyle(color: filled ? Colors.white : (help ? const Color(0xFF8B5D1D) : AppColors.primaryPink), fontWeight: FontWeight.w800),
+              style: TextStyle(fontSize: 15, color: filled ? Colors.white : (help ? const Color(0xFF8B5D1D) : AppColors.petDarkBlue), fontWeight: FontWeight.w700),
             ),
           ),
         ]),
