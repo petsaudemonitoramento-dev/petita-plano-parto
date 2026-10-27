@@ -27,6 +27,16 @@
 </head>
 <body>
   <div id="mobile-only-notice" role="status"><section><h1>Petita 💗</h1><p>Esta versão de demonstração foi preparada para uso em celular. Abra este endereço no navegador do seu smartphone para construir seu Plano de Parto.</p></section></div>
-  <script src="flutter_bootstrap.js" async></script>
+  <script>
+    // Remover service workers antigos que podem manter a interface anterior em cache.
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.getRegistrations().then(function(registrations) {
+        registrations.forEach(function(registration) {
+          if (registration.scope.includes('/petita-plano-parto/')) registration.unregister();
+        });
+      });
+    }
+  </script>
+  <script src="flutter_bootstrap.js?v=20261027-redesign-2" async></script>
 </body>
 </html>
