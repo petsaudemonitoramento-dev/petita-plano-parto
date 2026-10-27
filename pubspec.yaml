@@ -24,6 +24,7 @@ flutter:
     - assets/images/pet_saude_logo.png
     - assets/images/pet_saude_avatar.png
     - assets/images/ufcg_logo.png
+    - assets/images/ufcg_avatar.png
     - assets/data/faq.json
     - assets/data/birth_plan_flow.json
     - assets/data/ubs.json
