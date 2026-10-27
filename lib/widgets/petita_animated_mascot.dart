@@ -1,48 +1,144 @@
 import 'dart:math' as math;
+import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
-/// Movimento suave da mascote. Respeita a preferência de movimento reduzido.
+/// Anima a arte original da Petita, sem substituir o desenho.
 class PetitaAnimatedMascot extends StatefulWidget {
   const PetitaAnimatedMascot({super.key, this.size = 180});
   final double size;
   @override
   State<PetitaAnimatedMascot> createState() => _PetitaAnimatedMascotState();
 }
-class _PetitaAnimatedMascotState extends State<PetitaAnimatedMascot> with SingleTickerProviderStateMixin {
+
+class _PetitaAnimatedMascotState extends State<PetitaAnimatedMascot>
+    with SingleTickerProviderStateMixin {
   late final AnimationController _motion;
+  ui.Image? _art;
+
   @override
   void initState() {
     super.initState();
-    _motion = AnimationController(vsync: this, duration: const Duration(milliseconds: 5400))..repeat();
+    _motion = AnimationController(
+      vsync: this, duration: const Duration(milliseconds: 5200),
+    )..repeat();
+    _loadArt();
   }
+
+  Future<void> _loadArt() async {
+    final data = await rootBundle.load('assets/images/petita.png');
+    final codec = await ui.instantiateImageCodec(data.buffer.asUint8List());
+    final frame = await codec.getNextFrame();
+    if (mounted) {
+      setState(() => _art = frame.image);
+    } else {
+      frame.image.dispose();
+    }
+    codec.dispose();
+  }
+
   @override
-  void dispose() { _motion.dispose(); super.dispose(); }
+  void dispose() {
+    _motion.dispose();
+    _art?.dispose();
+    super.dispose();
+  }
+
+  double _blink(double t, double center) {
+    final d = (t - center).abs();
+    return d < 0.022 ? math.sin((1 - d / 0.022) * math.pi / 2) : 0;
+  }
+
   @override
   Widget build(BuildContext context) {
-    final reduceMotion = MediaQuery.of(context).disableAnimations;
+    final reduced = MediaQuery.of(context).disableAnimations;
     return SizedBox(
-      width: widget.size + 32, height: widget.size + 34,
+      width: widget.size + 32,
+      height: widget.size + 34,
       child: AnimatedBuilder(
         animation: _motion,
-        builder: (context, child) {
-          final t = reduceMotion ? 0.0 : _motion.value;
-          final breathing = reduceMotion ? 0.0 : math.sin(t * 2 * math.pi);
-          final accent = reduceMotion ? 0.0 : math.sin(t * 2 * math.pi);
+        builder: (context, _) {
+          final t = reduced ? 0.0 : _motion.value;
+          final blink = reduced ? 0.0 :
+              math.max(_blink(t, 0.23), math.max(_blink(t, 0.72), _blink(t, 0.76)));
+          // Dois carinhos suaves por ciclo, com pequenas pausas.
+          final stroke = reduced ? 0.0 :
+              math.pow(math.max(0.0, math.sin(t * 2 * math.pi)), 2).toDouble();
           return Stack(alignment: Alignment.center, children: [
             Container(
-              width: widget.size + 14, height: widget.size + 14,
-              decoration: BoxDecoration(shape: BoxShape.circle,
-                gradient: RadialGradient(colors: [const Color(0xFFFFE5ED), const Color(0xFFFFF6F8).withOpacity(0.3)])),
+              width: widget.size + 14,
+              height: widget.size + 14,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                gradient: RadialGradient(colors: [
+                  const Color(0xFFFFE5ED),
+                  const Color(0xFFFFF6F8).withOpacity(0.3),
+                ]),
+              ),
             ),
-            Positioned(left: 8, top: 22 + accent * 2,
-              child: const Icon(Icons.auto_awesome, color: Color(0xFFF07899), size: 22)),
-            Positioned(right: 6, bottom: 35 - accent * 2,
-              child: const Icon(Icons.favorite, color: Color(0xFFF8A7BA), size: 17)),
-            Transform.scale(scale: 1 + breathing * 0.004,
-              child: Image.asset('assets/images/petita.png', width: widget.size, height: widget.size, fit: BoxFit.contain)),
+            if (_art == null)
+              Image.asset('assets/images/petita.png',
+                  width: widget.size, height: widget.size, fit: BoxFit.contain)
+            else
+              CustomPaint(
+                size: Size(widget.size, widget.size),
+                painter: _PetitaMotionPainter(_art!, blink, stroke),
+              ),
           ]);
         },
       ),
     );
   }
+}
+
+class _PetitaMotionPainter extends CustomPainter {
+  _PetitaMotionPainter(this.image, this.blink, this.stroke);
+  final ui.Image image;
+  final double blink;
+  final double stroke;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final sx = size.width / image.width;
+    final sy = size.height / image.height;
+    final full = Rect.fromLTWH(0, 0, image.width.toDouble(), image.height.toDouble());
+    canvas.drawImageRect(image, full, Offset.zero & size, Paint()..filterQuality = FilterQuality.high);
+
+    // A mão é retirada da própria ilustração original, sem redesenhar.
+    // O recorte acompanha a curvatura da barriga em um movimento curto.
+    if (stroke > 0.015) {
+      final src = Rect.fromLTWH(
+        image.width * 0.298, image.height * 0.822,
+        image.width * 0.135, image.height * 0.138,
+      );
+      final dst = Rect.fromLTWH(
+        src.left * sx + size.width * 0.045 * stroke,
+        src.top * sy - size.height * 0.027 * stroke,
+        src.width * sx, src.height * sy,
+      );
+      canvas.save();
+      canvas.clipRRect(RRect.fromRectAndRadius(dst, Radius.circular(size.width * 0.035)));
+      canvas.drawImageRect(image, src, dst, Paint()
+        ..filterQuality = FilterQuality.high
+        ..color = Color.fromRGBO(255, 255, 255, 0.75 * stroke));
+      canvas.restore();
+    }
+
+    // Pálpebras no próprio visor; aparecem apenas durante a piscada.
+    if (blink > 0.015) {
+      final face = Paint()..color = const Color(0xFF25191F).withOpacity(blink * 0.98);
+      for (final eye in [const Offset(0.367, 0.367), const Offset(0.593, 0.365)]) {
+        final center = Offset(size.width * eye.dx, size.height * eye.dy);
+        canvas.drawOval(Rect.fromCenter(
+          center: center,
+          width: size.width * 0.105,
+          height: size.height * 0.125 * blink,
+        ), face);
+      }
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant _PetitaMotionPainter old) =>
+      old.blink != blink || old.stroke != stroke || old.image != image;
 }
