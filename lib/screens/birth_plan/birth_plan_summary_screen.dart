@@ -41,10 +41,10 @@ class _BirthPlanSummaryScreenState extends State<BirthPlanSummaryScreen> {
     }
   }
 
-  Future<void> _generatePdf() async {
+  Future<void> _generatePdf(BirthPlanPdfFormat format) async {
     if (_answers.isEmpty) return;
     try {
-      await PdfService().shareBirthPlanPdf(questions: _questions, answers: _answers);
+      await PdfService().shareBirthPlanPdf(questions: _questions, answers: _answers, format: format);
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Não foi possível gerar/compartilhar o PDF: $e')));
@@ -113,7 +113,7 @@ class _BirthPlanSummaryScreenState extends State<BirthPlanSummaryScreen> {
               const SizedBox(height: 8),
               const Text('As informações principais são mantidas offline no aparelho para não prejudicar a gestante sem internet.'),
               const SizedBox(height: 8),
-              const Text('O PDF de uma página é uma síntese das principais preferências. Revise todas as respostas abaixo e converse com sua equipe de saúde.'),
+              const Text('Escolha entre a declaração em texto corrido, com espaço para assinaturas, e o resumo visual por tópicos. Ambos incluem as logos da UFCG e do PET Saúde. Revise suas respostas antes de compartilhar.'),
             ])),
             if (_answers.isEmpty)
               SectionCard(child: Column(children: [
@@ -130,7 +130,10 @@ class _BirthPlanSummaryScreenState extends State<BirthPlanSummaryScreen> {
             ]))),
             const SizedBox(height: 10),
             if (_answers.isNotEmpty)
-              AppButton(label: 'Gerar PDF (síntese de 1 página)', icon: Icons.picture_as_pdf, onPressed: _generatePdf),
+              AppButton(label: 'Gerar PDF — declaração para assinatura', icon: Icons.picture_as_pdf, onPressed: () => _generatePdf(BirthPlanPdfFormat.declaracao)),
+            const SizedBox(height: 10),
+            if (_answers.isNotEmpty)
+              AppButton(label: 'Gerar PDF — resumo visual (modelo antigo)', icon: Icons.description_outlined, outlined: true, onPressed: () => _generatePdf(BirthPlanPdfFormat.resumoVisual)),
             const SizedBox(height: 10),
             if (_answers.isNotEmpty)
               AppButton(label: 'Sincronizar plano online', icon: Icons.cloud_upload_outlined, outlined: true, onPressed: _syncOnline),
