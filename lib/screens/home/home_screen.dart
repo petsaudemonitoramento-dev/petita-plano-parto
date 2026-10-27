@@ -4,7 +4,7 @@ import '../../config/app_routes.dart';
 import '../../config/app_theme.dart';
 import '../../services/storage_service.dart';
 import '../../widgets/app_button.dart';
-import '../../widgets/section_card.dart';
+import '../../widgets/petita_animated_mascot.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -48,85 +48,110 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: SafeArea(
-        child: Center(
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 520),
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.all(20),
-              child: Column(
-                children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Image.asset('assets/images/pet_saude_avatar.png', height: 52),
-                      Image.asset('assets/images/ufcg_logo.png', height: 58),
-                    ],
-                  ),
-                  const SizedBox(height: 16),
-                  SectionCard(
-                    child: Column(
-                      children: [
-                        Image.asset('assets/images/petita.png', height: 220),
-                        const SizedBox(height: 8),
-                        RichText(
-                          textAlign: TextAlign.center,
-                          text: const TextSpan(
-                            style: TextStyle(fontSize: 29, fontWeight: FontWeight.w900, color: AppColors.petDarkBlue),
-                            children: [
-                              TextSpan(text: 'Plano de Parto\n'),
-                              TextSpan(text: 'PET ', style: TextStyle(color: AppColors.petOrange)),
-                              TextSpan(text: 'Saúde', style: TextStyle(color: AppColors.petBlue)),
-                            ],
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-                        const Text(
-                          'Construa seu plano de parto com informação, acolhimento e cuidado. A Petita vai te guiar passo a passo.',
-                          textAlign: TextAlign.center,
-                          style: TextStyle(color: AppColors.textPrimary, height: 1.35),
-                        ),
-                        const SizedBox(height: 18),
-                        AppButton(label: 'Começar com a Petita', icon: Icons.favorite, onPressed: _startChat),
-                        const SizedBox(height: 10),
-                        AppButton(label: 'Perfil da gestante', icon: Icons.person_outline, outlined: true, onPressed: () => Navigator.pushNamed(context, AppRoutes.profile)),
-                        const SizedBox(height: 10),
-                        AppButton(label: 'Ver meu plano', icon: Icons.description_outlined, outlined: true, onPressed: () => Navigator.pushNamed(context, AppRoutes.summary)),
-                        const SizedBox(height: 10),
-                        AppButton(label: 'Minhas dúvidas', icon: Icons.forum_outlined, outlined: true, onPressed: () => Navigator.pushNamed(context, AppRoutes.myQuestions)),
-                      ],
-                    ),
-                  ),
-                  Row(
-                    children: [
-                      Expanded(child: AppButton(label: 'Termos', outlined: true, onPressed: () => Navigator.pushNamed(context, AppRoutes.terms))),
-                      const SizedBox(width: 10),
-                      Expanded(child: AppButton(label: 'Equipe UBS', outlined: true, onPressed: () => Navigator.pushNamed(context, AppRoutes.ubs))),
-                    ],
-                  ),
-                  const SizedBox(height: 10),
-                  Row(
-                    children: [
-                      Expanded(child: AppButton(label: 'Admin', outlined: true, onPressed: () => Navigator.pushNamed(context, AppRoutes.admin))),
-                      const SizedBox(width: 10),
-                      Expanded(child: AppButton(label: 'Sobre', outlined: true, onPressed: () => Navigator.pushNamed(context, AppRoutes.about))),
-                    ],
-                  ),
-                  const SizedBox(height: 10),
-                  TextButton.icon(
-                    onPressed: _removeConsent,
-                    icon: const Icon(Icons.privacy_tip_outlined, size: 18),
-                    label: const Text('Retirar aceite e apagar dados locais'),
-                  ),
-                  const SizedBox(height: 20),
-                  Text('${AppInfo.institution} • ${AppInfo.version} • Desenvolvido por ${AppInfo.developer}', textAlign: TextAlign.center, style: const TextStyle(fontSize: 12, color: AppColors.petDarkBlue)),
-                ],
+      backgroundColor: const Color(0xFFFFFAFB),
+      body: SafeArea(child: Center(child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 520),
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.fromLTRB(22, 16, 22, 30),
+          child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+            Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
+              Image.asset('assets/images/pet_saude_avatar.png', height: 42),
+              Container(padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(22),
+                  border: Border.all(color: const Color(0xFFF8DAE3))),
+                child: const Row(mainAxisSize: MainAxisSize.min, children: [
+                  Icon(Icons.favorite_rounded, color: Color(0xFFF15A82), size: 15),
+                  SizedBox(width: 6), Text('Feita com cuidado', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: Color(0xFF29435C))),
+                ])),
+              Image.asset('assets/images/ufcg_logo.png', height: 42),
+            ]),
+            const SizedBox(height: 20),
+            Container(
+              padding: const EdgeInsets.fromLTRB(20, 20, 20, 24),
+              decoration: BoxDecoration(
+                gradient: const LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight,
+                  colors: [Color(0xFFFFEDF2), Color(0xFFFFF8FA), Colors.white]),
+                borderRadius: BorderRadius.circular(32),
+                border: Border.all(color: const Color(0xFFFFE0E8)),
+                boxShadow: [BoxShadow(color: const Color(0xFFE98BA4).withOpacity(0.13), blurRadius: 28, offset: const Offset(0, 14))],
               ),
+              child: Column(children: [
+                const PetitaAnimatedMascot(size: 170),
+                const SizedBox(height: 2),
+                const Text('OLÁ, EU SOU A PETITA', style: TextStyle(fontSize: 11, letterSpacing: 2.1,
+                  fontWeight: FontWeight.w900, color: Color(0xFFE85A81))),
+                const SizedBox(height: 10),
+                const Text('Seu plano de parto,\ndo seu jeito.', textAlign: TextAlign.center,
+                  style: TextStyle(fontSize: 31, height: 1.12, fontWeight: FontWeight.w900, color: Color(0xFF1E3B55))),
+                const SizedBox(height: 12),
+                const Text('Vamos conversar sobre suas escolhas para o nascimento do seu bebê? Eu explico tudo, passo a passo, sem palavras difíceis.',
+                  textAlign: TextAlign.center, style: TextStyle(fontSize: 15, height: 1.48, color: Color(0xFF4D6070))),
+                const SizedBox(height: 22),
+                AppButton(label: 'Começar meu plano', icon: Icons.arrow_forward_rounded, onPressed: _startChat),
+                const SizedBox(height: 12),
+                const Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+                  Icon(Icons.lock_outline, size: 15, color: Color(0xFF587284)),
+                  SizedBox(width: 5),
+                  Flexible(child: Text('Suas escolhas ficam salvas neste dispositivo', textAlign: TextAlign.center,
+                    style: TextStyle(fontSize: 11, color: Color(0xFF587284)))),
+                ]),
+              ]),
             ),
-          ),
+            const SizedBox(height: 24),
+            const Text('Seu espaço de cuidado', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w900, color: Color(0xFF1E3B55))),
+            const SizedBox(height: 12),
+            _HomeAction(icon: Icons.description_outlined, title: 'Meu plano de parto',
+              subtitle: 'Veja suas escolhas e gere o PDF', onTap: () => Navigator.pushNamed(context, AppRoutes.summary)),
+            const SizedBox(height: 10),
+            _HomeAction(icon: Icons.person_outline_rounded, title: 'Meu perfil',
+              subtitle: 'Informações da gestante', onTap: () => Navigator.pushNamed(context, AppRoutes.profile)),
+            const SizedBox(height: 10),
+            _HomeAction(icon: Icons.chat_bubble_outline_rounded, title: 'Minhas dúvidas',
+              subtitle: 'Informações e perguntas frequentes', onTap: () => Navigator.pushNamed(context, AppRoutes.myQuestions)),
+            const SizedBox(height: 18),
+            Wrap(alignment: WrapAlignment.center, spacing: 6, children: [
+              TextButton(onPressed: () => Navigator.pushNamed(context, AppRoutes.terms), child: const Text('Termos')),
+              TextButton(onPressed: () => Navigator.pushNamed(context, AppRoutes.about), child: const Text('Sobre')),
+              TextButton(onPressed: () => Navigator.pushNamed(context, AppRoutes.ubs), child: const Text('Equipe UBS')),
+              TextButton(onPressed: () => Navigator.pushNamed(context, AppRoutes.admin), child: const Text('Administração')),
+            ]),
+            TextButton.icon(onPressed: _removeConsent, icon: const Icon(Icons.privacy_tip_outlined, size: 17),
+              label: const Text('Retirar aceite e apagar dados locais')),
+            const SizedBox(height: 12),
+            Text('${AppInfo.institution} • ${AppInfo.version} • Desenvolvido por ${AppInfo.developer}',
+              textAlign: TextAlign.center, style: const TextStyle(fontSize: 11, color: Color(0xFF687C8A))),
+          ]),
         ),
-      ),
+      ))),
     );
   }
 }
 
+
+class _HomeAction extends StatelessWidget {
+  const _HomeAction({required this.icon, required this.title, required this.subtitle, required this.onTap});
+  final IconData icon;
+  final String title, subtitle;
+  final VoidCallback onTap;
+  @override
+  Widget build(BuildContext context) => Material(
+    color: Colors.white, borderRadius: BorderRadius.circular(20),
+    child: InkWell(onTap: onTap, borderRadius: BorderRadius.circular(20),
+      child: Container(padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+        decoration: BoxDecoration(borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: const Color(0xFFF5E3E8))),
+        child: Row(children: [
+          Container(width: 48, height: 48,
+            decoration: BoxDecoration(color: const Color(0xFFFFEAF0), borderRadius: BorderRadius.circular(15)),
+            child: Icon(icon, color: const Color(0xFFE85880))),
+          const SizedBox(width: 14),
+          Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Text(title, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w800, color: Color(0xFF1E3B55))),
+            const SizedBox(height: 3),
+            Text(subtitle, style: const TextStyle(fontSize: 12, color: Color(0xFF637584))),
+          ])),
+          const Icon(Icons.chevron_right_rounded, color: Color(0xFFE85880)),
+        ]),
+      )),
+  );
+}
