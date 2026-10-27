@@ -146,6 +146,7 @@ class _ChatScreenState extends State<ChatScreen> {
     _setPetitaSearching(true);
     try {
       final reply = await _chatbot.respond(text);
+      await Future.delayed(const Duration(milliseconds: 480));
       if (!mounted) return;
       setState(() => _messages.add(reply));
     } finally {
@@ -161,7 +162,7 @@ class _ChatScreenState extends State<ChatScreen> {
     _storage.clearAnswers();
     setState(() {
       _messages.add(const ChatMessage(
-        text: 'Perfeito! 💗 Vamos construir seu Plano de Parto em formato de conversa. Vou te fazer perguntas simples e registrar suas preferências para gerar o documento final em uma página.',
+        text: 'Que bom que vamos construir esse plano juntas! 💜 Aqui você pode pensar nas suas preferências com tranquilidade. Não existe resposta certa ou errada: o importante é que suas escolhas sejam ouvidas. Se algum termo parecer difícil, toque em “Quero entender melhor”.',
         isUser: false,
       ));
     });
@@ -182,7 +183,12 @@ class _ChatScreenState extends State<ChatScreen> {
     return Icons.auto_awesome_outlined;
   }
 
-  void _showCurrentQuestion() {
+  Future<void> _showCurrentQuestion() async {
+    if (_currentQuestion < 0 || _currentQuestion >= _questions.length) return;
+    _setPetitaSearching(true);
+    await Future.delayed(const Duration(milliseconds: 520));
+    if (!mounted || _currentQuestion < 0 || _currentQuestion >= _questions.length) return;
+    _setPetitaSearching(false);
     final q = _questions[_currentQuestion];
     _multiSelection.clear();
     final options = q.multiple ? [...q.options, 'Concluir seleção'] : [...q.options];
@@ -205,15 +211,15 @@ class _ChatScreenState extends State<ChatScreen> {
 
   String _introForQuestion(BirthPlanQuestion q) {
     final section = q.section.toLowerCase();
-    if (q.id == 'nome_gestante') return 'Vamos começar com seus dados básicos para identificar o plano.';
-    if (q.id == 'ubs_referencia') return 'Agora me diga sua UBS de referência. Se ela estiver na lista oficial, as dúvidas poderão ser vinculadas à equipe correta.';
-    if (section.contains('acompanhante')) return 'Agora vamos falar sobre quem você gostaria que estivesse com você no momento do parto.';
-    if (section.contains('trabalho')) return 'Vamos registrar suas preferências para o trabalho de parto, sempre respeitando a avaliação da equipe de saúde.';
-    if (section.contains('alívio')) return 'Existem diferentes formas de aliviar a dor. Marque as opções que você gostaria de ter disponíveis.';
-    if (section.contains('nascimento')) return 'Agora vamos falar sobre o momento do nascimento e suas preferências principais.';
-    if (section.contains('bebê')) return 'Vamos registrar cuidados importantes com o bebê logo após o nascimento.';
-    if (section.contains('cesárea')) return 'Caso uma cesárea seja necessária, também podemos registrar suas preferências.';
-    if (section.contains('observ')) return 'Para finalizar, você pode deixar uma observação com sua voz e seus desejos.';
+    if (q.id == 'nome_gestante') return 'Que bom ter você aqui! 💜 Vamos começar com calma. Primeiro, me conte algumas informações para identificar seu plano.';
+    if (q.id == 'ubs_referencia') return 'Obrigada por compartilhar essas informações comigo. 💗 Agora vamos identificar a UBS que acompanha você. Se não souber, tudo bem: podemos conversar sobre isso.';
+    if (section.contains('acompanhante')) return 'Você merece se sentir acolhida e acompanhada. 💜 Vamos conversar sobre quem você gostaria de ter ao seu lado nesse momento.';
+    if (section.contains('trabalho')) return 'Cada parto tem seu próprio ritmo, e suas preferências importam. 🌷 Vamos conhecer algumas possibilidades para o trabalho de parto, sempre considerando sua segurança e a avaliação da equipe.';
+    if (section.contains('alívio')) return 'É natural ter dúvidas sobre as sensações do parto. 💗 Existem formas diferentes de buscar conforto e aliviar a dor. Vou ajudar você a conhecer essas opções.';
+    if (section.contains('nascimento')) return 'Estamos chegando a uma parte muito especial: o nascimento. 💜 Vamos registrar o que é importante para você nesse momento.';
+    if (section.contains('bebê')) return 'Agora vamos pensar nos primeiros momentos com seu bebê. 🌷 Vou explicar as opções para que você possa fazer escolhas informadas.';
+    if (section.contains('cesárea')) return 'Mesmo quando uma cesárea é necessária, sua voz continua sendo importante. 💜 Vamos conversar sobre as preferências que podem ser consideradas com segurança.';
+    if (section.contains('observ')) return 'Você chegou até aqui! 💗 Antes de terminar, há algo que gostaria que a equipe soubesse sobre seus desejos, preocupações ou necessidades?';
     return '';
   }
 
@@ -229,7 +235,7 @@ class _ChatScreenState extends State<ChatScreen> {
     _currentQuestion++;
     if (_currentQuestion >= _questions.length) {
       setState(() => _messages.add(const ChatMessage(
-            text: 'Pronto! 💗 Seu Plano de Parto foi construído com sucesso. Agora você pode visualizar, editar ou gerar o PDF no modelo oficial.',
+            text: 'Você conseguiu! 💜 Obrigada por compartilhar suas escolhas comigo. Seu Plano de Parto está pronto para ser revisado com calma. Você pode conferir as respostas, conversar com a equipe de saúde e gerar o PDF quando quiser.',
             isUser: false,
             options: ['Ver meu plano'],
           )));
@@ -237,7 +243,7 @@ class _ChatScreenState extends State<ChatScreen> {
       _multiSelection.clear();
       _scrollToBottom();
     } else {
-      _showCurrentQuestion();
+      await _showCurrentQuestion();
     }
   }
 
