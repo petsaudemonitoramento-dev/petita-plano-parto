@@ -35,7 +35,7 @@ jobs:
         run: flutter pub get
 
       - name: Gerar Flutter Web
-        run: flutter build web --release --base-href "/petita-plano-parto/" --no-wasm-dry-run
+        run: flutter build web --release --base-href "/petita-plano-parto/" --no-wasm-dry-run --pwa-strategy=none
 
       - name: Configurar GitHub Pages
         uses: actions/configure-pages@v5
