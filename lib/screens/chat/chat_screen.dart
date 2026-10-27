@@ -6,6 +6,7 @@ import '../../models/birth_plan_answer.dart';
 import '../../models/birth_plan_question.dart';
 import '../../models/chat_message.dart';
 import '../../services/birth_plan_flow_service.dart';
+import '../../services/birth_plan_explanations.dart';
 import '../../services/chatbot_service.dart';
 import '../../services/faq_search_service.dart';
 import '../../services/storage_service.dart';
@@ -184,7 +185,10 @@ class _ChatScreenState extends State<ChatScreen> {
   void _showCurrentQuestion() {
     final q = _questions[_currentQuestion];
     _multiSelection.clear();
-    final options = q.multiple ? [...q.options, 'Concluir seleção'] : q.options;
+    final options = q.multiple ? [...q.options, 'Concluir seleção'] : [...q.options];
+    if (BirthPlanExplanations.forQuestion(q.id) != null) {
+      options.add('Quero entender melhor');
+    }
     final intro = _introForQuestion(q);
     setState(() {
       if (intro.isNotEmpty) {
@@ -434,6 +438,23 @@ class _ChatScreenState extends State<ChatScreen> {
   }
 
   Future<void> _handleOption(String option) async {
+    if (option == 'Quero entender melhor' && _currentQuestion >= 0) {
+      final explanation = BirthPlanExplanations.forQuestion(_questions[_currentQuestion].id);
+      if (explanation != null) {
+        setState(() {
+          _messages.add(const ChatMessage(text: 'Quero entender melhor', isUser: true));
+          _messages.add(ChatMessage(
+            text: '$explanation\n\nAgora você pode escolher a opção que combina mais com o que deseja. Se ainda tiver dúvidas, converse com a equipe de saúde.',
+            isUser: false,
+            options: _questions[_currentQuestion].multiple
+                ? [..._questions[_currentQuestion].options, 'Concluir seleção', 'Quero entender melhor']
+                : [..._questions[_currentQuestion].options, 'Quero entender melhor'],
+          ));
+        });
+        _scrollToBottom();
+      }
+      return;
+    }
     if (option == 'Ver meu plano') {
       Navigator.pushNamed(context, AppRoutes.summary);
       return;
