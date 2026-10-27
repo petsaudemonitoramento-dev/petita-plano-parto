@@ -61,8 +61,8 @@ class _PetitaAnimatedMascotState extends State<PetitaAnimatedMascot>
           final t = reduced ? 0.0 : _motion.value;
           final blink = reduced ? 0.0 :
               _blink(t, 0.42);
-          // Não duplicar a mão: a imagem original já contém ambas as mãos.
-          final stroke = 0.0;
+          // A imagem original já contém ambas as mãos.
+          const stroke = 0.0;
           return Stack(alignment: Alignment.center, children: [
             Container(
               width: widget.size + 14,
@@ -101,7 +101,9 @@ class _PetitaMotionPainter extends CustomPainter {
     final full = Rect.fromLTWH(0, 0, image.width.toDouble(), image.height.toDouble());
     canvas.drawImageRect(image, full, Offset.zero & size, Paint()..filterQuality = FilterQuality.high);
 
-    // O recorte sobreposto da mão foi removido para evitar duplicação\n    // e deformação da barriga. Uma animação articulada requer camadas reais.\n\n    // Pálpebras no próprio visor; aparecem apenas durante a piscada.
+    // O recorte sobreposto da mão foi removido para evitar duplicação.
+    // Uma animação articulada requer camadas reais.
+    // Pálpebras no próprio visor; aparecem apenas durante a piscada.
     if (blink > 0.015) {
       final face = Paint()..color = const Color(0xFF25191F).withOpacity(blink * 0.98);
       for (final eye in [const Offset(0.367, 0.367), const Offset(0.593, 0.365)]) {
