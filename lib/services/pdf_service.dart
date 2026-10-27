@@ -6,6 +6,8 @@ import '../config/app_info.dart';
 import '../models/birth_plan_answer.dart';
 import '../models/birth_plan_question.dart';
 
+enum BirthPlanPdfFormat { declaracao, resumoVisual }
+
 class PdfService {
   // O PDF não usa glyphs de ícones/emoji. Os marcadores e ícones são vetoriais
   // ou imagens de assets para evitar quadrados/erros de fonte na exportação.
@@ -20,14 +22,17 @@ class PdfService {
   Future<void> shareBirthPlanPdf({
     required List<BirthPlanQuestion> questions,
     required List<BirthPlanAnswer> answers,
+    BirthPlanPdfFormat format = BirthPlanPdfFormat.declaracao,
   }) async {
-    final bytes = await buildBirthPlanPdf(questions: questions, answers: answers);
-    await Printing.sharePdf(bytes: bytes, filename: 'plano_de_parto_pet_saude.pdf');
+    final bytes = await buildBirthPlanPdf(questions: questions, answers: answers, format: format);
+    final filename = format == BirthPlanPdfFormat.resumoVisual ? 'plano_de_parto_resumo_pet_saude.pdf' : 'plano_de_parto_declaracao_pet_saude.pdf';
+    await Printing.sharePdf(bytes: bytes, filename: filename);
   }
 
   Future<Uint8List> buildBirthPlanPdf({
     required List<BirthPlanQuestion> questions,
     required List<BirthPlanAnswer> answers,
+    BirthPlanPdfFormat format = BirthPlanPdfFormat.declaracao,
   }) async {
     final doc = pw.Document();
     final logoPet = pw.MemoryImage((await rootBundle.load('assets/images/pet_saude_logo.png')).buffer.asUint8List());
@@ -35,6 +40,21 @@ class PdfService {
     final logoUfcg = pw.MemoryImage((await rootBundle.load('assets/images/ufcg_logo.png')).buffer.asUint8List());
     final petita = pw.MemoryImage((await rootBundle.load('assets/images/petita.png')).buffer.asUint8List());
     final map = {for (final a in answers) a.questionId: a.values};
+
+    if (format == BirthPlanPdfFormat.resumoVisual) {
+      doc.addPage(pw.Page(
+        pageFormat: PdfPageFormat.a4,
+        margin: const pw.EdgeInsets.fromLTRB(18, 14, 18, 12),
+        build: (context) => _singlePage(
+          logoUfcg: logoUfcg,
+          logoPet: logoPet,
+          logoPetAvatar: logoPetAvatar,
+          petita: petita,
+          map: map,
+        ),
+      ));
+      return doc.save();
+    }
 
     final paragraphs = _declarationParagraphs(map);
     // Reduz a fonte apenas quando necessário, sem suprimir escolhas.
@@ -168,6 +188,62 @@ class PdfService {
       ['observacoes_finais', 'observações adicionais'],
     ]);
     return paragraphs;
+  }
+
+  pw.Widget _singlePage({
+    required pw.MemoryImage logoUfcg,
+    required pw.MemoryImage logoPet,
+    required pw.MemoryImage logoPetAvatar,
+    required pw.MemoryImage petita,
+    required Map<String, List<String>> map,
+  }) {
+    final nome = _value(map, 'nome_gestante', 'Não informado');
+    final dpp = _value(map, 'dpp', 'Não informada');
+    final ubs = _value(map, 'ubs_referencia', 'Não informada');
+    final acompanhante = _value(map, 'acompanhante_principal', 'Não informado');
+    final data = _todayPtBr();
+
+    return pw.Column(
+      crossAxisAlignment: pw.CrossAxisAlignment.stretch,
+      children: [
+        _header(logoUfcg: logoUfcg, logoPet: logoPet, petita: petita),
+        pw.SizedBox(height: 5),
+        _dataBox(nome: nome, dpp: dpp, ubs: ubs, acompanhante: acompanhante, data: data),
+        pw.SizedBox(height: 8),
+        pw.Row(
+          crossAxisAlignment: pw.CrossAxisAlignment.start,
+          children: [
+            _sectionCard(number: 2, title: 'Acompanhante e apoio', bullets: _acompanhanteBullets(map, acompanhante)),
+            pw.SizedBox(width: 8),
+            _sectionCard(number: 3, title: 'Trabalho de parto', bullets: _trabalhoBullets(map)),
+            pw.SizedBox(width: 8),
+            _sectionCard(number: 4, title: 'Alívio da dor', bullets: _alivioBullets(map)),
+          ],
+        ),
+        pw.SizedBox(height: 8),
+        pw.Row(
+          crossAxisAlignment: pw.CrossAxisAlignment.start,
+          children: [
+            _sectionCard(number: 5, title: 'Nascimento', bullets: _nascimentoBullets(map)),
+            pw.SizedBox(width: 8),
+            _sectionCard(number: 6, title: 'Cuidados com o bebê', bullets: _bebeBullets(map)),
+            pw.SizedBox(width: 8),
+            _sectionCard(number: 7, title: 'Em caso de cesárea', bullets: _cesareaBullets(map)),
+          ],
+        ),
+        pw.SizedBox(height: 8),
+        _observationsBox(map),
+        pw.SizedBox(height: 7),
+        _noteBox(),
+        pw.SizedBox(height: 30),
+        pw.Row(
+          mainAxisAlignment: pw.MainAxisAlignment.spaceAround,
+          children: [_signature('Gestante'), _signature('Profissional/Equipe')],
+        ),
+        pw.Spacer(),
+        _footer(logoPetAvatar),
+      ],
+    );
   }
 
   pw.Widget _header({required pw.MemoryImage logoUfcg, required pw.MemoryImage logoPet, required pw.MemoryImage petita}) {
