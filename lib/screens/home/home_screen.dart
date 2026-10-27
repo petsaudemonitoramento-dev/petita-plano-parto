@@ -1,9 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../config/app_info.dart';
 import '../../config/app_routes.dart';
-import '../../config/app_theme.dart';
 import '../../services/storage_service.dart';
-import '../../widgets/app_button.dart';
 import '../../widgets/petita_animated_mascot.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -73,18 +71,18 @@ class _HomeScreenState extends State<HomeScreen> {
                 gradient: const LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight,
                   colors: [Color(0xFF6332AB), Color(0xFF9B4DE0), Color(0xFFF268AA)]),
                 borderRadius: BorderRadius.circular(34),
-                boxShadow: [BoxShadow(color: const Color(0xFF8C46C9).withOpacity(0.27),
+                boxShadow: [BoxShadow(color: const Color(0xFF8C46C9).withAlpha((255 * 0.27).round()),
                   blurRadius: 32, offset: const Offset(0, 15))],
               ),
               child: Stack(children: [
                 Positioned(right: -38, top: -38, child: Container(width: 155, height: 155,
-                  decoration: BoxDecoration(shape: BoxShape.circle, color: Colors.white.withOpacity(0.10)))),
+                  decoration: BoxDecoration(shape: BoxShape.circle, color: Colors.white.withAlpha((255 * 0.10).round())))),
                 Positioned(left: -50, bottom: 20, child: Container(width: 115, height: 115,
-                  decoration: BoxDecoration(shape: BoxShape.circle, color: Colors.white.withOpacity(0.08)))),
+                  decoration: BoxDecoration(shape: BoxShape.circle, color: Colors.white.withAlpha((255 * 0.08).round())))),
                 Padding(padding: const EdgeInsets.fromLTRB(20, 18, 20, 24),
                   child: Column(children: [
                     Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-                      Icon(Icons.auto_awesome_rounded, size: 14, color: Colors.white.withOpacity(0.9)),
+                      Icon(Icons.auto_awesome_rounded, size: 14, color: Colors.white.withAlpha((255 * 0.9).round())),
                       const SizedBox(width: 7),
                       const Text('SUA JORNADA COMEÇA AQUI', style: TextStyle(
                         color: Colors.white, fontSize: 11, letterSpacing: 1.3, fontWeight: FontWeight.w800)),
@@ -99,7 +97,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     const SizedBox(height: 12),
                     Text('Um espaço seguro para conhecer suas opções e construir seu plano de parto com carinho.',
                       textAlign: TextAlign.center, style: TextStyle(
-                        fontSize: 14, height: 1.5, color: Colors.white.withOpacity(0.95))),
+                        fontSize: 14, height: 1.5, color: Colors.white.withAlpha((255 * 0.95).round()))),
                     const SizedBox(height: 20),
                     SizedBox(width: double.infinity, child: FilledButton.icon(
                       onPressed: _startChat,

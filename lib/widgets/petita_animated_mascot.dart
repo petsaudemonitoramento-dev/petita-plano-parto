@@ -71,7 +71,7 @@ class _PetitaAnimatedMascotState extends State<PetitaAnimatedMascot>
                 shape: BoxShape.circle,
                 gradient: RadialGradient(colors: [
                   const Color(0xFFFFE5ED),
-                  const Color(0xFFFFF6F8).withOpacity(0.3),
+                  const Color(0xFFFFF6F8).withAlpha((255 * 0.3).round()),
                 ]),
               ),
             ),
@@ -105,7 +105,7 @@ class _PetitaMotionPainter extends CustomPainter {
     // Uma animação articulada requer camadas reais.
     // Pálpebras no próprio visor; aparecem apenas durante a piscada.
     if (blink > 0.015) {
-      final face = Paint()..color = const Color(0xFF25191F).withOpacity(blink * 0.98);
+      final face = Paint()..color = const Color(0xFF25191F).withAlpha((255 * (blink * 0.98)).round());
       for (final eye in [const Offset(0.367, 0.367), const Offset(0.593, 0.365)]) {
         final center = Offset(size.width * eye.dx, size.height * eye.dy);
         canvas.drawOval(Rect.fromCenter(

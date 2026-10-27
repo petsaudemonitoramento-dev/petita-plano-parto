@@ -169,20 +169,6 @@ class _ChatScreenState extends State<ChatScreen> {
     _showCurrentQuestion();
   }
 
-  IconData _sectionIcon(String section) {
-    final s = section.toLowerCase();
-    if (s.contains('gestante')) return Icons.badge_outlined;
-    if (s.contains('ubs')) return Icons.local_hospital_outlined;
-    if (s.contains('acompanhante')) return Icons.favorite_border;
-    if (s.contains('trabalho')) return Icons.directions_walk_outlined;
-    if (s.contains('alívio') || s.contains('dor')) return Icons.spa_outlined;
-    if (s.contains('nascimento')) return Icons.child_care_outlined;
-    if (s.contains('bebê')) return Icons.baby_changing_station_outlined;
-    if (s.contains('cesárea')) return Icons.medical_services_outlined;
-    if (s.contains('observ')) return Icons.chat_bubble_outline;
-    return Icons.auto_awesome_outlined;
-  }
-
   Future<void> _showCurrentQuestion() async {
     if (_currentQuestion < 0 || _currentQuestion >= _questions.length) return;
     _setPetitaSearching(true);
@@ -623,7 +609,7 @@ class _ChatHeader extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
       decoration: BoxDecoration(
         gradient: const LinearGradient(colors: [Color(0xFF6332AB), Color(0xFFAB53D8), Color(0xFFE56BAC)]),
-        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 12, offset: const Offset(0, 5))],
+        boxShadow: [BoxShadow(color: Colors.black.withAlpha((255 * 0.04).round()), blurRadius: 12, offset: const Offset(0, 5))],
       ),
       child: Column(children: [
         Row(children: [
@@ -632,7 +618,7 @@ class _ChatHeader extends StatelessWidget {
             borderRadius: BorderRadius.circular(18),
             child: const Padding(padding: EdgeInsets.all(8), child: Icon(Icons.arrow_back, color: Colors.white)),
           ),
-          Container(padding: const EdgeInsets.all(3), decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16), boxShadow: [BoxShadow(color: AppColors.primaryPink.withOpacity(0.14), blurRadius: 12)]), child: CircleAvatar(radius: 19, backgroundColor: AppColors.softPink, child: ClipOval(child: Image.asset('assets/images/petita.png', fit: BoxFit.cover)))),
+          Container(padding: const EdgeInsets.all(3), decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16), boxShadow: [BoxShadow(color: AppColors.primaryPink.withAlpha((255 * 0.14).round()), blurRadius: 12)]), child: CircleAvatar(radius: 19, backgroundColor: AppColors.softPink, child: ClipOval(child: Image.asset('assets/images/petita.png', fit: BoxFit.cover)))),
           const SizedBox(width: 10),
           const Expanded(
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
@@ -684,7 +670,7 @@ class _PetitaChatBubble extends StatelessWidget {
           bottomRight: Radius.circular(isUser ? 6 : 20),
         ),
         border: isUser ? null : Border.all(color: const Color(0xFFEDE3F8)),
-        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 8, offset: const Offset(0, 3))],
+        boxShadow: [BoxShadow(color: Colors.black.withAlpha((255 * 0.04).round()), blurRadius: 8, offset: const Offset(0, 3))],
       ),
       child: Text(text, style: TextStyle(color: isUser ? Colors.white : AppColors.textPrimary, height: 1.28, fontWeight: isUser ? FontWeight.w700 : FontWeight.w500)),
     );
@@ -773,8 +759,8 @@ class _ChoicePill extends StatelessWidget {
         decoration: BoxDecoration(
           color: filled ? AppColors.primaryPink : (help ? const Color(0xFFFFF0DC) : Colors.white),
           borderRadius: BorderRadius.circular(18),
-          border: Border.all(color: help ? const Color(0xFFE6A34E) : AppColors.primaryPink.withOpacity(0.7)),
-          boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.025), blurRadius: 6, offset: const Offset(0, 3))],
+          border: Border.all(color: help ? const Color(0xFFE6A34E) : AppColors.primaryPink.withAlpha((255 * 0.7).round())),
+          boxShadow: [BoxShadow(color: Colors.black.withAlpha((255 * 0.025).round()), blurRadius: 6, offset: const Offset(0, 3))],
         ),
         constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width - 36),
         child: Row(mainAxisSize: MainAxisSize.max, children: [
@@ -882,7 +868,7 @@ class _ConfirmAnonymousSendDialogState extends State<_ConfirmAnonymousSendDialog
             decoration: BoxDecoration(
               color: AppColors.softPink,
               borderRadius: BorderRadius.circular(14),
-              border: Border.all(color: AppColors.primaryPink.withOpacity(0.35)),
+              border: Border.all(color: AppColors.primaryPink.withAlpha((255 * 0.35).round())),
             ),
             child: const Text(
               'Sua dúvida será encaminhada de forma anônima. A Equipe UBS não verá seu nome, e-mail, telefone, CPF, cartão SUS ou plano completo.',
@@ -960,7 +946,7 @@ class _QuestionToUbsDialogState extends State<_QuestionToUbsDialog> {
               decoration: BoxDecoration(
                 color: AppColors.softPink,
                 borderRadius: BorderRadius.circular(14),
-                border: Border.all(color: AppColors.primaryPink.withOpacity(0.35)),
+                border: Border.all(color: AppColors.primaryPink.withAlpha((255 * 0.35).round())),
               ),
               child: const Text(
                 'Este canal não é atendimento de urgência. As respostas dependem da disponibilidade da UBS e podem não ser imediatas. Em caso de sinais de alerta, procure uma maternidade, pronto atendimento ou serviço de urgência.',
@@ -969,7 +955,7 @@ class _QuestionToUbsDialogState extends State<_QuestionToUbsDialog> {
             ),
             const SizedBox(height: 14),
             DropdownButtonFormField<String>(
-              value: _category,
+              initialValue: _category,
               items: (widget.categories.isEmpty
                       ? const ['Plano de Parto', 'Sinais de atenção', 'Trabalho de parto', 'Nascimento', 'Cuidados com o bebê', 'Pós-parto', 'Outros']
                       : widget.categories)
@@ -982,9 +968,15 @@ class _QuestionToUbsDialogState extends State<_QuestionToUbsDialog> {
             TextField(controller: _questionController, maxLines: 4, onChanged: (_) => setState(() {}), decoration: const InputDecoration(labelText: 'Digite sua dúvida')),
             const SizedBox(height: 12),
             const Text('Como você classifica sua dúvida?', style: TextStyle(fontWeight: FontWeight.w900, color: AppColors.petDarkBlue)),
-            RadioListTile<String>(value: 'low', groupValue: _risk, onChanged: (v) => setState(() => _risk = v ?? 'low'), title: const Text('Baixo risco'), subtitle: const Text('Dúvida geral, educativa ou sobre Plano de Parto.')),
-            RadioListTile<String>(value: 'medium', groupValue: _risk, onChanged: (v) => setState(() => _risk = v ?? 'medium'), title: const Text('Médio risco'), subtitle: const Text('Estou preocupada, mas sem sinais de urgência.')),
-            RadioListTile<String>(value: 'high', groupValue: _risk, onChanged: (v) => setState(() => _risk = v ?? 'high'), title: const Text('Alto risco'), subtitle: const Text('Tenho sintomas importantes ou insegurança sobre procurar atendimento.')),
+            RadioGroup<String>(
+              groupValue: _risk,
+              onChanged: (value) => setState(() => _risk = value ?? _risk),
+              child: Column(children: [
+                RadioListTile<String>(value: 'low', title: const Text('Baixo risco'), subtitle: const Text('Dúvida geral, educativa ou sobre Plano de Parto.')),
+                RadioListTile<String>(value: 'medium', title: const Text('Médio risco'), subtitle: const Text('Estou preocupada, mas sem sinais de urgência.')),
+                RadioListTile<String>(value: 'high', title: const Text('Alto risco'), subtitle: const Text('Tenho sintomas importantes ou insegurança sobre procurar atendimento.')),
+              ]),
+            ),
             const SizedBox(height: 8),
             const Text('Você apresenta algum destes sinais agora?', style: TextStyle(fontWeight: FontWeight.w900, color: AppColors.petDarkBlue)),
             ..._warnings.map((warning) => CheckboxListTile(

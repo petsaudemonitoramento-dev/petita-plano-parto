@@ -91,7 +91,7 @@ class _MyQuestionsScreenState extends State<MyQuestionsScreen> {
     return Card(
       elevation: 0,
       margin: const EdgeInsets.only(bottom: 12),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18), side: BorderSide(color: color.withOpacity(0.35))),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18), side: BorderSide(color: color.withAlpha((255 * 0.35).round()))),
       child: InkWell(
         borderRadius: BorderRadius.circular(18),
         onTap: () => _openQuestion(question),

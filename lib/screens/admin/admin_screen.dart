@@ -402,7 +402,7 @@ class _AdminScreenState extends State<AdminScreen> {
         if (_teamRequests.isEmpty) const Text('Nenhuma solicitação pendente no momento.'),
         ..._teamRequests.map((request) => Card(
               elevation: 0,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16), side: BorderSide(color: AppColors.primaryPink.withOpacity(0.25))),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16), side: BorderSide(color: AppColors.primaryPink.withAlpha((255 * 0.25).round()))),
               child: Padding(
                 padding: const EdgeInsets.all(12),
                 child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
@@ -433,7 +433,7 @@ class _AdminScreenState extends State<AdminScreen> {
       ]));
 
   Widget _categoryDropdown({String label = 'Categoria vinculada'}) => DropdownButtonFormField<String>(
-        value: _selectedCategory,
+        initialValue: _selectedCategory,
         isExpanded: true,
         items: _categories.map((category) => DropdownMenuItem(value: category.name, child: Text(category.name))).toList(),
         onChanged: (value) => setState(() => _selectedCategory = value),
@@ -521,7 +521,7 @@ class _AdminScreenState extends State<AdminScreen> {
     return Card(
       elevation: 0,
       margin: const EdgeInsets.only(top: 10),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16), side: BorderSide(color: statusColor.withOpacity(0.35))),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16), side: BorderSide(color: statusColor.withAlpha((255 * 0.35).round()))),
       child: Padding(
         padding: const EdgeInsets.all(12),
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
