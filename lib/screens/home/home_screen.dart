@@ -94,7 +94,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     const Text('Olá, eu sou a Petita!', textAlign: TextAlign.center,
                       style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w700)),
                     const SizedBox(height: 8),
-                    const Text('O seu parto.\nA sua voz.', textAlign: TextAlign.center,
+                    const Text('Seu plano de parto,\ncom carinho.', textAlign: TextAlign.center,
                       style: TextStyle(fontSize: 36, height: 1.08, fontWeight: FontWeight.w900, color: Colors.white)),
                     const SizedBox(height: 12),
                     Text('Um espaço seguro para conhecer suas opções e construir seu plano de parto com carinho.',
