@@ -13,7 +13,7 @@ class _PetitaAnimatedMascotState extends State<PetitaAnimatedMascot> with Single
   @override
   void initState() {
     super.initState();
-    _motion = AnimationController(vsync: this, duration: const Duration(milliseconds: 3400))..repeat(reverse: true);
+    _motion = AnimationController(vsync: this, duration: const Duration(milliseconds: 5400))..repeat();
   }
   @override
   void dispose() { _motion.dispose(); super.dispose(); }
@@ -25,18 +25,20 @@ class _PetitaAnimatedMascotState extends State<PetitaAnimatedMascot> with Single
       child: AnimatedBuilder(
         animation: _motion,
         builder: (context, child) {
-          final t = reduceMotion ? 0.5 : _motion.value;
+          final t = reduceMotion ? 0.0 : _motion.value;
+          final breathing = reduceMotion ? 0.0 : math.sin(t * 2 * math.pi);
+          final accent = reduceMotion ? 0.0 : math.sin(t * 2 * math.pi);
           return Stack(alignment: Alignment.center, children: [
             Container(
               width: widget.size + 14, height: widget.size + 14,
               decoration: BoxDecoration(shape: BoxShape.circle,
                 gradient: RadialGradient(colors: [const Color(0xFFFFE5ED), const Color(0xFFFFF6F8).withOpacity(0.3)])),
             ),
-            Positioned(left: 8, top: 22 + math.sin(t * math.pi) * 6,
+            Positioned(left: 8, top: 22 + accent * 2,
               child: const Icon(Icons.auto_awesome, color: Color(0xFFF07899), size: 22)),
-            Positioned(right: 6, bottom: 35 - math.sin(t * math.pi) * 5,
+            Positioned(right: 6, bottom: 35 - accent * 2,
               child: const Icon(Icons.favorite, color: Color(0xFFF8A7BA), size: 17)),
-            Transform.translate(offset: Offset(0, -5 * math.sin(t * math.pi)),
+            Transform.scale(scale: 1 + breathing * 0.004,
               child: Image.asset('assets/images/petita.png', width: widget.size, height: widget.size, fit: BoxFit.contain)),
           ]);
         },
