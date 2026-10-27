@@ -36,76 +36,138 @@ class PdfService {
     final petita = pw.MemoryImage((await rootBundle.load('assets/images/petita.png')).buffer.asUint8List());
     final map = {for (final a in answers) a.questionId: a.values};
 
-    doc.addPage(
-      pw.Page(
-        pageFormat: PdfPageFormat.a4,
-        margin: const pw.EdgeInsets.fromLTRB(18, 14, 18, 12),
-        build: (context) => _singlePage(
-          logoUfcg: logoUfcg,
-          logoPet: logoPet,
-          logoPetAvatar: logoPetAvatar,
-          petita: petita,
-          map: map,
-        ),
-      ),
-    );
-    return doc.save();
+    final paragraphs = _declarationParagraphs(map);
+    // Reduz a fonte apenas quando necessário, sem suprimir escolhas.
+    Object? lastError;
+    for (final fontSize in [10.0, 9.5, 9.0, 8.5, 8.0]) {
+      final candidate = pw.Document();
+      try {
+        candidate.addPage(pw.Page(
+          pageFormat: PdfPageFormat.a4,
+          margin: const pw.EdgeInsets.fromLTRB(30, 25, 30, 24),
+          build: (context) => _declarationPage(
+            logoUfcg: logoUfcg,
+            logoPet: logoPet,
+            logoPetAvatar: logoPetAvatar,
+            petita: petita,
+            paragraphs: paragraphs,
+            fontSize: fontSize,
+          ),
+        ));
+        return await candidate.save();
+      } catch (error) {
+        lastError = error;
+      }
+    }
+    throw StateError('O texto completo não coube em uma página A4 com legibilidade mínima. Revise as respostas extensas antes de gerar o documento. Detalhe: $lastError');
   }
 
-  pw.Widget _singlePage({
+  pw.Widget _declarationPage({
     required pw.MemoryImage logoUfcg,
     required pw.MemoryImage logoPet,
     required pw.MemoryImage logoPetAvatar,
     required pw.MemoryImage petita,
-    required Map<String, List<String>> map,
+    required List<String> paragraphs,
+    required double fontSize,
   }) {
-    final nome = _value(map, 'nome_gestante', 'Não informado');
-    final dpp = _value(map, 'dpp', 'Não informada');
-    final ubs = _value(map, 'ubs_referencia', 'Não informada');
-    final acompanhante = _value(map, 'acompanhante_principal', 'Não informado');
-    final data = _todayPtBr();
-
     return pw.Column(
       crossAxisAlignment: pw.CrossAxisAlignment.stretch,
       children: [
-        _header(logoUfcg: logoUfcg, logoPet: logoPet, petita: petita),
+        pw.Row(mainAxisAlignment: pw.MainAxisAlignment.spaceBetween, children: [
+          pw.Image(logoUfcg, height: 39, width: 90, fit: pw.BoxFit.contain),
+          pw.Column(children: [
+            pw.Text('PLANO DE PARTO', style: pw.TextStyle(fontSize: 16, fontWeight: pw.FontWeight.bold, color: _darkBlue)),
+            pw.Text('Declaração de preferências da gestante', style: pw.TextStyle(fontSize: 9, color: _text)),
+          ]),
+          pw.Image(logoPet, height: 39, width: 90, fit: pw.BoxFit.contain),
+        ]),
+        pw.SizedBox(height: 9),
+        pw.Container(height: 1, color: _borderPink),
+        pw.SizedBox(height: 14),
+        ...paragraphs.map((paragraph) => pw.Padding(
+          padding: const pw.EdgeInsets.only(bottom: 10),
+          child: pw.Text(
+            paragraph,
+            textAlign: pw.TextAlign.justify,
+            style: pw.TextStyle(fontSize: fontSize, color: _text, lineSpacing: 2),
+          ),
+        )),
         pw.SizedBox(height: 5),
-        _dataBox(nome: nome, dpp: dpp, ubs: ubs, acompanhante: acompanhante, data: data),
-        pw.SizedBox(height: 8),
-        pw.Row(
-          crossAxisAlignment: pw.CrossAxisAlignment.start,
-          children: [
-            _sectionCard(number: 2, title: 'Acompanhante e apoio', bullets: _acompanhanteBullets(map, acompanhante)),
-            pw.SizedBox(width: 8),
-            _sectionCard(number: 3, title: 'Trabalho de parto', bullets: _trabalhoBullets(map)),
-            pw.SizedBox(width: 8),
-            _sectionCard(number: 4, title: 'Alívio da dor', bullets: _alivioBullets(map)),
-          ],
-        ),
-        pw.SizedBox(height: 8),
-        pw.Row(
-          crossAxisAlignment: pw.CrossAxisAlignment.start,
-          children: [
-            _sectionCard(number: 5, title: 'Nascimento', bullets: _nascimentoBullets(map)),
-            pw.SizedBox(width: 8),
-            _sectionCard(number: 6, title: 'Cuidados com o bebê', bullets: _bebeBullets(map)),
-            pw.SizedBox(width: 8),
-            _sectionCard(number: 7, title: 'Em caso de cesárea', bullets: _cesareaBullets(map)),
-          ],
-        ),
-        pw.SizedBox(height: 8),
-        _observationsBox(map),
-        pw.SizedBox(height: 7),
-        _noteBox(),
-        pw.SizedBox(height: 30),
-        pw.Row(
-          mainAxisAlignment: pw.MainAxisAlignment.spaceAround,
-          children: [_signature('Gestante'), _signature('Profissional/Equipe')],
+        pw.Text(
+          'Este plano expressa minhas preferências e não substitui o diálogo, o consentimento informado para procedimentos ou a avaliação clínica. Solicito que qualquer mudança necessária seja explicada e discutida comigo, sempre que possível.',
+          textAlign: pw.TextAlign.justify,
+          style: pw.TextStyle(fontSize: fontSize - 0.3, color: _darkBlue),
         ),
         pw.Spacer(),
+        pw.Text('Local: ____________________________________    Data: ____/____/________',
+          style: pw.TextStyle(fontSize: 9, color: _text)),
+        pw.SizedBox(height: 31),
+        pw.Row(mainAxisAlignment: pw.MainAxisAlignment.spaceBetween, children: [
+          _signature('Assinatura da gestante'),
+          _signature('Assinatura do(a) profissional de saúde'),
+        ]),
+        pw.SizedBox(height: 16),
         _footer(logoPetAvatar),
       ],
     );
+  }
+
+  List<String> _declarationParagraphs(Map<String, List<String>> map) {
+    final name = _selected(map, 'nome_gestante');
+    final opening = StringBuffer('Eu, ${name == null || name.toLowerCase().contains('prefiro não informar') ? '________________________________' : name}, por meio deste Plano de Parto, manifesto minhas preferências para o trabalho de parto, o nascimento e os cuidados iniciais com meu bebê.');
+    final dpp = _selected(map, 'dpp');
+    final ubs = _selected(map, 'ubs_referencia');
+    if (dpp != null) opening.write(' Minha data provável do parto é $dpp.');
+    if (ubs != null) opening.write(' Minha unidade de referência é $ubs.');
+    final paragraphs = <String>[opening.toString()];
+
+    void add(String intro, List<List<String>> fields) {
+      final parts = <String>[];
+      for (final field in fields) {
+        final value = _selected(map, field[0]);
+        if (value != null && value.isNotEmpty) parts.add('${field[1]}: $value');
+      }
+      if (parts.isNotEmpty) paragraphs.add('$intro ${parts.join('; ')}.');
+    }
+
+    add('Sobre o acompanhamento e a comunicação com a equipe, registro as seguintes escolhas:', [
+      ['acompanhante_principal', 'acompanhante'],
+      ['doula', 'apoio de doula'],
+      ['acompanhamento_continuo', 'presença durante o trabalho de parto'],
+      ['apoio_comunicacao', 'apoio desejado'],
+      ['comunicacao_equipe', 'forma de comunicação'],
+    ]);
+    add('Durante o trabalho de parto, minhas preferências são:', [
+      ['movimentacao', 'movimentação'],
+      ['posicao_contracoes', 'posições durante as contrações'],
+      ['alimentacao', 'alimentação e líquidos'],
+      ['ambiente', 'ambiente'],
+      ['alivio_dor', 'alívio da dor'],
+      ['informacao_procedimentos', 'informações sobre procedimentos'],
+    ]);
+    add('No momento do nascimento, manifesto minhas decisões e preferências:', [
+      ['cenario_parto', 'possibilidade de parto'],
+      ['posicao_nascimento', 'posição para o nascimento'],
+      ['episiotomia', 'episiotomia'],
+      ['toque_vaginal', 'exames de toque'],
+      ['kristeller', 'manobra de Kristeller'],
+      ['cordao_umbilical', 'clampeamento do cordão'],
+      ['cesarea', 'em caso de cesárea'],
+    ]);
+    add('Após o nascimento, em relação ao meu bebê e ao pós-parto, desejo:', [
+      ['bebe_primeira_hora', 'primeira hora'],
+      ['cuidados_nao_urgentes', 'cuidados não urgentes'],
+      ['alojamento_conjunto', 'permanência com meu bebê'],
+      ['orientacoes_posparto', 'orientações antes da alta'],
+    ]);
+    add('Também registro estas preferências pessoais:', [
+      ['privacidade', 'privacidade'],
+      ['registros_fotograficos', 'fotografias'],
+      ['preferencias_culturais', 'preferências culturais ou religiosas'],
+      ['prioridade_parto', 'prioridades'],
+      ['observacoes_finais', 'observações adicionais'],
+    ]);
+    return paragraphs;
   }
 
   pw.Widget _header({required pw.MemoryImage logoUfcg, required pw.MemoryImage logoPet, required pw.MemoryImage petita}) {
