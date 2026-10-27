@@ -191,7 +191,7 @@ class _ChatScreenState extends State<ChatScreen> {
     }
     final intro = _introForQuestion(q);
     setState(() {
-      if (intro.isNotEmpty) {
+      if (intro.isNotEmpty && (_currentQuestion == 0 || _questions[_currentQuestion - 1].section != q.section)) {
         _messages.add(ChatMessage(text: intro, isUser: false));
       }
       _messages.add(ChatMessage(
@@ -527,7 +527,7 @@ class _ChatScreenState extends State<ChatScreen> {
     if (_loading) return const Scaffold(body: Center(child: CircularProgressIndicator()));
     final activeOptionsIndex = _messages.lastIndexWhere((message) => !message.isUser);
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: const Color(0xFFFFFAFB),
       body: SafeArea(
         child: Column(
           children: [
@@ -541,7 +541,7 @@ class _ChatScreenState extends State<ChatScreen> {
             Expanded(
               child: ListView.builder(
                 controller: _scrollController,
-                padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+                padding: const EdgeInsets.fromLTRB(14, 14, 14, 14),
                 itemCount: _messages.length + (_petitaSearching ? 1 : 0),
                 itemBuilder: (context, index) {
                   if (_petitaSearching && index == _messages.length) {
@@ -559,11 +559,13 @@ class _ChatScreenState extends State<ChatScreen> {
                           children: msg.options.map((o) {
                             final isSelected = _currentQuestion >= 0 && _questions[_currentQuestion].multiple && _multiSelection.contains(o);
                             final isFinish = o == 'Concluir seleção';
+                            final isHelp = o == 'Quero entender melhor';
                             return _ChoicePill(
                               label: o,
-                              icon: isFinish ? Icons.check_circle_outline : _optionIcon(o),
+                              icon: isHelp ? Icons.lightbulb_outline_rounded : (isFinish ? Icons.check_circle_outline : _optionIcon(o)),
                               selected: isSelected,
                               primary: isFinish,
+                              help: isHelp,
                               onTap: () => _handleOption(o),
                             );
                           }).toList(),
@@ -613,7 +615,7 @@ class _ChatHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.fromLTRB(16, 12, 16, 14),
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
       decoration: BoxDecoration(
         color: AppColors.background,
         boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 12, offset: const Offset(0, 5))],
@@ -625,7 +627,7 @@ class _ChatHeader extends StatelessWidget {
             borderRadius: BorderRadius.circular(18),
             child: const Padding(padding: EdgeInsets.all(8), child: Icon(Icons.arrow_back, color: AppColors.primaryPink)),
           ),
-          CircleAvatar(radius: 20, backgroundColor: AppColors.softPink, child: ClipOval(child: Image.asset('assets/images/petita.png', fit: BoxFit.cover))),
+          Container(padding: const EdgeInsets.all(3), decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16), boxShadow: [BoxShadow(color: AppColors.primaryPink.withOpacity(0.14), blurRadius: 12)]), child: CircleAvatar(radius: 19, backgroundColor: AppColors.softPink, child: ClipOval(child: Image.asset('assets/images/petita.png', fit: BoxFit.cover)))),
           const SizedBox(width: 10),
           const Expanded(
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
@@ -746,7 +748,7 @@ class _PetitaTypingBubble extends StatelessWidget {
 }
 
 class _ChoicePill extends StatelessWidget {
-  const _ChoicePill({required this.label, required this.icon, required this.onTap, this.selected = false, this.primary = false});
+  const _ChoicePill({required this.label, required this.icon, required this.onTap, this.selected = false, this.primary = false, this.help = false});
   final String label;
   final IconData icon;
   final VoidCallback onTap;
