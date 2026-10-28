@@ -227,7 +227,7 @@ class _ChatScreenState extends State<ChatScreen> {
     }
     final intro = _introForQuestion(q);
     setState(() {
-      _textInputEnabled = q.options.isEmpty;
+      _textInputEnabled = q.options.isEmpty || q.id == 'nome_gestante' || q.id == 'observacoes_finais';
       if (intro.isNotEmpty && (_currentQuestion == 0 || _questions[_currentQuestion - 1].section != q.section)) {
         _messages.add(ChatMessage(text: intro, isUser: false));
       }
