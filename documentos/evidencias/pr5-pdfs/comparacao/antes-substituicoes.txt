@@ -1,0 +1,4 @@
+name                                 object ID substitute font                      substitute font file
+------------------------------------ --------- ------------------------------------ ------------------------------------
+Helvetica-Bold                            5  0 NimbusSans-Bold                      /usr/share/fonts/opentype/urw-base35/NimbusSans-Bold.otf
+Helvetica                                 7  0 NimbusSans-Regular                   /usr/share/fonts/opentype/urw-base35/NimbusSans-Regular.otf

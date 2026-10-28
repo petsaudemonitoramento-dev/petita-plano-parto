@@ -23,10 +23,16 @@ class StorageService {
 
   Future<List<BirthPlanAnswer>> loadAnswers() async {
     final prefs = await SharedPreferences.getInstance();
-    final raw = prefs.getString(_answersKey);
-    if (raw == null) return [];
-    final data = jsonDecode(raw) as List<dynamic>;
-    return data.map((item) => BirthPlanAnswer.fromJson(item as Map<String, dynamic>)).toList();
+    try {
+      final raw = prefs.getString(_answersKey);
+      if (raw == null) return [];
+      final data = jsonDecode(raw) as List<dynamic>;
+      return data.map((item) => BirthPlanAnswer.fromJson(item as Map<String, dynamic>)).toList();
+    } on FormatException {
+      return [];
+    } on TypeError {
+      return [];
+    }
   }
 
   Future<void> clearAnswers() async {
@@ -78,9 +84,15 @@ class StorageService {
 
   Future<UserProfile?> loadProfile() async {
     final prefs = await SharedPreferences.getInstance();
-    final raw = prefs.getString(_profileKey);
-    if (raw == null) return null;
-    return UserProfile.fromJson(jsonDecode(raw) as Map<String, dynamic>);
+    try {
+      final raw = prefs.getString(_profileKey);
+      if (raw == null) return null;
+      return UserProfile.fromJson(jsonDecode(raw) as Map<String, dynamic>);
+    } on FormatException {
+      return null;
+    } on TypeError {
+      return null;
+    }
   }
 
   Future<void> clearProfile() async {

@@ -1,0 +1,248 @@
+[
+  {
+    "questionId": "nome_gestante",
+    "values": [
+      "Lívia Conceição D'Ávila (TESTE SINTÉTICO)"
+    ]
+  },
+  {
+    "questionId": "dpp",
+    "values": [
+      "01/12/2026"
+    ]
+  },
+  {
+    "questionId": "semanas_gestacao",
+    "values": [
+      "Menos de 12 semanas"
+    ]
+  },
+  {
+    "questionId": "ubs_referencia",
+    "values": [
+      "UBS Sintética São José"
+    ]
+  },
+  {
+    "questionId": "cenario_parto",
+    "values": [
+      "Parto vaginal"
+    ]
+  },
+  {
+    "questionId": "prioridade_parto",
+    "values": [
+      "Sentir-me segura",
+      "Ter autonomia nas decisões",
+      "Ter apoio emocional",
+      "Sentir o mínimo de dor possível",
+      "Ter contato imediato com o bebê",
+      "Outro"
+    ]
+  },
+  {
+    "questionId": "acompanhante_principal",
+    "values": [
+      "João — acompanhante sintético"
+    ]
+  },
+  {
+    "questionId": "doula",
+    "values": [
+      "Sim"
+    ]
+  },
+  {
+    "questionId": "apoio_comunicacao",
+    "values": [
+      "Sim, desejo apoio emocional, privacidade e comunicação clara"
+    ]
+  },
+  {
+    "questionId": "acompanhamento_continuo",
+    "values": [
+      "Sim, durante todo o trabalho de parto"
+    ]
+  },
+  {
+    "questionId": "comunicacao_equipe",
+    "values": [
+      "Explicando cada procedimento antes de realizá-lo"
+    ]
+  },
+  {
+    "questionId": "movimentacao",
+    "values": [
+      "Sim, gostaria de ter liberdade para me movimentar"
+    ]
+  },
+  {
+    "questionId": "posicao_contracoes",
+    "values": [
+      "Em pé",
+      "Caminhando",
+      "Sentada",
+      "Agachada/de cócoras",
+      "De joelhos",
+      "Apoiando-me na bola",
+      "De quatro apoios",
+      "Deitada de lado",
+      "Semi-sentada",
+      "Deitada de costas",
+      "Quero mudar de posição conforme a necessidade",
+      "Ainda não sei"
+    ]
+  },
+  {
+    "questionId": "alimentacao",
+    "values": [
+      "Água",
+      "Suco de frutas",
+      "Chás",
+      "Água de coco",
+      "Alimentação leve",
+      "Não desejo registrar"
+    ]
+  },
+  {
+    "questionId": "ambiente",
+    "values": [
+      "Ambiente calmo e acolhedor",
+      "Pouca luminosidade",
+      "Pouco barulho",
+      "Privacidade",
+      "Música de minha escolha",
+      "Não desejo registrar"
+    ]
+  },
+  {
+    "questionId": "informacao_procedimentos",
+    "values": [
+      "Sim, desejo ser informada antes de qualquer procedimento"
+    ]
+  },
+  {
+    "questionId": "alivio_dor",
+    "values": [
+      "Banho morno",
+      "Massagem",
+      "Exercícios respiratórios",
+      "Bola de parto",
+      "Mudança de posições",
+      "Música",
+      "Compressas mornas",
+      "Ambiente com pouca iluminação",
+      "Analgesia medicamentosa, se indicada e disponível",
+      "Quero decidir no momento"
+    ]
+  },
+  {
+    "questionId": "posicao_nascimento",
+    "values": [
+      "De cócoras/agachada",
+      "Em pé",
+      "Sentada",
+      "De joelhos",
+      "De quatro apoios",
+      "De lado",
+      "Semi-sentada",
+      "Deitada de costas",
+      "Outra posição",
+      "Quero decidir no momento"
+    ]
+  },
+  {
+    "questionId": "episiotomia",
+    "values": [
+      "Sim, desejo evitar"
+    ]
+  },
+  {
+    "questionId": "toque_vaginal",
+    "values": [
+      "Apenas quando forem necessários"
+    ]
+  },
+  {
+    "questionId": "kristeller",
+    "values": [
+      "Sim, gostaria de evitá-la"
+    ]
+  },
+  {
+    "questionId": "cordao_umbilical",
+    "values": [
+      "Sim, gostaria de aguardar o clampeamento, se estiver tudo bem"
+    ]
+  },
+  {
+    "questionId": "bebe_primeira_hora",
+    "values": [
+      "Contato pele a pele imediatamente, se possível",
+      "Amamentação na primeira hora, se possível",
+      "Bebê colocado em meu colo, se possível",
+      "Receber ajuda para iniciar a amamentação",
+      "Gostaria de decidir no momento"
+    ]
+  },
+  {
+    "questionId": "cuidados_nao_urgentes",
+    "values": [
+      "Sim, evitar procedimentos não urgentes antes do primeiro contato"
+    ]
+  },
+  {
+    "questionId": "alojamento_conjunto",
+    "values": [
+      "Sim, gostaria de permanecer com meu bebê"
+    ]
+  },
+  {
+    "questionId": "orientacoes_posparto",
+    "values": [
+      "Cuidados com o bebê",
+      "Amamentação, pega e posições",
+      "Sinais de alerta no pós-parto",
+      "Métodos contraceptivos após o parto",
+      "Todas essas orientações"
+    ]
+  },
+  {
+    "questionId": "cesarea",
+    "values": [
+      "Ser informada sobre a indicação e participar da decisão",
+      "Presença do acompanhante, se possível",
+      "Contato pele a pele quando houver condições",
+      "Amamentação precoce quando houver condições",
+      "Manter braços livres, se possível"
+    ]
+  },
+  {
+    "questionId": "privacidade",
+    "values": [
+      "Ter o mínimo possível de pessoas no ambiente",
+      "Que procedimentos sejam feitos com privacidade",
+      "Ser informada antes da entrada de outras pessoas",
+      "Não tenho preferência",
+      "Outra preferência"
+    ]
+  },
+  {
+    "questionId": "registros_fotograficos",
+    "values": [
+      "Que meu acompanhante registre o nascimento, se permitido"
+    ]
+  },
+  {
+    "questionId": "preferencias_culturais",
+    "values": [
+      "Acolhimento, oração e comunicação clara."
+    ]
+  },
+  {
+    "questionId": "observacoes_finais",
+    "values": [
+      "Este é um relato inteiramente sintético para conferir a leitura, os acentos e a continuidade de uma resposta longa. Este é um relato inteiramente sintético para conferir a leitura, os acentos e a continuidade de uma resposta longa. Este é um relato inteiramente sintético para conferir a leitura, os acentos e a continuidade de uma resposta longa. Este é um relato inteiramente sintético para conferir a leitura, os acentos e a continuidade de uma resposta longa. Este é um relato inteiramente sintético para conferir a leitura, os acentos e a continuidade de uma resposta longa. Este é um relato inteiramente sintético para conferir a leitura, os acentos e a continuidade de uma resposta longa. Este é um relato inteiramente sintético para conferir a leitura, os acentos e a continuidade de uma resposta longa. Este é um relato inteiramente sintético para conferir a leitura, os acentos e a continuidade de uma resposta longa. Este é um relato inteiramente sintético para conferir a leitura, os acentos e a continuidade de uma resposta longa. Este é um relato inteiramente sintético para conferir a leitura, os acentos e a continuidade de uma resposta longa. Este é um relato inteiramente sintético para conferir a leitura, os acentos e a continuidade de uma resposta longa. Este é um relato inteiramente sintético para conferir a leitura, os acentos e a continuidade de uma resposta longa. Este é um relato inteiramente sintético para conferir a leitura, os acentos e a continuidade de uma resposta longa. Este é um relato inteiramente sintético para conferir a leitura, os acentos e a continuidade de uma resposta longa. Este é um relato inteiramente sintético para conferir a leitura, os acentos e a continuidade de uma resposta longa. Este é um relato inteiramente sintético para conferir a leitura, os acentos e a continuidade de uma resposta longa. Este é um relato inteiramente sintético para conferir a leitura, os acentos e a continuidade de uma resposta longa. Este é um relato inteiramente sintético para conferir a leitura, os acentos e a continuidade de uma resposta longa. Este é um relato inteiramente sintético para conferir a leitura, os acentos e a continuidade de uma resposta longa. Este é um relato inteiramente sintético para conferir a leitura, os acentos e a continuidade de uma resposta longa. Este é um relato inteiramente sintético para conferir a leitura, os acentos e a continuidade de uma resposta longa. Este é um relato inteiramente sintético para conferir a leitura, os acentos e a continuidade de uma resposta longa. Este é um relato inteiramente sintético para conferir a leitura, os acentos e a continuidade de uma resposta longa. Este é um relato inteiramente sintético para conferir a leitura, os acentos e a continuidade de uma resposta longa. Este é um relato inteiramente sintético para conferir a leitura, os acentos e a continuidade de uma resposta longa. Este é um relato inteiramente sintético para conferir a leitura, os acentos e a continuidade de uma resposta longa. Este é um relato inteiramente sintético para conferir a leitura, os acentos e a continuidade de uma resposta longa. Este é um relato inteiramente sintético para conferir a leitura, os acentos e a continuidade de uma resposta longa. Este é um relato inteiramente sintético para conferir a leitura, os acentos e a continuidade de uma resposta longa. Este é um relato inteiramente sintético para conferir a leitura, os acentos e a continuidade de uma resposta longa. Este é um relato inteiramente sintético para conferir a leitura, os acentos e a continuidade de uma resposta longa. Este é um relato inteiramente sintético para conferir a leitura, os acentos e a continuidade de uma resposta longa. Este é um relato inteiramente sintético para conferir a leitura, os acentos e a continuidade de uma resposta longa. Este é um relato inteiramente sintético para conferir a leitura, os acentos e a continuidade de uma resposta longa. Este é um relato inteiramente sintético para conferir a leitura, os acentos e a continuidade de uma resposta longa. Este é um relato inteiramente sintético para conferir a leitura, os acentos e a continuidade de uma resposta longa. Este é um relato inteiramente sintético para conferir a leitura, os acentos e a continuidade de uma resposta longa. Este é um relato inteiramente sintético para conferir a leitura, os acentos e a continuidade de uma resposta longa. Este é um relato inteiramente sintético para conferir a leitura, os acentos e a continuidade de uma resposta longa. Este é um relato inteiramente sintético para conferir a leitura, os acentos e a continuidade de uma resposta longa. Este é um relato inteiramente sintético para conferir a leitura, os acentos e a continuidade de uma resposta longa. Este é um relato inteiramente sintético para conferir a leitura, os acentos e a continuidade de uma resposta longa. Este é um relato inteiramente sintético para conferir a leitura, os acentos e a continuidade de uma resposta longa. Este é um relato inteiramente sintético para conferir a leitura, os acentos e a continuidade de uma resposta longa. Este é um relato inteiramente sintético para conferir a leitura, os acentos e a continuidade de uma resposta longa. Este é um relato inteiramente sintético para conferir a leitura, os acentos e a continuidade de uma resposta longa. Este é um relato inteiramente sintético para conferir a leitura, os acentos e a continuidade de uma resposta longa. Este é um relato inteiramente sintético para conferir a leitura, os acentos e a continuidade de uma resposta longa. Este é um relato inteiramente sintético para conferir a leitura, os acentos e a continuidade de uma resposta longa. Este é um relato inteiramente sintético para conferir a leitura, os acentos e a continuidade de uma resposta longa. Este é um relato inteiramente sintético para conferir a leitura, os acentos e a continuidade de uma resposta longa. Este é um relato inteiramente sintético para conferir a leitura, os acentos e a continuidade de uma resposta longa. Este é um relato inteiramente sintético para conferir a leitura, os acentos e a continuidade de uma resposta longa. Este é um relato inteiramente sintético para conferir a leitura, os acentos e a continuidade de uma resposta longa. Este é um relato inteiramente sintético para conferir a leitura, os acentos e a continuidade de uma resposta longa. Este é um relato inteiramente sintético para conferir a leitura, os acentos e a continuidade de uma resposta longa. Este é um relato inteiramente sintético para conferir a leitura, os acentos e a continuidade de uma resposta longa. Este é um relato inteiramente sintético para conferir a leitura, os acentos e a continuidade de uma resposta longa. Este é um relato inteiramente sintético para conferir a leitura, os acentos e a continuidade de uma resposta longa. Este é um relato inteiramente sintético para conferir a leitura, os acentos e a continuidade de uma resposta longa. Este é um relato inteiramente sintético para conferir a leitura, os acentos e a continuidade de uma resposta longa. Este é um relato inteiramente sintético para conferir a leitura, os acentos e a continuidade de uma resposta longa. Este é um relato inteiramente sintético para conferir a leitura, os acentos e a continuidade de uma resposta longa. Este é um relato inteiramente sintético para conferir a leitura, os acentos e a continuidade de uma resposta longa. Este é um relato inteiramente sintético para conferir a leitura, os acentos e a continuidade de uma resposta longa. Este é um relato inteiramente sintético para conferir a leitura, os acentos e a continuidade de uma resposta longa. Este é um relato inteiramente sintético para conferir a leitura, os acentos e a continuidade de uma resposta longa. Este é um relato inteiramente sintético para conferir a leitura, os acentos e a continuidade de uma resposta longa. Este é um relato inteiramente sintético para conferir a leitura, os acentos e a continuidade de uma resposta longa. Este é um relato inteiramente sintético para conferir a leitura, os acentos e a continuidade de uma resposta longa. Este é um relato inteiramente sintético para conferir a leitura, os acentos e a continuidade de uma resposta longa. Este é um relato inteiramente sintético para conferir a leitura, os acentos e a continuidade de uma resposta longa. Este é um relato inteiramente sintético para conferir a leitura, os acentos e a continuidade de uma resposta longa. Este é um relato inteiramente sintético para conferir a leitura, os acentos e a continuidade de uma resposta longa. Este é um relato inteiramente sintético para conferir a leitura, os acentos e a continuidade de uma resposta longa. Este é um relato inteiramente sintético para conferir a leitura, os acentos e a continuidade de uma resposta longa. Este é um relato inteiramente sintético para conferir a leitura, os acentos e a continuidade de uma resposta longa. Este é um relato inteiramente sintético para conferir a leitura, os acentos e a continuidade de uma resposta longa. Este é um relato inteiramente sintético para conferir a leitura, os acentos e a continuidade de uma resposta longa. Este é um relato inteiramente sintético para conferir a leitura, os acentos e a continuidade de uma resposta longa. FIM-DO-RELATO-SINTÉTICO."
+    ]
+  }
+]

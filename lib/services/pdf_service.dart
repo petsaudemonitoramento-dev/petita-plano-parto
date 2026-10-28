@@ -8,6 +8,14 @@ import '../models/birth_plan_question.dart';
 
 enum BirthPlanPdfFormat { declaracao, resumoVisual }
 
+class BirthPlanPdfTooLongException extends StateError {
+  BirthPlanPdfTooLongException() : super(
+    'Seu plano tem mais conteúdo do que cabe em uma página com boa leitura. '
+    'Você pode resumir as respostas ou escolher "Resumo visual e registro completo" para guardar tudo. '
+    'Suas respostas continuam salvas.',
+  );
+}
+
 class PdfService {
   // O PDF não usa glyphs de ícones/emoji. Os marcadores e ícones são vetoriais
   // ou imagens de assets para evitar quadrados/erros de fonte na exportação.
@@ -34,7 +42,16 @@ class PdfService {
     required List<BirthPlanAnswer> answers,
     BirthPlanPdfFormat format = BirthPlanPdfFormat.declaracao,
   }) async {
-    final doc = pw.Document();
+    // Embed both weights of one family; never rely on reader substitutions or
+    // switch families for punctuation in the middle of a paragraph.
+    final regular = pw.Font.ttf(await rootBundle.load('assets/fonts/DejaVuSans.ttf'));
+    final bold = pw.Font.ttf(await rootBundle.load('assets/fonts/DejaVuSans-Bold.ttf'));
+    final theme = pw.ThemeData.withFont(
+      base: regular, bold: bold, italic: regular, boldItalic: bold,
+      fontFallback: const [],
+    // pdf treats wordSpacing as a multiplier: 1 preserves natural spaces.
+    ).copyWith(defaultTextStyle: const pw.TextStyle(letterSpacing: 0, wordSpacing: 1));
+    final doc = pw.Document(theme: theme);
     final logoPet = pw.MemoryImage((await rootBundle.load('assets/images/pet_saude_logo.png')).buffer.asUint8List());
     final logoPetAvatar = pw.MemoryImage((await rootBundle.load('assets/images/pet_saude_avatar.png')).buffer.asUint8List());
     final logoUfcg = pw.MemoryImage((await rootBundle.load('assets/images/ufcg_logo.png')).buffer.asUint8List());
@@ -53,33 +70,51 @@ class PdfService {
           map: map,
         ),
       ));
+      // Preserve the legacy overview and include the full saved record on
+      // following pages: its fixed cards intentionally summarize the content.
+      if (answers.isNotEmpty) {
+        doc.addPage(pw.MultiPage(
+          pageFormat: PdfPageFormat.a4,
+          margin: const pw.EdgeInsets.all(30),
+          header: (_) => pw.Padding(
+            padding: const pw.EdgeInsets.only(bottom: 12),
+            child: pw.Text('Registro completo das respostas',
+              style: pw.TextStyle(fontSize: 16, fontWeight: pw.FontWeight.bold, color: _darkBlue)),
+          ),
+          build: (_) => [
+            for (final question in questions.where((question) => map.containsKey(question.id))) ...[
+              pw.NewPage(freeSpace: 70),
+              pw.Text(question.question, style: pw.TextStyle(fontSize: 11, fontWeight: pw.FontWeight.bold, color: _darkBlue, lineSpacing: 1.5)),
+              pw.SizedBox(height: 4),
+              pw.Text(map[question.id]!.join(', '), style: const pw.TextStyle(fontSize: 11, lineSpacing: 1.5), overflow: pw.TextOverflow.span),
+              pw.SizedBox(height: 12),
+            ],
+          ],
+        ));
+      }
       return doc.save();
     }
 
     final paragraphs = _declarationParagraphs(map);
-    // Reduz a fonte apenas quando necessário, sem suprimir escolhas.
-    Object? lastError;
-    for (final fontSize in [10.0, 9.5, 9.0, 8.5, 8.0]) {
-      final candidate = pw.Document();
-      try {
-        candidate.addPage(pw.Page(
-          pageFormat: PdfPageFormat.a4,
-          margin: const pw.EdgeInsets.fromLTRB(30, 25, 30, 24),
-          build: (context) => _declarationPage(
-            logoUfcg: logoUfcg,
-            logoPet: logoPet,
-            logoPetAvatar: logoPetAvatar,
-            petita: petita,
-            paragraphs: paragraphs,
-            fontSize: fontSize,
-          ),
-        ));
-        return await candidate.save();
-      } catch (error) {
-        lastError = error;
-      }
+    // Keep a readable, fixed 10 pt body. Oversized declarations must use the
+    // complete report rather than reducing the font until the text fits.
+    try {
+      doc.addPage(pw.Page(
+        pageFormat: PdfPageFormat.a4,
+        margin: const pw.EdgeInsets.fromLTRB(30, 25, 30, 24),
+        build: (context) => _declarationPage(
+          logoUfcg: logoUfcg,
+          logoPet: logoPet,
+          logoPetAvatar: logoPetAvatar,
+          petita: petita,
+          paragraphs: paragraphs,
+          fontSize: 10,
+        ),
+      ));
+      return await doc.save();
+    } on StateError {
+      throw BirthPlanPdfTooLongException();
     }
-    throw StateError('O texto completo não coube em uma página A4 com legibilidade mínima. Revise as respostas extensas antes de gerar o documento. Detalhe: $lastError');
   }
 
   pw.Widget _declarationPage({
@@ -90,8 +125,7 @@ class PdfService {
     required List<String> paragraphs,
     required double fontSize,
   }) {
-    return pw.Column(
-      crossAxisAlignment: pw.CrossAxisAlignment.stretch,
+    return _SinglePageColumn(
       children: [
         pw.Row(mainAxisAlignment: pw.MainAxisAlignment.spaceBetween, children: [
           pw.Image(logoUfcg, height: 39, width: 90, fit: pw.BoxFit.contain),
@@ -108,15 +142,15 @@ class PdfService {
           padding: const pw.EdgeInsets.only(bottom: 10),
           child: pw.Text(
             paragraph,
-            textAlign: pw.TextAlign.justify,
+            textAlign: pw.TextAlign.left,
             style: pw.TextStyle(fontSize: fontSize, color: _text, lineSpacing: 2),
           ),
         )),
         pw.SizedBox(height: 5),
         pw.Text(
           'Este plano expressa minhas preferências e não substitui o diálogo, o consentimento informado para procedimentos ou a avaliação clínica. Solicito que qualquer mudança necessária seja explicada e discutida comigo, sempre que possível.',
-          textAlign: pw.TextAlign.justify,
-          style: pw.TextStyle(fontSize: fontSize - 0.3, color: _darkBlue),
+          textAlign: pw.TextAlign.left,
+          style: pw.TextStyle(fontSize: fontSize, color: _darkBlue, lineSpacing: 1.5),
         ),
         pw.Spacer(),
         pw.Text('Local: ____________________________________    Data: ____/____/________',
@@ -139,6 +173,8 @@ class PdfService {
     final ubs = _selected(map, 'ubs_referencia');
     if (dpp != null) opening.write(' Minha data provável do parto é $dpp.');
     if (ubs != null) opening.write(' Minha unidade de referência é $ubs.');
+    final semanas = _selected(map, 'semanas_gestacao');
+    if (semanas != null) opening.write(' Idade gestacional informada: $semanas.');
     final paragraphs = <String>[opening.toString()];
 
     void add(String intro, List<List<String>> fields) {
@@ -203,8 +239,7 @@ class PdfService {
     final acompanhante = _value(map, 'acompanhante_principal', 'Não informado');
     final data = _todayPtBr();
 
-    return pw.Column(
-      crossAxisAlignment: pw.CrossAxisAlignment.stretch,
+    return _SinglePageColumn(
       children: [
         _header(logoUfcg: logoUfcg, logoPet: logoPet, petita: petita),
         pw.SizedBox(height: 5),
@@ -235,7 +270,7 @@ class PdfService {
         _observationsBox(map),
         pw.SizedBox(height: 7),
         _noteBox(),
-        pw.SizedBox(height: 30),
+        pw.SizedBox(height: 18),
         pw.Row(
           mainAxisAlignment: pw.MainAxisAlignment.spaceAround,
           children: [_signature('Gestante'), _signature('Profissional/Equipe')],
@@ -281,13 +316,13 @@ class PdfService {
       pw.Row(
         mainAxisAlignment: pw.MainAxisAlignment.center,
         children: [
-          pw.Text('Gerado pelo aplicativo Plano de Parto ', style: pw.TextStyle(fontSize: 7.8, color: _text)),
-          pw.Text('PET ', style: pw.TextStyle(fontSize: 7.8, color: _petOrange, fontWeight: pw.FontWeight.bold)),
-          pw.Text('Saúde', style: pw.TextStyle(fontSize: 7.8, color: _petBlue, fontWeight: pw.FontWeight.bold)),
-          pw.Text('  -  Assistente virtual Petita', style: pw.TextStyle(fontSize: 7.8, color: _text)),
+          pw.Text('Gerado pelo aplicativo Plano de Parto ', style: pw.TextStyle(fontSize: 8.5, color: _text)),
+          pw.Text('PET ', style: pw.TextStyle(fontSize: 8.5, color: _petOrange, fontWeight: pw.FontWeight.bold)),
+          pw.Text('Saúde', style: pw.TextStyle(fontSize: 8.5, color: _petBlue, fontWeight: pw.FontWeight.bold)),
+          pw.Text('  -  Assistente virtual Petita', style: pw.TextStyle(fontSize: 8.5, color: _text)),
         ],
       ),
-      pw.Align(alignment: pw.Alignment.centerRight, child: pw.Image(petita, height: 60, fit: pw.BoxFit.contain)),
+      pw.Align(alignment: pw.Alignment.centerRight, child: pw.Image(petita, height: 42, fit: pw.BoxFit.contain)),
     ]);
   }
 
@@ -323,9 +358,9 @@ class PdfService {
         child: pw.Row(crossAxisAlignment: pw.CrossAxisAlignment.start, children: [
           _smallSquare(),
           pw.SizedBox(width: 6),
-          pw.Text(label, style: pw.TextStyle(fontSize: 8.2, color: _darkBlue, fontWeight: pw.FontWeight.bold)),
+          pw.Text(label, style: pw.TextStyle(fontSize: 9, color: _darkBlue, fontWeight: pw.FontWeight.bold)),
           pw.SizedBox(width: 8),
-          pw.Expanded(child: pw.Text(value, style: pw.TextStyle(fontSize: 8.2, color: _text))),
+          pw.Expanded(child: _previewText(value, limit: 80, style: pw.TextStyle(fontSize: 9, color: _text))),
         ]),
       );
 
@@ -341,13 +376,13 @@ class PdfService {
             child: pw.Row(children: [
               _sectionBadge(number),
               pw.SizedBox(width: 6),
-              pw.Expanded(child: pw.Text('$number) $title', style: pw.TextStyle(fontSize: 9.2, fontWeight: pw.FontWeight.bold, color: _pink))),
+              pw.Expanded(child: pw.Text('$number) $title', style: pw.TextStyle(fontSize: 10, fontWeight: pw.FontWeight.bold, color: _pink))),
             ]),
           ),
           pw.Container(height: 0.65, color: _borderPink),
           pw.Padding(
             padding: const pw.EdgeInsets.fromLTRB(10, 7, 8, 6),
-            child: pw.Column(crossAxisAlignment: pw.CrossAxisAlignment.start, children: bullets.take(6).map(_bullet).toList()),
+            child: pw.Column(crossAxisAlignment: pw.CrossAxisAlignment.start, children: bullets.take(4).map((text) => _bullet(text)).toList()),
           ),
         ]),
       ),
@@ -364,12 +399,12 @@ class PdfService {
         ]),
       );
 
-  pw.Widget _bullet(String text) => pw.Padding(
-        padding: const pw.EdgeInsets.only(bottom: 4),
+  pw.Widget _bullet(String text, {int limit = 90}) => pw.Padding(
+        padding: const pw.EdgeInsets.only(bottom: 3),
         child: pw.Row(crossAxisAlignment: pw.CrossAxisAlignment.start, children: [
           pw.Container(width: 3.5, height: 3.5, margin: const pw.EdgeInsets.only(top: 4), decoration: pw.BoxDecoration(color: _pink, shape: pw.BoxShape.circle)),
           pw.SizedBox(width: 6),
-          pw.Expanded(child: pw.Text(text, style: pw.TextStyle(fontSize: 7.15, color: _text, lineSpacing: 1.25))),
+          pw.Expanded(child: _previewText(text, limit: limit, style: pw.TextStyle(fontSize: 9, color: _text, lineSpacing: 1.25))),
         ]),
       );
 
@@ -399,7 +434,7 @@ class PdfService {
           padding: const pw.EdgeInsets.fromLTRB(12, 6, 12, 6),
           child: pw.Column(
             crossAxisAlignment: pw.CrossAxisAlignment.start,
-            children: items.take(3).map(_bullet).toList(),
+            children: items.take(3).map((text) => _bullet(text, limit: 180)).toList(),
           ),
         ),
       ]),
@@ -419,7 +454,7 @@ class PdfService {
   pw.Widget _signature(String label) => pw.Column(children: [
         pw.Container(width: 170, height: 0.8, color: _pink),
         pw.SizedBox(height: 5),
-        pw.Text(label, style: pw.TextStyle(fontSize: 8, color: _darkBlue, fontWeight: pw.FontWeight.bold)),
+        pw.Text(label, style: pw.TextStyle(fontSize: 9, color: _darkBlue, fontWeight: pw.FontWeight.bold)),
       ]);
 
   pw.Widget _footer(pw.MemoryImage logoPetAvatar) => pw.Row(crossAxisAlignment: pw.CrossAxisAlignment.end, children: [
@@ -427,9 +462,9 @@ class PdfService {
           _dividerWithDot(),
           pw.SizedBox(height: 6),
           pw.RichText(text: pw.TextSpan(children: [
-            pw.TextSpan(text: 'Plano de Parto PET Saúde - ', style: pw.TextStyle(fontSize: 8, color: _text)),
-            pw.TextSpan(text: 'PET ', style: pw.TextStyle(fontSize: 8, color: _petOrange, fontWeight: pw.FontWeight.bold)),
-            pw.TextSpan(text: 'Saúde UFCG - Versão ${AppInfo.version}', style: pw.TextStyle(fontSize: 8, color: _text)),
+            pw.TextSpan(text: 'Plano de Parto PET Saúde - ', style: pw.TextStyle(fontSize: 8.5, color: _text)),
+            pw.TextSpan(text: 'PET ', style: pw.TextStyle(fontSize: 8.5, color: _petOrange, fontWeight: pw.FontWeight.bold)),
+            pw.TextSpan(text: 'Saúde UFCG - Versão ${AppInfo.version}', style: pw.TextStyle(fontSize: 8.5, color: _text)),
           ])),
         ])),
         pw.SizedBox(width: 8),
@@ -447,7 +482,7 @@ class PdfService {
         height: 12,
         decoration: pw.BoxDecoration(color: _pink, shape: pw.BoxShape.circle),
         alignment: pw.Alignment.center,
-        child: pw.Text(number.toString(), style: pw.TextStyle(fontSize: 6.4, color: PdfColors.white, fontWeight: pw.FontWeight.bold)),
+        child: pw.Text(number.toString(), style: pw.TextStyle(fontSize: 8, color: PdfColors.white, fontWeight: pw.FontWeight.bold)),
       );
 
   pw.Widget _smallSquare() => pw.Container(width: 8, height: 8, decoration: pw.BoxDecoration(border: pw.Border.all(color: _pink, width: 1), borderRadius: pw.BorderRadius.circular(2)));
@@ -471,6 +506,31 @@ class PdfService {
   String _value(Map<String, List<String>> map, String id, String fallback) {
     final selected = _selected(map, id);
     return selected ?? fallback;
+  }
+
+  // Measure the actual embedded font at its fixed readable size. Shorten only
+  // the overview preview, never clip text or shrink it to fit a fixed card.
+  pw.Widget _previewText(String text, {required int limit, required pw.TextStyle style}) =>
+      pw.LayoutBuilder(builder: (context, constraints) {
+        var budget = limit;
+        while (budget > 28) {
+          final candidate = pw.Text(_preview(text, budget), style: style);
+          candidate.layout(context, pw.BoxConstraints(maxWidth: constraints!.maxWidth), parentUsesSize: true);
+          if (candidate.box!.height <= 28) return candidate;
+          budget -= 4;
+        }
+        return pw.Text('Ver registro completo', style: style);
+      });
+
+  // Only the fixed first-page overview is abbreviated. The following pages
+  // always receive the original, complete answers.
+  String _preview(String text, int limit) {
+    if (text.runes.length <= limit) return text;
+    const suffix = '... [ver registro completo]';
+    var prefix = String.fromCharCodes(text.runes.take(limit - suffix.length));
+    final space = prefix.lastIndexOf(' ');
+    if (space > prefix.length ~/ 2) prefix = prefix.substring(0, space);
+    return '${prefix.trimRight()}$suffix';
   }
 
   String? _selected(Map<String, List<String>> map, String id) {
@@ -570,5 +630,22 @@ class PdfService {
     final now = DateTime.now();
     String two(int n) => n.toString().padLeft(2, '0');
     return '${two(now.day)}/${two(now.month)}/${now.year}';
+  }
+}
+
+// Page/Column can silently omit children once the page height is exceeded.
+// Reject the page with a visible size error instead of exporting missing
+// text/signatures or reducing the fixed, readable body font.
+class _SinglePageColumn extends pw.Column {
+  _SinglePageColumn({required super.children})
+      : super(crossAxisAlignment: pw.CrossAxisAlignment.stretch);
+
+  @override
+  void layout(pw.Context context, pw.BoxConstraints constraints, {bool parentUsesSize = false}) {
+    super.layout(context, constraints, parentUsesSize: parentUsesSize);
+    if (children.any((child) => child.box == null ||
+        child.box!.bottom < -0.1 || child.box!.top > box!.height + 0.1)) {
+      throw StateError('O conteúdo excedeu a altura disponível da página.');
+    }
   }
 }

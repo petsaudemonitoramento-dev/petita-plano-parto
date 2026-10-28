@@ -84,8 +84,8 @@ class _HomeScreenState extends State<HomeScreen> {
                     Row(mainAxisAlignment: MainAxisAlignment.center, children: [
                       Icon(Icons.auto_awesome_rounded, size: 14, color: Colors.white.withAlpha((255 * 0.9).round())),
                       const SizedBox(width: 7),
-                      const Text('SUA JORNADA COMEÇA AQUI', style: TextStyle(
-                        color: Colors.white, fontSize: 11, letterSpacing: 1.3, fontWeight: FontWeight.w800)),
+                      const Flexible(child: Text('SUA JORNADA COMEÇA AQUI', textAlign: TextAlign.center, style: TextStyle(
+                        color: Colors.white, fontSize: 11, letterSpacing: 1.3, fontWeight: FontWeight.w800))),
                     ]),
                     const PetitaAnimatedMascot(size: 168),
                     const SizedBox(height: 2),
