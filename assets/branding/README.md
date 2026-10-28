@@ -6,11 +6,11 @@ Este diretório guarda a arte de lançamento do aplicativo Android. A mascote or
 
 Arte enviada à conversa em 28/10/2026, baseada no ícone criado no Canva: robô Petita em close-up, laço e antena em formato de coração, fundo rosa-claro. A imagem original recebida possui 1264 × 1264 px, JPEG.
 
-Arquivo mestre previsto neste diretório: `petita_icon_master.png` (1024 × 1024 px). SHA-256 esperado após conversão local sem redesenho:
+Arquivo mestre adicionado neste diretório: [`Petita_icone_android_1024.png`](./Petita_icone_android_1024.png) (1024 × 1024 px, PNG RGB). SHA-256 verificado contra o arquivo preparado:
 
 `bea39885f9277a0d059a1a100c4821320617a56ff21c5d4178ad45cb8429ceb9`
 
-> **Status:** a imagem binária ainda precisa ser enviada a este diretório. Este README não equivale à incorporação do ícone ao APK.
+> **Status:** imagem incorporada à branch `feat/icon-canva-petita`. O ícone ainda **não** foi aplicado ao launcher do Android, pois a estrutura nativa `android/` precisa ser incorporada ao repositório.
 
 ## Integração Android posterior
 
