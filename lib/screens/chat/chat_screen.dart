@@ -31,6 +31,7 @@ class _ChatScreenState extends State<ChatScreen> {
   List<BirthPlanAnswer> _answers = [];
   int _currentQuestion = -1;
   bool _loading = true;
+  bool _answering = false;
   bool _petitaSearching = false;
   int _typingDots = 1;
   Timer? _typingTimer;
@@ -90,6 +91,7 @@ class _ChatScreenState extends State<ChatScreen> {
   }
 
   Future<void> _send([String? override]) async {
+    if (_petitaSearching || _answering) return;
     final text = (override ?? _controller.text).trim();
     if (text.isEmpty) return;
     _controller.clear();
@@ -97,7 +99,9 @@ class _ChatScreenState extends State<ChatScreen> {
     if (_currentQuestion >= 0) {
       final q = _questions[_currentQuestion];
       if (q.multiple) {
-        await _answerCurrentQuestion([text]);
+        final values = {..._multiSelection, text}.toList();
+        setState(() => _messages.add(ChatMessage(text: values.join(', '), isUser: true)));
+        await _answerCurrentQuestion(values);
       } else {
         setState(() => _messages.add(ChatMessage(text: text, isUser: true)));
         await _answerCurrentQuestion([text]);
@@ -107,9 +111,10 @@ class _ChatScreenState extends State<ChatScreen> {
 
     setState(() => _messages.add(ChatMessage(text: text, isUser: true)));
     await Future.delayed(const Duration(milliseconds: 160));
+    if (!mounted || ModalRoute.of(context)?.isCurrent == false) return;
 
     if (text == 'Montar meu plano') {
-      _startPlanFlow();
+      await _startPlanFlow();
       return;
     }
     if (text == 'Criar cadastro local' || text == 'Abrir cadastro' || text == 'Perfil da gestante') {
@@ -155,11 +160,15 @@ class _ChatScreenState extends State<ChatScreen> {
     _scrollToBottom();
   }
 
-  void _startPlanFlow() {
-    _currentQuestion = 0;
-    _answers.clear();
+  Future<void> _startPlanFlow() async {
+    // Reload because the summary may have explicitly cleared the saved plan.
+    final answers = await _storage.loadAnswers();
+    if (!mounted) return;
+    _answers = answers;
+    final answeredIds = _answers.map((answer) => answer.questionId).toSet();
+    final next = _questions.indexWhere((question) => !answeredIds.contains(question.id));
+    _currentQuestion = next < 0 ? 0 : next;
     _multiSelection.clear();
-    _storage.clearAnswers();
     setState(() {
       _messages.add(const ChatMessage(
         text: 'Que bom que vamos construir esse plano juntas! 💜 Aqui você pode pensar nas suas preferências com tranquilidade. Não existe resposta certa ou errada: o importante é que suas escolhas sejam ouvidas. Se algum termo parecer difícil, toque em “Quero entender melhor”.',
@@ -210,26 +219,32 @@ class _ChatScreenState extends State<ChatScreen> {
   }
 
   Future<void> _answerCurrentQuestion(List<String> values) async {
+    if (_answering || _currentQuestion < 0) return;
     final q = _questions[_currentQuestion];
     final cleaned = values.map((e) => e.trim()).where((e) => e.isNotEmpty).toList();
     if (cleaned.isEmpty) return;
+    _answering = true;
+    try {
+      _answers.removeWhere((a) => a.questionId == q.id);
+      _answers.add(BirthPlanAnswer(questionId: q.id, values: cleaned));
+      await _storage.saveAnswers(_answers);
+      if (!mounted) return;
 
-    _answers.removeWhere((a) => a.questionId == q.id);
-    _answers.add(BirthPlanAnswer(questionId: q.id, values: cleaned));
-    await _storage.saveAnswers(_answers);
-
-    _currentQuestion++;
-    if (_currentQuestion >= _questions.length) {
-      setState(() => _messages.add(const ChatMessage(
+      _currentQuestion++;
+      if (_currentQuestion >= _questions.length) {
+        setState(() => _messages.add(const ChatMessage(
             text: 'Você conseguiu! 💜 Obrigada por compartilhar suas escolhas comigo. Seu Plano de Parto está pronto para ser revisado com calma. Você pode conferir as respostas, conversar com a equipe de saúde e gerar o PDF quando quiser.',
             isUser: false,
             options: ['Ver meu plano'],
           )));
-      _currentQuestion = -1;
-      _multiSelection.clear();
-      _scrollToBottom();
-    } else {
-      await _showCurrentQuestion();
+        _currentQuestion = -1;
+        _multiSelection.clear();
+        _scrollToBottom();
+      } else {
+        await _showCurrentQuestion();
+      }
+    } finally {
+      _answering = false;
     }
   }
 
@@ -430,6 +445,7 @@ class _ChatScreenState extends State<ChatScreen> {
   }
 
   Future<void> _handleOption(String option) async {
+    if (_petitaSearching || _answering) return;
     if (option == 'Quero entender melhor' && _currentQuestion >= 0) {
       final explanation = BirthPlanExplanations.forQuestion(_questions[_currentQuestion].id);
       if (explanation != null) {
@@ -462,6 +478,17 @@ class _ChatScreenState extends State<ChatScreen> {
 
     if (_currentQuestion >= 0 && !_questions[_currentQuestion].multiple) {
       final current = _questions[_currentQuestion];
+      if (current.allowOther && option == 'Sim, vou descrever') {
+        setState(() {
+          _messages.add(ChatMessage(text: option, isUser: true));
+          _messages.add(const ChatMessage(
+            text: 'Digite sua resposta no campo de mensagem para registrar no plano.',
+            isUser: false,
+          ));
+        });
+        _scrollToBottom();
+        return;
+      }
       if (current.id == 'ubs_referencia' && option == 'Outra UBS') {
         await _showManualUbsWarning();
         setState(() {
@@ -479,9 +506,12 @@ class _ChatScreenState extends State<ChatScreen> {
     if (_currentQuestion >= 0 && _questions[_currentQuestion].multiple) {
       if (option == 'Concluir seleção') {
         if (_multiSelection.isEmpty) {
-          setState(() => _messages.add(const ChatMessage(
+          setState(() => _messages.add(ChatMessage(
                 text: 'Selecione pelo menos uma opção ou digite uma resposta no campo de mensagem.',
                 isUser: false,
+                options: [..._questions[_currentQuestion].options, 'Concluir seleção',
+                  if (BirthPlanExplanations.forQuestion(_questions[_currentQuestion].id) != null)
+                    'Quero entender melhor'],
               )));
           _scrollToBottom();
           return;

@@ -53,6 +53,27 @@ class PdfService {
           map: map,
         ),
       ));
+      // Preserve the legacy overview and include the full saved record on
+      // following pages: its fixed cards intentionally summarize the content.
+      if (answers.isNotEmpty) {
+        doc.addPage(pw.MultiPage(
+          pageFormat: PdfPageFormat.a4,
+          margin: const pw.EdgeInsets.all(30),
+          header: (_) => pw.Padding(
+            padding: const pw.EdgeInsets.only(bottom: 12),
+            child: pw.Text('Registro completo das respostas',
+              style: pw.TextStyle(fontSize: 16, fontWeight: pw.FontWeight.bold, color: _darkBlue)),
+          ),
+          build: (_) => [
+            for (final question in questions.where((question) => map.containsKey(question.id))) ...[
+              pw.Text(question.question, style: pw.TextStyle(fontSize: 10, fontWeight: pw.FontWeight.bold, color: _darkBlue)),
+              pw.SizedBox(height: 4),
+              pw.Text(map[question.id]!.join(', '), style: const pw.TextStyle(fontSize: 10)),
+              pw.SizedBox(height: 12),
+            ],
+          ],
+        ));
+      }
       return doc.save();
     }
 
@@ -90,8 +111,7 @@ class PdfService {
     required List<String> paragraphs,
     required double fontSize,
   }) {
-    return pw.Column(
-      crossAxisAlignment: pw.CrossAxisAlignment.stretch,
+    return _SinglePageColumn(
       children: [
         pw.Row(mainAxisAlignment: pw.MainAxisAlignment.spaceBetween, children: [
           pw.Image(logoUfcg, height: 39, width: 90, fit: pw.BoxFit.contain),
@@ -139,6 +159,8 @@ class PdfService {
     final ubs = _selected(map, 'ubs_referencia');
     if (dpp != null) opening.write(' Minha data provável do parto é $dpp.');
     if (ubs != null) opening.write(' Minha unidade de referência é $ubs.');
+    final semanas = _selected(map, 'semanas_gestacao');
+    if (semanas != null) opening.write(' Idade gestacional informada: $semanas.');
     final paragraphs = <String>[opening.toString()];
 
     void add(String intro, List<List<String>> fields) {
@@ -570,5 +592,22 @@ class PdfService {
     final now = DateTime.now();
     String two(int n) => n.toString().padLeft(2, '0');
     return '${two(now.day)}/${two(now.month)}/${now.year}';
+  }
+}
+
+// Page/Column can silently omit children once the page height is exceeded.
+// Reject that candidate so the existing font-size retries and visible size
+// error work instead of sharing a declaration with missing text/signatures.
+class _SinglePageColumn extends pw.Column {
+  _SinglePageColumn({required super.children})
+      : super(crossAxisAlignment: pw.CrossAxisAlignment.stretch);
+
+  @override
+  void layout(pw.Context context, pw.BoxConstraints constraints, {bool parentUsesSize = false}) {
+    super.layout(context, constraints, parentUsesSize: parentUsesSize);
+    if (children.any((child) => child.box == null ||
+        child.box!.bottom < -0.1 || child.box!.top > box!.height + 0.1)) {
+      throw StateError('O conteúdo excedeu a altura disponível da página.');
+    }
   }
 }
