@@ -3,7 +3,6 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:plano_parto_pet_saude/screens/chat/chat_screen.dart';
 import 'package:plano_parto_pet_saude/services/birth_plan_flow_service.dart';
 import 'package:plano_parto_pet_saude/services/storage_service.dart';
-import 'package:plano_parto_pet_saude/services/gestational_age_service.dart';
 
 import 'support/offline_helpers.dart';
 
