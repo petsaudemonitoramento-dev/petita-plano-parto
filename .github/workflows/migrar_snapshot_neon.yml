@@ -1,0 +1,113 @@
+name: Migrar snapshot Petita Neon pessoal para institucional
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirm:
+        description: "Confirmo que o destino eh o banco de snapshot vazio e nao o banco principal"
+        type: boolean
+        required: true
+        default: false
+
+permissions:
+  contents: read
+
+jobs:
+  snapshot-neon:
+    if: ${{ github.ref == 'refs/heads/main' && inputs.confirm == true }}
+    # Secrets foram cadastrados no Environment com este nome.
+    # Somente jobs que declaram este Environment recebem seus secrets.
+    environment: PETITA_SOURCE_DATABASE_URL
+    runs-on: ubuntu-26.04
+    timeout-minutes: 30
+    env:
+      SOURCE_DATABASE_URL: ${{ secrets.PETITA_SOURCE_DATABASE_URL }}
+      TARGET_DATABASE_URL: ${{ secrets.PETITA_SNAPSHOT_DATABASE_URL }}
+      PGCONNECT_TIMEOUT: "15"
+    steps:
+      - name: Verificar segredos sem revela-los
+        shell: bash
+        run: |
+          set -euo pipefail
+          set +x
+          if [[ -z "${SOURCE_DATABASE_URL:-}" || -z "${TARGET_DATABASE_URL:-}" ]]; then
+            echo "Faltam os secrets PETITA_SOURCE_DATABASE_URL e/ou PETITA_SNAPSHOT_DATABASE_URL."
+            exit 1
+          fi
+          python3 - <<'PY'
+          from os import environ
+          from urllib.parse import urlparse
+          src = urlparse(environ["SOURCE_DATABASE_URL"])
+          dst = urlparse(environ["TARGET_DATABASE_URL"])
+          assert src.scheme in ("postgresql", "postgres") and dst.scheme in ("postgresql", "postgres")
+          assert src.hostname and dst.hostname and src.hostname != dst.hostname, "Origem e destino devem ser projetos diferentes."
+          assert src.path == "/neondb", "Origem incorreta: selecione o banco neondb pessoal."
+          assert dst.path == "/petita_snapshot_pessoal_20261028", "Destino deve ser exclusivamente o banco de snapshot."
+          print("Origem e destino sao distintos; banco de destino confirmado.")
+          PY
+
+      - name: Instalar cliente PostgreSQL
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y postgresql-client
+          pg_dump --version
+          pg_restore --version
+
+      - name: Verificar origem e destino sem alterar dados
+        shell: bash
+        run: |
+          set -euo pipefail
+          set +x
+          source_tables="$(psql "$SOURCE_DATABASE_URL" -X -Atq -v ON_ERROR_STOP=1 -c "SELECT count(*) FROM pg_tables WHERE schemaname='public'")"
+          if [[ "$source_tables" != "15" ]]; then
+            echo "Quantidade de tabelas diferente do snapshot esperado; interrompido."
+            exit 1
+          fi
+          target_objects="$(psql "$TARGET_DATABASE_URL" -X -Atq -v ON_ERROR_STOP=1 -c "SELECT count(*) FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace WHERE n.nspname='public' AND c.relkind IN ('r','p','v','m')")"
+          if [[ "$target_objects" != "0" ]]; then
+            echo "O destino nao esta vazio. A restauracao foi bloqueada por seguranca."
+            exit 1
+          fi
+          echo "Origem: 15 tabelas. Destino de homologacao: vazio."
+
+      - name: Exportar origem para arquivo temporario no runner
+        shell: bash
+        run: |
+          set -euo pipefail
+          set +x
+          umask 077
+          pg_dump --format=custom --no-owner --no-acl --dbname="$SOURCE_DATABASE_URL" --file="$RUNNER_TEMP/petita-origem.dump"
+          test -s "$RUNNER_TEMP/petita-origem.dump"
+          echo "Exportacao concluida. Conteudo e credenciais nao sao publicados."
+
+      - name: Restaurar no banco institucional isolado
+        shell: bash
+        run: |
+          set -euo pipefail
+          set +x
+          pg_restore --no-owner --no-privileges --exit-on-error --dbname="$TARGET_DATABASE_URL" "$RUNNER_TEMP/petita-origem.dump"
+          echo "Restauracao concluida no banco de snapshot isolado."
+
+      - name: Comparar contagens e hashes das 15 tabelas
+        shell: bash
+        run: |
+          set -euo pipefail
+          set +x
+          for tbl in birth_plans document_chunks knowledge_base knowledge_categories knowledge_documents patient_questions profiles question_patient_links rag_query_logs support_documents team_access_requests terms_acceptances ubs ubs_answers warning_sign_options; do
+            sql="SELECT count(*)::text || ':' || md5(coalesce(string_agg(md5(to_jsonb(t)::text), '' ORDER BY md5(to_jsonb(t)::text)),'')) FROM public.\"$tbl\" t"
+            source_result="$(psql "$SOURCE_DATABASE_URL" -X -Atq -v ON_ERROR_STOP=1 -c "$sql")"
+            target_result="$(psql "$TARGET_DATABASE_URL" -X -Atq -v ON_ERROR_STOP=1 -c "$sql")"
+            if [[ "$source_result" != "$target_result" ]]; then
+              echo "Divergencia detectada: $tbl (sem publicar registros)."
+              exit 1
+            fi
+            echo "OK $tbl: ${source_result%%:*} registros."
+          done
+          echo "Migracao validada: mesmas contagens e hashes em todas as 15 tabelas."
+
+      - name: Apagar arquivo temporario de exportacao
+        if: always()
+        shell: bash
+        run: |
+          rm -f "$RUNNER_TEMP/petita-origem.dump"
+          echo "Nenhum dump foi enviado para artefatos ou para o repositorio."
