@@ -1,0 +1,46 @@
+name: Publicar correção de início do plano (execução única)
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/petita-deploy-fix-start-20261028.trigger'
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: github-pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    if: "github.event.head_commit.message == 'deploy(petita): correção de início autorizada em 28-10-2026'"
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+      - run: flutter pub get
+      - run: flutter analyze --no-pub
+      - run: flutter build web --release --base-href "/petita-plano-parto/" --no-wasm-dry-run --pwa-strategy=none
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: build/web
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Publicar no GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
