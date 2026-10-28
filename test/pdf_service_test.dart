@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:plano_parto_pet_saude/models/birth_plan_answer.dart';
+import 'package:plano_parto_pet_saude/models/treatment_preferences.dart';
 import 'package:plano_parto_pet_saude/services/birth_plan_flow_service.dart';
 import 'package:plano_parto_pet_saude/services/pdf_service.dart';
 
@@ -92,6 +93,35 @@ void main() {
             RegExp(r'/Type\s*/Page\b').allMatches(latin1.decode(bytes)).length,
             greaterThan(1));
       }
+    });
+
+    test('$format omite pronomes quando não há opt-in e inclui após autorização',
+        () async {
+      final questions = await BirthPlanFlowService().loadQuestions();
+      final answers = [
+        BirthPlanAnswer(questionId: 'nome_gestante', values: ['Pessoa Sintetica']),
+        BirthPlanAnswer(questionId: 'observacoes_finais', values: ['Texto livre preservado de teste']),
+      ];
+      final disabled = await PdfService().buildBirthPlanPdf(
+        questions: questions,
+        answers: answers,
+        format: format,
+        treatment: const TreatmentPreferences(pronouns: 'Elu/delu'),
+      );
+      expect(pdfText(disabled), isNot(contains('Elu/delu')));
+
+      final enabled = await PdfService().buildBirthPlanPdf(
+        questions: questions,
+        answers: answers,
+        format: format,
+        treatment: const TreatmentPreferences(
+          pronouns: 'Elu/delu',
+          includeInPdf: true,
+        ),
+      );
+      expectValidPdf(enabled);
+      expect(pdfText(enabled), contains('Elu/delu'));
+      expect(pdfText(enabled), contains('Texto livre preservado de teste'));
     });
 
     test('$format generates a valid empty document without inventing answers',
