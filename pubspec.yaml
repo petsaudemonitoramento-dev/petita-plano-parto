@@ -24,6 +24,7 @@ dev_dependencies:
 flutter:
   uses-material-design: true
   assets:
+    - assets/fonts/DejaVuSans.ttf
     - assets/images/petita.png
     - assets/images/pet_saude_logo.png
     - assets/images/pet_saude_avatar.png

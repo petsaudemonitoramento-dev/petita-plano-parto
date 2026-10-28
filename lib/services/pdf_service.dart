@@ -8,6 +8,14 @@ import '../models/birth_plan_question.dart';
 
 enum BirthPlanPdfFormat { declaracao, resumoVisual }
 
+class BirthPlanPdfTooLongException extends StateError {
+  BirthPlanPdfTooLongException() : super(
+    'Seu plano tem mais conteúdo do que cabe em uma página com boa leitura. '
+    'Você pode resumir as respostas ou escolher "Resumo visual e registro completo" para guardar tudo. '
+    'Suas respostas continuam salvas.',
+  );
+}
+
 class PdfService {
   // O PDF não usa glyphs de ícones/emoji. Os marcadores e ícones são vetoriais
   // ou imagens de assets para evitar quadrados/erros de fonte na exportação.
@@ -34,7 +42,11 @@ class PdfService {
     required List<BirthPlanAnswer> answers,
     BirthPlanPdfFormat format = BirthPlanPdfFormat.declaracao,
   }) async {
-    final doc = pw.Document();
+    // Keep the existing Helvetica layout; embed a local fallback only for
+    // characters it cannot draw, such as curly quotes and an em dash.
+    final fallback = pw.Font.ttf(await rootBundle.load('assets/fonts/DejaVuSans.ttf'));
+    final theme = pw.ThemeData.withFont(fontFallback: [fallback]);
+    final doc = pw.Document(theme: theme);
     final logoPet = pw.MemoryImage((await rootBundle.load('assets/images/pet_saude_logo.png')).buffer.asUint8List());
     final logoPetAvatar = pw.MemoryImage((await rootBundle.load('assets/images/pet_saude_avatar.png')).buffer.asUint8List());
     final logoUfcg = pw.MemoryImage((await rootBundle.load('assets/images/ufcg_logo.png')).buffer.asUint8List());
@@ -66,9 +78,10 @@ class PdfService {
           ),
           build: (_) => [
             for (final question in questions.where((question) => map.containsKey(question.id))) ...[
+              pw.NewPage(freeSpace: 70),
               pw.Text(question.question, style: pw.TextStyle(fontSize: 10, fontWeight: pw.FontWeight.bold, color: _darkBlue)),
               pw.SizedBox(height: 4),
-              pw.Text(map[question.id]!.join(', '), style: const pw.TextStyle(fontSize: 10)),
+              pw.Text(map[question.id]!.join(', '), style: const pw.TextStyle(fontSize: 10), overflow: pw.TextOverflow.span),
               pw.SizedBox(height: 12),
             ],
           ],
@@ -79,9 +92,8 @@ class PdfService {
 
     final paragraphs = _declarationParagraphs(map);
     // Reduz a fonte apenas quando necessário, sem suprimir escolhas.
-    Object? lastError;
     for (final fontSize in [10.0, 9.5, 9.0, 8.5, 8.0]) {
-      final candidate = pw.Document();
+      final candidate = pw.Document(theme: theme);
       try {
         candidate.addPage(pw.Page(
           pageFormat: PdfPageFormat.a4,
@@ -96,11 +108,11 @@ class PdfService {
           ),
         ));
         return await candidate.save();
-      } catch (error) {
-        lastError = error;
+      } on StateError {
+        // Try a smaller font only for content that exceeds the page.
       }
     }
-    throw StateError('O texto completo não coube em uma página A4 com legibilidade mínima. Revise as respostas extensas antes de gerar o documento. Detalhe: $lastError');
+    throw BirthPlanPdfTooLongException();
   }
 
   pw.Widget _declarationPage({
@@ -225,8 +237,7 @@ class PdfService {
     final acompanhante = _value(map, 'acompanhante_principal', 'Não informado');
     final data = _todayPtBr();
 
-    return pw.Column(
-      crossAxisAlignment: pw.CrossAxisAlignment.stretch,
+    return _SinglePageColumn(
       children: [
         _header(logoUfcg: logoUfcg, logoPet: logoPet, petita: petita),
         pw.SizedBox(height: 5),
@@ -257,7 +268,7 @@ class PdfService {
         _observationsBox(map),
         pw.SizedBox(height: 7),
         _noteBox(),
-        pw.SizedBox(height: 30),
+        pw.SizedBox(height: 18),
         pw.Row(
           mainAxisAlignment: pw.MainAxisAlignment.spaceAround,
           children: [_signature('Gestante'), _signature('Profissional/Equipe')],
@@ -347,7 +358,7 @@ class PdfService {
           pw.SizedBox(width: 6),
           pw.Text(label, style: pw.TextStyle(fontSize: 8.2, color: _darkBlue, fontWeight: pw.FontWeight.bold)),
           pw.SizedBox(width: 8),
-          pw.Expanded(child: pw.Text(value, style: pw.TextStyle(fontSize: 8.2, color: _text))),
+          pw.Expanded(child: pw.Text(_preview(value, 80), style: pw.TextStyle(fontSize: 8.2, color: _text))),
         ]),
       );
 
@@ -369,7 +380,7 @@ class PdfService {
           pw.Container(height: 0.65, color: _borderPink),
           pw.Padding(
             padding: const pw.EdgeInsets.fromLTRB(10, 7, 8, 6),
-            child: pw.Column(crossAxisAlignment: pw.CrossAxisAlignment.start, children: bullets.take(6).map(_bullet).toList()),
+            child: pw.Column(crossAxisAlignment: pw.CrossAxisAlignment.start, children: bullets.take(6).map((text) => _bullet(_preview(text, 90))).toList()),
           ),
         ]),
       ),
@@ -421,7 +432,7 @@ class PdfService {
           padding: const pw.EdgeInsets.fromLTRB(12, 6, 12, 6),
           child: pw.Column(
             crossAxisAlignment: pw.CrossAxisAlignment.start,
-            children: items.take(3).map(_bullet).toList(),
+            children: items.take(3).map((text) => _bullet(_preview(text, 180))).toList(),
           ),
         ),
       ]),
@@ -493,6 +504,17 @@ class PdfService {
   String _value(Map<String, List<String>> map, String id, String fallback) {
     final selected = _selected(map, id);
     return selected ?? fallback;
+  }
+
+  // Only the fixed first-page overview is abbreviated. The following pages
+  // always receive the original, complete answers.
+  String _preview(String text, int limit) {
+    if (text.runes.length <= limit) return text;
+    const suffix = '... [ver registro completo]';
+    var prefix = String.fromCharCodes(text.runes.take(limit - suffix.length));
+    final space = prefix.lastIndexOf(' ');
+    if (space > prefix.length ~/ 2) prefix = prefix.substring(0, space);
+    return '${prefix.trimRight()}$suffix';
   }
 
   String? _selected(Map<String, List<String>> map, String id) {

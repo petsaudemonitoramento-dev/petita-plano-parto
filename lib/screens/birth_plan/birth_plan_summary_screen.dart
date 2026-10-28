@@ -45,6 +45,9 @@ class _BirthPlanSummaryScreenState extends State<BirthPlanSummaryScreen> {
     if (_answers.isEmpty) return;
     try {
       await PdfService().shareBirthPlanPdf(questions: _questions, answers: _answers, format: format);
+    } on BirthPlanPdfTooLongException catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.message)));
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Não foi possível gerar/compartilhar o PDF: $e')));
@@ -133,7 +136,7 @@ class _BirthPlanSummaryScreenState extends State<BirthPlanSummaryScreen> {
               AppButton(label: 'Gerar PDF — declaração para assinatura', icon: Icons.picture_as_pdf, onPressed: () => _generatePdf(BirthPlanPdfFormat.declaracao)),
             const SizedBox(height: 10),
             if (_answers.isNotEmpty)
-              AppButton(label: 'Gerar PDF — resumo visual (modelo antigo)', icon: Icons.description_outlined, outlined: true, onPressed: () => _generatePdf(BirthPlanPdfFormat.resumoVisual)),
+              AppButton(label: 'Gerar PDF — resumo visual e registro completo', icon: Icons.description_outlined, outlined: true, onPressed: () => _generatePdf(BirthPlanPdfFormat.resumoVisual)),
             const SizedBox(height: 10),
             if (_answers.isNotEmpty)
               AppButton(label: 'Sincronizar plano online', icon: Icons.cloud_upload_outlined, outlined: true, onPressed: _syncOnline),

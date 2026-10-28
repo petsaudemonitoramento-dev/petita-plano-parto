@@ -1,0 +1,74 @@
+{
+  "declaracao.pdf": {
+    "pages": 1,
+    "page_size_pt": [
+      595.27559,
+      841.88976
+    ],
+    "all_31_answers_checked": true,
+    "png_dpi": 120,
+    "pdf_sha256": "e8fe8c1ca7aa2591d77b2ab2b37488496885e65feb10e75d919af4141b4dcb50",
+    "pngs": [
+      {
+        "file": "declaracao-1.png",
+        "sha256": "112286c997a82ba26b63862b6e0521b5acc00902e09d9d08085ddfb9f160f5ac"
+      }
+    ]
+  },
+  "resumoVisual-longo.pdf": {
+    "pages": 5,
+    "page_size_pt": [
+      595.27559,
+      841.88976
+    ],
+    "all_31_answers_checked": true,
+    "png_dpi": 120,
+    "pdf_sha256": "f17533346a9f28e7afb28eac8ef007d33781d950b5dd4fb8d5caba29f9ba7581",
+    "pngs": [
+      {
+        "file": "resumoVisual-longo-1.png",
+        "sha256": "4ecf9b4ee6da9cddc043bd9f0f6378b7d67da4bfc2d9dae944f0050b1a612187"
+      },
+      {
+        "file": "resumoVisual-longo-2.png",
+        "sha256": "68747af197403ad0a74af23ca658450fcd725c8efe8906cf53547c2072d26692"
+      },
+      {
+        "file": "resumoVisual-longo-3.png",
+        "sha256": "c473daf57b7c289bb42d8d509fc506ab0f619bf7a29b6e3fbebf73518dce6f01"
+      },
+      {
+        "file": "resumoVisual-longo-4.png",
+        "sha256": "5d63f252e9444dd4e3b8235223a2a909f037838a4b8651427ee3439eeaac5829"
+      },
+      {
+        "file": "resumoVisual-longo-5.png",
+        "sha256": "41c30a9d87d71dc8a0a19492dda7d3e6de0da6a9ef49162415370983602f0b3e"
+      }
+    ]
+  },
+  "resumoVisual.pdf": {
+    "pages": 3,
+    "page_size_pt": [
+      595.27559,
+      841.88976
+    ],
+    "all_31_answers_checked": true,
+    "png_dpi": 120,
+    "pdf_sha256": "2e7d482fc0e63672c68790287863e2bb9785b73b1ecb0a9bef3b1ef1c0b76420",
+    "pngs": [
+      {
+        "file": "resumoVisual-1.png",
+        "sha256": "3bd0802dfdf1df2911b14aac6faa0ab76ea160493951ff681b5799141ad46b91"
+      },
+      {
+        "file": "resumoVisual-2.png",
+        "sha256": "63e94d5f4db7706283e108a2f928755e5447c10704aa9f6a42b7cf22339eef49"
+      },
+      {
+        "file": "resumoVisual-3.png",
+        "sha256": "a02d62427210673180145fc6eae7ea26fbe8c1b2ad37314eb9ba91bdf36b7508"
+      }
+    ]
+  }
+}

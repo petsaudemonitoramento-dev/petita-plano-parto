@@ -156,7 +156,28 @@ void main() {
         PdfService().buildBirthPlanPdf(questions: questions, answers: [
           BirthPlanAnswer(questionId: 'observacoes_finais', values: [longText])
         ]),
-        throwsA(isA<StateError>().having(
-            (e) => e.message, 'message', contains('legibilidade mínima'))));
+        throwsA(isA<BirthPlanPdfTooLongException>()
+            .having((e) => e.message, 'message',
+                contains('Suas respostas continuam salvas.'))
+            .having((e) => e.message, 'alternative',
+                contains('Resumo visual e registro completo'))));
+  });
+
+  test(
+      'complete report paginates free text longer than one A4 without losing its end',
+      () async {
+    final bytes = await PdfService().buildBirthPlanPdf(
+      questions: await BirthPlanFlowService().loadQuestions(),
+      answers: [
+        BirthPlanAnswer(questionId: 'observacoes_finais', values: [
+          '${List.filled(1500, 'relato sintetico extenso').join(' ')} ULTIMA-LINHA-SINTETICA'
+        ])
+      ],
+      format: BirthPlanPdfFormat.resumoVisual,
+    );
+    expectValidPdf(bytes);
+    expect(RegExp(r'/Type\s*/Page\b').allMatches(latin1.decode(bytes)).length,
+        greaterThan(2));
+    expect(pdfText(bytes), contains('ULTIMA-LINHA-SINTETICA'));
   });
 }

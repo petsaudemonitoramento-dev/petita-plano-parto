@@ -1,5 +1,7 @@
 # Petita — auditoria funcional offline, fase 2
 
+> Complemento posterior: [revisão visual dos PDFs e ajustes finais da PR #5](REVISAO_VISUAL_PDFS_PR5.md), com galeria de todas as páginas, fonte local de apoio e suíte ampliada para 67 testes. Os números abaixo registram a auditoria inicial de 64 testes.
+
 Base: `main`, commit `d89bd24bc8369227debfa320d39115eee0aeb007`. Branch: `audit/fase-2-funcional-offline`. Flutter 3.44.0 / Dart 3.12.0. Dados de teste sintéticos; nenhum cliente Supabase inicializado nos testes.
 
 ## 1. Arquitetura e fluxos de dados
