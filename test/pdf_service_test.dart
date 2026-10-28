@@ -8,32 +8,19 @@ import 'package:plano_parto_pet_saude/services/pdf_service.dart';
 
 import 'support/offline_helpers.dart';
 
-// Inspect unencrypted text streams from our generated PDFs, not a general PDF
-// reader. This checks saved content and file structure, not visual placement.
+// Use an independent Unicode-aware reader: embedded TrueType fonts use glyph
+// IDs and ToUnicode maps, so interpreting their streams as Latin-1 is invalid.
 String pdfText(Uint8List bytes) {
-  final raw = latin1.decode(bytes);
-  final text = StringBuffer();
-  for (final m
-      in RegExp(r'\d+ 0 obj\s*<<((?:(?!endobj)[\s\S])*?)>>\s*stream\r?\n')
-          .allMatches(raw)) {
-    final length = RegExp(r'/Length\s+(\d+)').firstMatch(m[1]!);
-    if (length == null) continue;
-    if (RegExp(r'/Subtype\s*/Image|/Type\s*/XRef').hasMatch(m[1]!)) continue;
-    var data = bytes.sublist(m.end, m.end + int.parse(length[1]!));
-    if (m[1]!.contains('/FlateDecode')) {
-      data = Uint8List.fromList(zlib.decode(data));
-    }
-    final content = latin1.decode(data);
-    if (!content.contains('TJ') && !content.contains('Tj')) continue;
-    for (final s in RegExp(r'\(((?:\\.|[^\\()])*)\)').allMatches(content)) {
-      text.write(s[1]!.replaceAllMapped(RegExp(r'\\([0-7]{1,3}|.)'), (e) {
-        final octal = int.tryParse(e[1]!, radix: 8);
-        return octal == null ? e[1]! : String.fromCharCode(octal);
-      }));
-      text.write(' ');
-    }
+  final dir = Directory.systemTemp.createTempSync('petita-pdf-test-');
+  try {
+    final file = File('${dir.path}/synthetic.pdf')..writeAsBytesSync(bytes);
+    final result = Process.runSync('pdftotext', ['-layout', file.path, '-'],
+        stdoutEncoding: utf8);
+    expect(result.exitCode, 0, reason: result.stderr.toString());
+    return (result.stdout as String).replaceAll(RegExp(r'\s+'), ' ');
+  } finally {
+    dir.deleteSync(recursive: true);
   }
-  return text.toString();
 }
 
 void expectValidPdf(Uint8List bytes) {
@@ -50,6 +37,28 @@ void expectValidPdf(Uint8List bytes) {
               RegExp(r'/Type\s*/XRef').hasMatch(xref.split('stream').first)),
       isTrue);
   expect(RegExp(r'/Type\s*/Page\b').allMatches(raw), isNotEmpty);
+  final dir = Directory.systemTemp.createTempSync('petita-font-test-');
+  try {
+    final file = File('${dir.path}/synthetic.pdf')..writeAsBytesSync(bytes);
+    final result = Process.runSync('pdffonts', [file.path]);
+    expect(result.exitCode, 0, reason: result.stderr.toString());
+    final fonts = (result.stdout as String)
+        .split('\n')
+        .skip(2)
+        .where((line) => line.trim().isNotEmpty)
+        .toList();
+    expect(fonts, hasLength(2));
+    expect(fonts.any((line) => line.contains('DejaVuSans-Bold')), isTrue);
+    for (final font in fonts) {
+      expect(font, contains('DejaVuSans'));
+      expect(font, isNot(contains('Helvetica')));
+      // pdffonts columns: embedded, subset, Unicode map. Both fonts must be
+      // embedded and have a Unicode map; subset embedding is also valid.
+      expect(font, matches(RegExp(r'yes\s+(?:yes|no)\s+yes\s+\d+\s+\d+\s*$')));
+    }
+  } finally {
+    dir.deleteSync(recursive: true);
+  }
 }
 
 void main() {

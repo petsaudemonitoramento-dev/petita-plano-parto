@@ -1,68 +1,86 @@
-# PR #5 — revisão visual dos PDFs e ajustes de UX
+# PR #5 — correção tipográfica dos PDFs
 
-Revisão feita com Flutter 3.44.0 / Dart 3.12.0, somente com dados sintéticos. Nenhum navegador foi utilizado. A validação visual do aplicativo no navegador continua pendente; esta revisão é dos documentos renderizados por Poppler.
+**Aprovação visual do usuário pendente. Não realizar merge ou deploy.**
 
-## Documentos para revisão
+Esta revisão substitui as evidências tipográficas do commit `5b5bd22`. Os dados sintéticos foram preservados integralmente; somente a apresentação dos PDFs e sua validação foram alteradas. Questionário, conteúdo clínico, banco, autenticação e demais funcionalidades permanecem intactos.
 
-**[Abrir a galeria com todas as nove páginas em PNG](evidencias/pr5-pdfs/README.md).** Os PDFs originais, dados sintéticos e hashes também estão disponíveis na pasta da galeria.
+## Diagnóstico confirmado
 
-| Exemplo | Páginas | Cenário |
+Antes da correção, `pdffonts` encontrou Helvetica e Helvetica-Bold não incorporadas (`emb=no`, `uni=no`), misturadas com DejaVu Sans incorporada somente como fallback. `pdffonts -subst` confirmou substituição das Helvetica por NimbusSans-Regular e NimbusSans-Bold no Poppler. A aparência dependia das fontes do leitor e alguns caracteres trocavam de família no mesmo parágrafo. O fallback Regular também não garantia peso Bold consistente.
+
+Os cartões usavam corpo de 7,15 pt, os números de seção 6,4 pt e a declaração podia diminuir até 8 pt. A justificação da declaração ampliava espaços conforme a linha. A revisão anterior corrigia glifos ausentes, mas não garantia uniformidade tipográfica.
+
+A pasta `evidencias/pr5-pdfs/comparacao/` conserva relatórios de fontes anteriores e primeiras páginas renderizadas novamente a 240 dpi. A comparação usa a mesma resolução e os mesmos dados, sem edição das imagens.
+
+## Correção
+
+- Uma família em todos os textos: **DejaVu Sans Regular (Book) e Bold**, ambas incorporadas e com mapas Unicode. Nos documentos verificados não há Helvetica, fallback externo ou substituição pelo leitor.
+- Pesos explicitamente configurados no tema. Acentos, cedilhas, aspas curvas e travessões usam a mesma família do parágrafo.
+- Espaçamento natural: `letterSpacing=0` e `wordSpacing=1`. No pacote Dart `pdf`, `wordSpacing` é multiplicador; zero eliminaria espaços. A declaração usa alinhamento à esquerda, sem expansão irregular por justificação.
+- Declaração com **corpo fixo de 10 pt**, sem reduzir a fonte para caber. Continua em uma página A4; se exceder a área útil, mantém a orientação para resumir ou usar o registro completo.
+- Cartões e dados do resumo com **9 pt**; assinaturas com 9 pt; números de seção com 8 pt; linha institucional e rodapé com 8,5 pt.
+- Registro completo com perguntas Bold e respostas Regular de **11 pt**, com espaçamento entre linhas de 1,5 pt.
+- As prévias são medidas com a fonte incorporada no tamanho final. Quando necessário, são abreviadas com indicação para o registro completo, sem recorte ou redução da fonte. A primeira página mostra até quatro itens por cartão; todas as escolhas permanecem nas páginas seguintes.
+- Cores, títulos, logotipos, mascote, assinaturas e estrutura dos cartões preservados. A fonte da interface Flutter não foi modificada.
+
+## Fontes, licença e pubspec
+
+| Arquivo | Variante | SHA-256 |
+| --- | --- | --- |
+| `assets/fonts/DejaVuSans.ttf` | Book / Regular | `57f73e11f51999432bf7ab22ce55b6f945d5eca1bf824404cfa9ec2e3718c84e` |
+| `assets/fonts/DejaVuSans-Bold.ttf` | Bold | `a4c5bc453ca281d90ea079e596da7ae0dfeb5777497c29ec254e76d97ff6f890` |
+
+As fontes não sofreram alterações binárias. A licença compartilhada `DejaVuSans-LICENSE.txt` contém a permissão Bitstream Vera para os arquivos de fonte e informa que as alterações DejaVu são de domínio público. A seção GPL do aviso refere-se ao empacotamento `debian/*`, não aos TrueType utilizados.
+
+O `pubspec.yaml` declara Regular, Bold e o aviso de licença. Os três arquivos foram conferidos em `build/web/assets/assets/fonts/`. Dependências Dart e lockfile não foram alterados; não há download de fontes ao gerar o documento.
+
+## Evidências atuais
+
+**[Abrir comparação antes/depois, galeria completa e PDFs](evidencias/pr5-pdfs/README.md).**
+
+| Documento sintético | Páginas | Resultado |
 | --- | ---: | --- |
-| [Declaração](evidencias/pr5-pdfs/declaracao.pdf) | 1 | 31 respostas, nome fictício identificado como teste, acentos, travessão, aspas curvas e escolhas múltiplas |
-| [Resumo visual e registro completo](evidencias/pr5-pdfs/resumoVisual.pdf) | 3 | Primeira página visual, seguida pelo registro integral das mesmas 31 respostas |
-| [Registro completo com resposta extensa](evidencias/pr5-pdfs/resumoVisual-longo.pdf) | 5 | Todas as opções das perguntas múltiplas e observação longa, com continuidade por mais de uma folha |
+| Declaração | 1 | 31 respostas, local/data, assinaturas e rodapé preservados |
+| Resumo visual e registro completo | 4 | Primeira página visual e 31 respostas integrais |
+| Registro completo extenso | 6 | Todas as opções múltiplas e relato longo até seu marcador final |
 
-O último cenário é um teste técnico de volume, inclusive com alternativas incompatíveis entre si. Não representa orientação clínica nem um plano destinado ao uso assistencial.
+Os onze PNGs foram renderizados por `pdftoppm -r 240 -png` e inspecionados. Todas as folhas são A4 (595,276 × 841,890 pt), com as palavras dentro dos limites da página. Os dados de entrada são idênticos aos anteriores; foram conferidas as 31 respostas, acentuação, pontuação e o fim do relato extenso. Não foram observados caracteres quebrados, quadrados, sobreposições ou cortes nos exemplos corrigidos.
 
-## Conferência visual e de conteúdo
+Os arquivos `*-fontes.txt` registram `emb=yes` e `uni=yes` para Regular e Bold; a lista de substituições está vazia. `manifesto.json` registra páginas, resolução e hashes dos PDFs e PNGs. Não se certifica suporte universal a todo Unicode ou emoji; os caracteres dos cenários sintéticos foram efetivamente conferidos.
 
-- Todas as páginas são A4: 595,276 × 841,890 pontos (210 × 297 mm).
-- Margens da declaração: 30 pt laterais, 25 pt superior e 24 pt inferior. Resumo visual: 18 pt laterais, 14 pt superior e 12 pt inferior. Registro integral: 30 pt em todos os lados.
-- A declaração permanece limitada a uma página, com os dois logotipos, título, campos de local/data, duas assinaturas e rodapé. Tentativas que não cabem na fonte mínima resultam em orientação clara, sem exportar conteúdo cortado.
-- A primeira página do resumo conserva o cabeçalho, mascote, cores, cartões, aviso, assinaturas e rodapé. As prévias extensas são identificadas por `... [ver registro completo]`; os valores originais permanecem integralmente nas páginas seguintes.
-- O espaço antes das assinaturas da primeira página foi reduzido de 30 para 18 pt para proteger o rodapé e respeitar a área útil. A coluna agora verifica seus limites, como a declaração já fazia.
-- A paginação do registro completo preserva a ordem das perguntas e permite que uma resposta continue nas páginas seguintes. Uma reserva mínima de espaço evita deixar uma pergunta isolada no fim da folha.
-- Acentos portugueses, `D'Ávila`, `nº`, `%`, `&`, parênteses, `—` e `“aspas”` foram conferidos na renderização e na extração independente. Foi mantida Helvetica, acrescentando uma fonte local DejaVu Sans de apoio apenas para os caracteres que ela não desenha. A licença acompanha o arquivo. Não houve alteração da fonte da interface do aplicativo nem dependência de download de fontes.
-- Foram conferidas as 31 respostas nos PDFs, o marcador final da resposta longa e os limites geométricos das palavras dentro de cada página. Todas as páginas foram inspecionadas em PNG a 120 dpi. Não foram observados cortes ou sobreposições nos exemplos finais.
+O cenário extenso é um teste técnico, inclusive com alternativas mutuamente incompatíveis. Não é orientação clínica ou plano para uso assistencial. Impressão física e experiência real no navegador permanecem fora desta validação.
 
-Os pontos observados na primeira renderização foram: quadrados no lugar de aspas/travessões e observação extensa deslocando aviso, assinaturas e rodapé para fora da primeira página. Um teste adicional reproduziu a falha do registro completo com uma resposta maior que uma A4 (`Widget won't fit into the page`); o texto agora usa paginação explícita (`TextOverflow.span`).
+## Testes e alteração necessária no CI
 
-O resumo continua sendo uma visão compacta. Para leitura integral, os anexos usam texto de 10 pt; não se deve interpretar a prévia abreviada como o registro completo. Não foi certificado suporte universal a todos os caracteres Unicode, fontes de emoji ou impressão física em qualquer equipamento.
+Os **67 casos atuais foram preservados**. O leitor de teste anterior tratava streams como Latin-1 e não interpretava corretamente glyph IDs/ToUnicode de TrueType incorporadas. Foi substituído por `pdftotext`, preservando verificações de conteúdo e acrescentando conferência de incorporação, Unicode e ausência de Helvetica com `pdffonts`.
 
-## Ajustes de UX
+Por isso, o workflow de verificação garante `pdftotext` e `pdffonts`, instalando `poppler-utils` somente se necessário. É uma dependência de testes, não do aplicativo Web. Gatilhos, permissões e workflow de publicação não foram alterados; não há deploy nessa etapa.
 
-O botão passou de `Gerar PDF — resumo visual (modelo antigo)` para **`Gerar PDF — resumo visual e registro completo`**.
+| Verificação local | Resultado |
+| --- | --- |
+| `flutter pub get --enforce-lockfile` | Aprovado, lockfile preservado |
+| `flutter analyze` | Nenhum apontamento |
+| `flutter test --no-pub --concurrency 4 --reporter expanded` | 67 aprovados, sem falhas/skips |
+| `flutter build web --release` | Aprovado em 73,2 s, incluindo Wasm dry run |
+| `pdffonts` nos três PDFs | Somente Regular/Bold incorporadas, Unicode presente, sem substituições |
+| Renderização e integridade | Onze páginas A4 em 240 dpi; 31 respostas preservadas |
 
-Quando a declaração excede uma página, a tela apresenta a mensagem específica, sem prefixo de exceção ou detalhe técnico:
-
-> Seu plano tem mais conteúdo do que cabe em uma página com boa leitura. Você pode resumir as respostas ou escolher "Resumo visual e registro completo" para guardar tudo. Suas respostas continuam salvas.
-
-O teste de layout inclui o botão novo em um resumo preenchido na dimensão 320 × 640. O fluxo de tamanho mantém o plano salvo; o limite de uma página não foi removido.
+A aprovação remota deve corresponder ao HEAD atual da PR #5 e é registrada na descrição da própria PR. **CI verde não substitui a aprovação visual do usuário. A PR deve permanecer sem merge até essa aprovação.**
 
 ## Reprodução
 
+Com Poppler instalado:
+
 ```bash
 flutter pub get --enforce-lockfile
-flutter test --no-pub test/pdf_presentation_test.dart
-pdftoppm -r 120 -png build/test_artifacts/pr5_visual/declaracao.pdf declaracao
-pdftoppm -r 120 -png build/test_artifacts/pr5_visual/resumoVisual.pdf resumoVisual
-pdftoppm -r 120 -png build/test_artifacts/pr5_visual/resumoVisual-longo.pdf resumoVisual-longo
+flutter analyze
+flutter test --no-pub
+flutter build web --release
+pdffonts build/test_artifacts/pr5_visual/declaracao.pdf
+pdffonts build/test_artifacts/pr5_visual/resumoVisual.pdf
+pdftoppm -r 240 -png build/test_artifacts/pr5_visual/declaracao.pdf declaracao
+pdftoppm -r 240 -png build/test_artifacts/pr5_visual/resumoVisual.pdf resumoVisual
+pdftoppm -r 240 -png build/test_artifacts/pr5_visual/resumoVisual-longo.pdf resumoVisual-longo
 ```
 
-O teste gera os três PDFs e seus dados de entrada em `build/test_artifacts/pr5_visual/`. Não chama `main`, não inicializa Supabase e não acessa produção. Os artefatos versionados da galeria são os examinados nesta revisão; uma nova geração pode ter metadados PDF e data de geração diferentes.
-
-## Verificações finais
-
-| Verificação | Resultado |
-| --- | --- |
-| `flutter analyze` | Aprovado, nenhum apontamento |
-| `flutter test --no-pub --concurrency 4 --reporter expanded` | 67 testes aprovados, sem falhas/skips; os 64 anteriores permanecem na suíte |
-| Poppler: renderização de todas as páginas + leitura independente | Nove PNGs, três PDFs A4; conteúdo integral e caracteres conferidos |
-| `flutter build web --release` | Aprovado em 74,9 segundos, Wasm dry run aprovado |
-| Publicação automática | GitHub Pages com `build_type=workflow`; workflow de publicação exclusivamente `workflow_dispatch`, sem gatilho de push/PR |
-
-O CI remoto deve estar aprovado no HEAD atual da PR #5 antes do merge. A aprovação do commit anterior não substitui essa conferência. A PR será mantida aberta, sem merge ou deploy nesta tarefa.
-
-Perguntas, alternativas, explicações, regras de risco, textos clínicos e documentos legais permanecem intactos. O `pubspec.yaml` recebeu somente a declaração do novo asset de fonte; dependências e lockfile não foram alterados. Não houve acesso a banco de produção, migração Neon, alteração do Diário da Gestante ou modificação das proteções do Chromium.
-
-**Recomendação:** após aprovação do CI no commit final, a PR pode seguir para revisão humana e merge quanto ao escopo offline e de PDFs aqui verificado. A aprovação não certifica integrações remotas ou a experiência real no navegador.
+Não houve navegador, alteração de proteções, acesso a produção, migração Neon, alteração do Diário da Gestante, merge ou deploy.

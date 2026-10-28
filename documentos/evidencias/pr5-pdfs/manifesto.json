@@ -6,68 +6,97 @@
       841.88976
     ],
     "all_31_answers_checked": true,
-    "png_dpi": 120,
-    "pdf_sha256": "e8fe8c1ca7aa2591d77b2ab2b37488496885e65feb10e75d919af4141b4dcb50",
+    "png_dpi": 240,
+    "embedded_family": "DejaVu Sans",
+    "embedded_weights": [
+      "Regular",
+      "Bold"
+    ],
+    "unicode_maps": true,
+    "reader_substitutions": false,
+    "pdf_sha256": "fafa02032c58bca24a73e5d21e9af837e8b6ec75eff095b3a58a46f2abc24ab6",
     "pngs": [
       {
         "file": "declaracao-1.png",
-        "sha256": "112286c997a82ba26b63862b6e0521b5acc00902e09d9d08085ddfb9f160f5ac"
+        "sha256": "90e322116cbf6ceb321c9593ea931f6be1528ba4d468511da797dd5bdb1d1f0e"
       }
     ]
   },
   "resumoVisual-longo.pdf": {
-    "pages": 5,
+    "pages": 6,
     "page_size_pt": [
       595.27559,
       841.88976
     ],
     "all_31_answers_checked": true,
-    "png_dpi": 120,
-    "pdf_sha256": "f17533346a9f28e7afb28eac8ef007d33781d950b5dd4fb8d5caba29f9ba7581",
+    "png_dpi": 240,
+    "embedded_family": "DejaVu Sans",
+    "embedded_weights": [
+      "Regular",
+      "Bold"
+    ],
+    "unicode_maps": true,
+    "reader_substitutions": false,
+    "pdf_sha256": "649a112371d81228557ded04b5c271fc751f773d38ada766b1e751cc58baef2a",
     "pngs": [
       {
         "file": "resumoVisual-longo-1.png",
-        "sha256": "4ecf9b4ee6da9cddc043bd9f0f6378b7d67da4bfc2d9dae944f0050b1a612187"
+        "sha256": "fc8947a834b6445c27aff2d596662907ad8933a405b088bbba4784e380a3bd39"
       },
       {
         "file": "resumoVisual-longo-2.png",
-        "sha256": "68747af197403ad0a74af23ca658450fcd725c8efe8906cf53547c2072d26692"
+        "sha256": "81adb0758adf7e85e2e4393e0d6de12094ff91772f584ca5b66527bd53c081ce"
       },
       {
         "file": "resumoVisual-longo-3.png",
-        "sha256": "c473daf57b7c289bb42d8d509fc506ab0f619bf7a29b6e3fbebf73518dce6f01"
+        "sha256": "a138e00f933ad2c725ec2719f7006e859f00574059530bf60205a6a3b084dd13"
       },
       {
         "file": "resumoVisual-longo-4.png",
-        "sha256": "5d63f252e9444dd4e3b8235223a2a909f037838a4b8651427ee3439eeaac5829"
+        "sha256": "912d2571975af89cbee42337c392ca5c1e5306edcb8c290f7f3cbd40c50be9f6"
       },
       {
         "file": "resumoVisual-longo-5.png",
-        "sha256": "41c30a9d87d71dc8a0a19492dda7d3e6de0da6a9ef49162415370983602f0b3e"
+        "sha256": "49dca3fb22afc7a391cde04096c9e7e3e45ac4bd03057871d47f62ef4754a95a"
+      },
+      {
+        "file": "resumoVisual-longo-6.png",
+        "sha256": "543f3747d452963520f0dd0ff03cf8879039b46bd00611619c96fb9d7ab31f15"
       }
     ]
   },
   "resumoVisual.pdf": {
-    "pages": 3,
+    "pages": 4,
     "page_size_pt": [
       595.27559,
       841.88976
     ],
     "all_31_answers_checked": true,
-    "png_dpi": 120,
-    "pdf_sha256": "2e7d482fc0e63672c68790287863e2bb9785b73b1ecb0a9bef3b1ef1c0b76420",
+    "png_dpi": 240,
+    "embedded_family": "DejaVu Sans",
+    "embedded_weights": [
+      "Regular",
+      "Bold"
+    ],
+    "unicode_maps": true,
+    "reader_substitutions": false,
+    "pdf_sha256": "f72d4f5a02a40efa07259646a95676600deb13d273202de24b0a8aa448fba840",
     "pngs": [
       {
         "file": "resumoVisual-1.png",
-        "sha256": "3bd0802dfdf1df2911b14aac6faa0ab76ea160493951ff681b5799141ad46b91"
+        "sha256": "8cb64fc248cd78212625560540bc36f2d1a3cadc67fdac8976ded6843d2c772e"
       },
       {
         "file": "resumoVisual-2.png",
-        "sha256": "63e94d5f4db7706283e108a2f928755e5447c10704aa9f6a42b7cf22339eef49"
+        "sha256": "0c1278e95fa5de7d200d8becb8193472c7e5ff7dffe88446d3a42f93f1265f70"
       },
       {
         "file": "resumoVisual-3.png",
-        "sha256": "a02d62427210673180145fc6eae7ea26fbe8c1b2ad37314eb9ba91bdf36b7508"
+        "sha256": "813b526fbfe65c86cc3b4a9bcb4b8dccd08d342c64505f1c97aa39468abba49e"
+      },
+      {
+        "file": "resumoVisual-4.png",
+        "sha256": "a0d003cf1e0200ef433338af9736216c5df6630ccc7f0d0521e0cb4406ed08cb"
       }
     ]
   }
