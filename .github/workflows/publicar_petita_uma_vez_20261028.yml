@@ -1,0 +1,55 @@
+name: Publicar Petita Web (autorização única 2026-10-28)
+
+# Este workflow transitório só executa com um commit explicitamente
+# autorizado e uma mudança no arquivo-sinal. Após executar, será removido.
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/petita-deploy-once-2026-10-28.trigger'
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: github-pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    if: github.event.head_commit.message == 'deploy(petita): publicação Web única autorizada em 28-10-2026'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Baixar repositório atualizado
+        uses: actions/checkout@v4
+      - name: Instalar Flutter stable
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+      - name: Instalar dependências
+        run: flutter pub get
+      - name: Verificar código
+        run: flutter analyze --no-pub
+      - name: Gerar site Flutter release
+        run: flutter build web --release --base-href "/petita-plano-parto/" --no-wasm-dry-run --pwa-strategy=none
+      - name: Configurar GitHub Pages
+        uses: actions/configure-pages@v5
+      - name: Enviar arquivos do site
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: build/web
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Publicar atualização no GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
