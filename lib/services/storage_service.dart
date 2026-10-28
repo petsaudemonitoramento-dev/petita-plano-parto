@@ -6,9 +6,11 @@ import '../models/knowledge_document.dart';
 import '../models/ubs_question.dart';
 import '../models/ubs_unit.dart';
 import '../models/user_profile.dart';
+import '../models/treatment_preferences.dart';
 
 class StorageService {
   static const _answersKey = 'birth_plan_answers';
+  static const _treatmentKey = 'birth_plan_treatment_preferences_v1';
   static const _consentRecordKey = 'consent_record_v2';
   static const _legacyConsentKey = 'consent_accepted';
   static const _ubsQuestionsKey = 'ubs_questions';
@@ -38,6 +40,29 @@ class StorageService {
   Future<void> clearAnswers() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove(_answersKey);
+    await prefs.remove(_treatmentKey);
+  }
+
+  Future<TreatmentPreferences?> loadTreatmentPreferences() async {
+    final prefs = await SharedPreferences.getInstance();
+    final raw = prefs.getString(_treatmentKey);
+    if (raw == null) return null;
+    try {
+      return TreatmentPreferences.fromJson(jsonDecode(raw) as Map<String, dynamic>);
+    } catch (_) {
+      return null;
+    }
+  }
+
+  Future<void> saveTreatmentPreferences(TreatmentPreferences value) async {
+    final prefs = await SharedPreferences.getInstance();
+    final success = await prefs.setString(_treatmentKey, jsonEncode(value.toJson()));
+    if (!success) throw StateError('Não foi possível salvar a preferência de tratamento.');
+  }
+
+  Future<void> clearTreatmentPreferences() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove(_treatmentKey);
   }
 
   Future<bool> hasConsent() async {
@@ -73,6 +98,7 @@ class StorageService {
     await prefs.remove(_consentRecordKey);
     await prefs.remove(_legacyConsentKey);
     await prefs.remove(_answersKey);
+    await prefs.remove(_treatmentKey);
     await prefs.remove(_profileKey);
     // Ação local; não remove informações anteriormente sincronizadas na nuvem.
   }

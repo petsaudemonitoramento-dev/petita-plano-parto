@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../../config/app_theme.dart';
 import '../../models/birth_plan_answer.dart';
 import '../../models/birth_plan_question.dart';
+import '../../models/treatment_preferences.dart';
 import '../../services/birth_plan_flow_service.dart';
 import '../../services/pdf_service.dart';
 import '../../services/storage_service.dart';
@@ -21,6 +22,7 @@ class _BirthPlanSummaryScreenState extends State<BirthPlanSummaryScreen> {
   final _online = SupabaseService();
   List<BirthPlanQuestion> _questions = [];
   List<BirthPlanAnswer> _answers = [];
+  TreatmentPreferences? _treatment;
   bool _loading = true;
 
   @override
@@ -32,10 +34,12 @@ class _BirthPlanSummaryScreenState extends State<BirthPlanSummaryScreen> {
   Future<void> _load() async {
     final questions = await BirthPlanFlowService().loadQuestions();
     final answers = await _storage.loadAnswers();
+    final treatment = await _storage.loadTreatmentPreferences();
     if (mounted) {
       setState(() {
         _questions = questions;
         _answers = answers;
+        _treatment = treatment;
         _loading = false;
       });
     }
@@ -44,7 +48,12 @@ class _BirthPlanSummaryScreenState extends State<BirthPlanSummaryScreen> {
   Future<void> _generatePdf(BirthPlanPdfFormat format) async {
     if (_answers.isEmpty) return;
     try {
-      await PdfService().shareBirthPlanPdf(questions: _questions, answers: _answers, format: format);
+      await PdfService().shareBirthPlanPdf(
+        questions: _questions,
+        answers: _answers,
+        format: format,
+        treatment: _treatment,
+      );
     } on BirthPlanPdfTooLongException catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.message)));
@@ -53,7 +62,67 @@ class _BirthPlanSummaryScreenState extends State<BirthPlanSummaryScreen> {
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Não foi possível gerar/compartilhar o PDF: $e')));
     }
   }
+ 
 
+  Future<void> _editTreatment() async {
+    final choice = await showDialog<String>(
+      context: context,
+      builder: (context) => SimpleDialog(
+        title: const Text('Como prefere ser tratada ou tratado?'),
+        children: [
+          for (final value in [
+            'Ela/dela', 'Ele/dele', 'Elu/delu',
+            'Prefiro que usem meu nome', 'Quero escrever outra forma',
+            'Prefiro não informar',
+          ])
+            SimpleDialogOption(
+              onPressed: () => Navigator.pop(context, value),
+              child: Text(value),
+            ),
+        ],
+      ),
+    );
+    if (choice == null || !mounted) return;
+    var selection = choice == 'Prefiro não informar' ? '' : choice;
+    if (choice == 'Quero escrever outra forma') {
+      final field = TextEditingController(text: _treatment?.pronouns ?? '');
+      try {
+        final text = await showDialog<String>(
+          context: context,
+          builder: (ctx) => AlertDialog(
+            title: const Text('Escreva sua preferência de tratamento'),
+            content: TextField(
+              controller: field,
+              autofocus: true,
+              maxLength: 120,
+              decoration: const InputDecoration(hintText: 'Como você gostaria de ser chamada ou chamado?'),
+            ),
+            actions: [
+              TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancelar')),
+              FilledButton(onPressed: () => Navigator.pop(ctx, field.text.trim()), child: const Text('Salvar')),
+            ],
+          ),
+        );
+        if (text == null || text.trim().isEmpty) return;
+        selection = text.trim();
+      } finally {
+        field.dispose();
+      }
+    }
+    await _storage.saveTreatmentPreferences(
+      TreatmentPreferences(pronouns: selection),
+    );
+    await _load();
+  }
+
+  Future<void> _setIncludeInPdf(bool value) async {
+    final preference = _treatment;
+    if (preference == null || !preference.hasPronouns) return;
+    await _storage.saveTreatmentPreferences(
+      preference.copyWith(includeInPdf: value),
+    );
+    await _load();
+  }
 
   Future<void> _syncOnline() async {
     if (_answers.isEmpty) return;
@@ -118,6 +187,30 @@ class _BirthPlanSummaryScreenState extends State<BirthPlanSummaryScreen> {
               const SizedBox(height: 8),
               const Text('Escolha entre a declaração em texto corrido, com espaço para assinaturas, e o resumo visual por tópicos. Ambos incluem as logos da UFCG e do PET Saúde. Revise suas respostas antes de compartilhar.'),
             ])),
+            if (_answers.isNotEmpty)
+              SectionCard(child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text('Como deseja ser chamada ou chamado?',
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: AppColors.petDarkBlue)),
+                  const SizedBox(height: 8),
+                  Text(_treatment?.hasPronouns == true
+                    ? _treatment!.pronouns
+                    : 'Não informado (opcional)'),
+                  TextButton.icon(
+                    onPressed: _editTreatment,
+                    icon: const Icon(Icons.edit_outlined),
+                    label: const Text('Alterar minha preferência de tratamento'),
+                  ),
+                  SwitchListTile.adaptive(
+                    contentPadding: EdgeInsets.zero,
+                    title: const Text('Incluir minha preferência de tratamento nos PDFs'),
+                    subtitle: const Text('Opcional. A equipe só verá essa informação no documento se você autorizar.'),
+                    value: (_treatment?.hasPronouns ?? false) && (_treatment?.includeInPdf ?? false),
+                    onChanged: (_treatment?.hasPronouns ?? false) ? _setIncludeInPdf : null,
+                  ),
+                ],
+              )),
             if (_answers.isEmpty)
               SectionCard(child: Column(children: [
                 Image.asset('assets/images/petita.png', height: 150),
