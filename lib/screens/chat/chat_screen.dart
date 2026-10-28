@@ -14,6 +14,8 @@ import '../../services/faq_search_service.dart';
 import '../../services/storage_service.dart';
 import '../../services/supabase_service.dart';
 
+enum _PlanStartChoice { resume, restart, summary }
+
 class ChatScreen extends StatefulWidget {
   const ChatScreen({super.key});
 
@@ -195,21 +197,79 @@ class _ChatScreenState extends State<ChatScreen> {
   }
 
   Future<void> _startPlanFlow() async {
-    // Reload because the summary may have explicitly cleared the saved plan.
-    final answers = await _storage.loadAnswers();
+    // A versão anterior retomava silenciosamente a primeira pergunta não
+    // respondida. Quem tocava em "Montar meu plano" via "Etapa 10 de 31"
+    // sem saber que suas respostas antigas ainda estavam salvas no navegador.
+    final saved = await _storage.loadAnswers();
+    if (!mounted) return;
+
+    var answers = saved;
+    var restarting = false;
+    if (saved.isNotEmpty) {
+      final answeredIds = saved.map((answer) => answer.questionId).toSet();
+      final completed = _questions.every((q) => answeredIds.contains(q.id));
+      final choice = await showDialog<_PlanStartChoice>(
+        context: context,
+        builder: (dialogContext) => AlertDialog(
+          title: const Text('Encontramos um plano salvo'),
+          content: Text(
+            'Este dispositivo tem ${saved.length} resposta(s) armazenada(s). '
+            'Você pode continuar de onde parou ou começar um novo plano.\n\n'
+            'Começar de novo apagará as respostas e os pronomes deste plano '
+            'salvos neste dispositivo, mas não apagará seu perfil nem seu aceite.',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext),
+              child: const Text('Cancelar'),
+            ),
+            TextButton(
+              onPressed: () =>
+                  Navigator.pop(dialogContext, _PlanStartChoice.restart),
+              child: const Text('Começar novo plano'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.pop(
+                dialogContext,
+                completed ? _PlanStartChoice.summary : _PlanStartChoice.resume,
+              ),
+              child: Text(completed ? 'Ver plano salvo' : 'Continuar meu plano'),
+            ),
+          ],
+        ),
+      );
+      if (!mounted || choice == null) return;
+      if (choice == _PlanStartChoice.summary) {
+        Navigator.pushNamed(context, AppRoutes.summary);
+        return;
+      }
+      if (choice == _PlanStartChoice.restart) {
+        await _storage.clearAnswers();
+        answers = [];
+        restarting = true;
+      }
+    }
+
     if (!mounted) return;
     _answers = answers;
     final answeredIds = _answers.map((answer) => answer.questionId).toSet();
     final next = _questions.indexWhere((question) => !answeredIds.contains(question.id));
     _currentQuestion = next < 0 ? 0 : next;
     _multiSelection.clear();
+    _awaitingPronouns = false;
+    _pronounCustomInput = false;
+    _textInputEnabled = false;
+    _controller.clear();
     setState(() {
-      _messages.add(const ChatMessage(
-        text: 'Que bom que vamos construir esse plano! 💜 Aqui você pode pensar nas suas preferências com tranquilidade. Não existe resposta certa ou errada: o importante é que suas escolhas sejam ouvidas. Se algum termo parecer difícil, toque em “Quero entender melhor”.',
+      if (restarting) _messages = [_chatbot.welcome()];
+      _messages.add(ChatMessage(
+        text: restarting
+            ? 'Vamos criar um novo Plano de Parto! 💜 As respostas do plano anterior foram apagadas deste dispositivo.'
+            : 'Que bom que vamos construir esse plano! 💜 Aqui você pode pensar nas suas preferências com tranquilidade. Não existe resposta certa ou errada: o importante é que suas escolhas sejam ouvidas. Se algum termo parecer difícil, toque em “Quero entender melhor”.',
         isUser: false,
       ));
     });
-    _showCurrentQuestion();
+    await _showCurrentQuestion();
   }
 
   Future<void> _showCurrentQuestion() async {
