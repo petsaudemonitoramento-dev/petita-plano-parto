@@ -128,7 +128,20 @@ void main() {
         ['AUDIT30']);
   });
 
-  testWidgets('blank input does not advance or persist an answer',
+  testWidgets('chat credits the requested developer without changing the medical notice',
+      (tester) async {
+    await openChat(tester);
+    expect(find.text('Desenvolvedor: Lucca Araújo'), findsOneWidget);
+    expect(
+      find.text(
+        'A Petita pode cometer erros. Confirme informações importantes com a equipe de saúde.',
+      ),
+      findsOneWidget,
+    );
+    expect(tester.takeException(), isNull);
+  });
+
+    testWidgets('blank input does not advance or persist an answer',
       (tester) async {
     await openChat(tester);
     await sendText(tester, '   ');
