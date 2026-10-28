@@ -31,20 +31,33 @@ jobs:
           channel: stable
           cache: true
 
-      - name: Gerar plataforma Android temporariamente para teste
-        run: |
-          set -eu
-          test ! -d android
-          flutter create --platforms=android --project-name plano_parto_pet_saude --no-pub .
-          test -f android/app/src/main/AndroidManifest.xml
-          echo 'Android gerado apenas neste runner; nenhum arquivo será integrado à main.'
-
-      - name: Instalar dependências com lockfile preservado
+      - name: Validar lockfile Web original
         run: |
           flutter pub get --enforce-lockfile
           git diff --exit-code -- pubspec.yaml pubspec.lock
 
-      - name: Instalar leitor de PDFs se necessário para os testes
+      - name: Gerar plataforma Android temporária
+        run: |
+          set -eu
+          test ! -d android
+          test ! -e test/widget_test.dart
+          test ! -e analysis_options.yaml
+          flutter create --platforms=android --project-name plano_parto_pet_saude --no-pub .
+          test -f android/app/src/main/AndroidManifest.xml
+          # Remover apenas os dois exemplos gerados pela ferramenta, não o app.
+          rm -f test/widget_test.dart analysis_options.yaml
+          git diff --exit-code -- pubspec.yaml
+          echo 'Scaffold Android gerado apenas neste runner.'
+
+      - name: Resolver dependências específicas do Android, apenas no runner
+        run: |
+          flutter pub get
+          git diff --exit-code -- pubspec.yaml
+          echo 'Alterações temporárias necessárias no lockfile para Android:'
+          git diff --stat -- pubspec.lock || true
+          echo 'O lockfile do repositório NÃO é atualizado por este workflow.'
+
+      - name: Instalar leitor de PDFs para os testes
         run: |
           if ! command -v pdftotext >/dev/null || ! command -v pdffonts >/dev/null; then
             sudo apt-get update -qq
@@ -54,7 +67,7 @@ jobs:
       - name: Analisar código
         run: flutter analyze --no-pub
 
-      - name: Executar testes offline
+      - name: Executar 67 testes offline
         run: flutter test --no-pub
 
       - name: Compilar APK de depuração
@@ -67,7 +80,7 @@ jobs:
           sha256sum build/app/outputs/flutter-apk/app-debug.apk
           du -h build/app/outputs/flutter-apk/app-debug.apk
 
-      - name: Disponibilizar APK apenas como artefato de teste
+      - name: Disponibilizar APK como artefato de teste
         uses: actions/upload-artifact@v4
         with:
           name: petita-apk-debug-teste
