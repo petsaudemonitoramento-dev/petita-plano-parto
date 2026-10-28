@@ -3,6 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:plano_parto_pet_saude/screens/chat/chat_screen.dart';
 import 'package:plano_parto_pet_saude/services/birth_plan_flow_service.dart';
 import 'package:plano_parto_pet_saude/services/storage_service.dart';
+import 'package:plano_parto_pet_saude/models/treatment_preferences.dart';
 
 import 'support/offline_helpers.dart';
 
@@ -131,6 +132,9 @@ void main() {
     await tester.pumpWidget(const MaterialApp(home: ChatScreen()));
     await tester.pumpAndSettle();
     await tapChoice(tester, 'Montar meu plano');
+    expect(find.text('Encontramos um plano salvo'), findsOneWidget);
+    await tester.tap(find.text('Continuar meu plano'));
+    await advanceChat(tester);
     expect(find.text('Etapa 2 de 31'), findsOneWidget);
     expect((await StorageService().loadAnswers()).single.values,
         ['Gestante Sintetica']);
@@ -138,19 +142,63 @@ void main() {
     expect(await StorageService().loadAnswers(), hasLength(3));
   });
 
-  testWidgets(
-      'revising a completed plan updates one answer without deleting the rest',
+  testWidgets('reopening nine saved answers asks before resuming at step 10',
+      (tester) async {
+    final questions = await BirthPlanFlowService().loadQuestions();
+    await StorageService().saveAnswers(syntheticAnswers(questions).take(9).toList());
+    setViewport(tester, const Size(800, 1200));
+    await tester.pumpWidget(const MaterialApp(home: ChatScreen()));
+    await tester.pumpAndSettle();
+    await tapChoice(tester, 'Montar meu plano');
+    expect(find.text('Encontramos um plano salvo'), findsOneWidget);
+    expect(find.text('Continuar meu plano'), findsOneWidget);
+    expect(find.text('Começar novo plano'), findsOneWidget);
+    expect(await StorageService().loadAnswers(), hasLength(9));
+
+    await tester.tap(find.text('Continuar meu plano'));
+    await advanceChat(tester);
+    expect(find.text('Etapa 10 de 31'), findsOneWidget);
+    expect(await StorageService().loadAnswers(), hasLength(9));
+  });
+
+  testWidgets('starting again clears only old answers after an explicit choice',
+      (tester) async {
+    final questions = await BirthPlanFlowService().loadQuestions();
+    await StorageService().saveAnswers(syntheticAnswers(questions).take(9).toList());
+    await StorageService().saveTreatmentPreferences(
+      const TreatmentPreferences(pronouns: 'Ela/dela', includeInPdf: true),
+    );
+    setViewport(tester, const Size(800, 1200));
+    await tester.pumpWidget(const MaterialApp(home: ChatScreen()));
+    await tester.pumpAndSettle();
+    await tapChoice(tester, 'Montar meu plano');
+    expect(find.text('Encontramos um plano salvo'), findsOneWidget);
+    await tester.tap(find.text('Cancelar'));
+    await advanceChat(tester);
+    expect(await StorageService().loadAnswers(), hasLength(9));
+    expect(await StorageService().loadTreatmentPreferences(), isNotNull);
+
+    await tapChoice(tester, 'Montar meu plano');
+    await tester.tap(find.text('Começar novo plano'));
+    await advanceChat(tester);
+    expect(find.text('Etapa 1 de 31'), findsOneWidget);
+    expect(await StorageService().loadAnswers(), isEmpty);
+    expect(await StorageService().loadTreatmentPreferences(), isNull);
+  });
+
+  testWidgets('finished saved plan asks to view it instead of silently restarting',
       (tester) async {
     final questions = await BirthPlanFlowService().loadQuestions();
     await StorageService().saveAnswers(syntheticAnswers(questions));
-    await openChat(tester);
-    await sendText(tester, 'Nome Sintetico Editado');
-    final saved = await StorageService().loadAnswers();
-    expect(saved, hasLength(31));
-    expect(saved.singleWhere((a) => a.questionId == 'nome_gestante').values,
-        ['Nome Sintetico Editado']);
-    expect(saved.singleWhere((a) => a.questionId == questions.last.id).values,
-        ['AUDIT30']);
+    setViewport(tester, const Size(800, 1200));
+    await tester.pumpWidget(const MaterialApp(home: ChatScreen()));
+    await tester.pumpAndSettle();
+    await tapChoice(tester, 'Montar meu plano');
+    expect(find.text('Encontramos um plano salvo'), findsOneWidget);
+    expect(find.text('Ver plano salvo'), findsOneWidget);
+    await tester.tap(find.text('Cancelar'));
+    await advanceChat(tester);
+    expect(await StorageService().loadAnswers(), hasLength(31));
   });
 
   testWidgets('text input is disabled until the person explicitly chooses to write',
