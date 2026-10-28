@@ -563,6 +563,19 @@ class _ChatScreenState extends State<ChatScreen> {
       await _savePronouns(option == 'Prefiro não informar' ? '' : option);
       return;
     }
+    if (_currentQuestion >= 0 &&
+        _questions[_currentQuestion].allowOther &&
+        (option == 'Outro' || option == 'Outra preferência' || option == 'Outra posição')) {
+      setState(() {
+        _textInputEnabled = true;
+        _messages.add(const ChatMessage(
+          text: 'Pode explicar sua outra preferência com suas próprias palavras. Só seguirei após o envio.',
+          isUser: false,
+        ));
+      });
+      _scrollToBottom();
+      return;
+    }
     if (option == 'Escrever minha resposta' && _currentQuestion >= 0) {
       setState(() {
         _textInputEnabled = true;
