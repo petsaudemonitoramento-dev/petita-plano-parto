@@ -5,7 +5,9 @@ import '../../config/app_theme.dart';
 import '../../models/birth_plan_answer.dart';
 import '../../models/birth_plan_question.dart';
 import '../../models/chat_message.dart';
+import '../../models/treatment_preferences.dart';
 import '../../services/birth_plan_flow_service.dart';
+import '../../services/gestational_age_service.dart';
 import '../../services/birth_plan_explanations.dart';
 import '../../services/chatbot_service.dart';
 import '../../services/faq_search_service.dart';
@@ -32,6 +34,9 @@ class _ChatScreenState extends State<ChatScreen> {
   int _currentQuestion = -1;
   bool _loading = true;
   bool _answering = false;
+  bool _textInputEnabled = true;
+  bool _awaitingPronouns = false;
+  bool _pronounCustomInput = false;
   bool _petitaSearching = false;
   int _typingDots = 1;
   Timer? _typingTimer;
@@ -79,10 +84,22 @@ class _ChatScreenState extends State<ChatScreen> {
     _scrollToBottom();
   }
 
+  bool get _weeksCalculatedAutomatically => _answers.any((answer) =>
+      answer.questionId == 'semanas_gestacao' &&
+      answer.values.isNotEmpty &&
+      answer.values.first.contains('(estimativa em '));
+
+  int get _visibleTotalSteps => _questions.length - (_weeksCalculatedAutomatically ? 1 : 0);
+
+  int get _visibleCurrentStep {
+    if (_currentQuestion < 0) return 0;
+    return _currentQuestion + 1 -
+        (_weeksCalculatedAutomatically && _currentQuestion > 2 ? 1 : 0);
+  }
+
   double get _progress {
     if (_questions.isEmpty || _currentQuestion < 0) return 0;
-    final value = (_currentQuestion + 1) / _questions.length;
-    return value.clamp(0, 1).toDouble();
+    return (_visibleCurrentStep / _visibleTotalSteps).clamp(0, 1).toDouble();
   }
 
   String get _currentSectionName {
@@ -94,9 +111,26 @@ class _ChatScreenState extends State<ChatScreen> {
     if (_petitaSearching || _answering) return;
     final text = (override ?? _controller.text).trim();
     if (text.isEmpty) return;
+    if (!_textInputEnabled && override == null) return;
     _controller.clear();
 
+    if (_awaitingPronouns) {
+      if (!_pronounCustomInput) return;
+      await _savePronouns(text);
+      return;
+    }
+
     if (_currentQuestion >= 0) {
+      final question = _questions[_currentQuestion];
+      if (question.id == 'dpp' && GestationalAgeService.parseDpp(text) == null) {
+        _controller.text = text;
+        setState(() => _messages.add(const ChatMessage(
+          text: 'Essa data não parece válida. Digite sua DPP no formato dia/mês/ano, por exemplo 18/11/2026.',
+          isUser: false,
+        )));
+        _scrollToBottom();
+        return;
+      }
       final q = _questions[_currentQuestion];
       if (q.multiple) {
         final values = {..._multiSelection, text}.toList();
@@ -171,7 +205,7 @@ class _ChatScreenState extends State<ChatScreen> {
     _multiSelection.clear();
     setState(() {
       _messages.add(const ChatMessage(
-        text: 'Que bom que vamos construir esse plano juntas! 💜 Aqui você pode pensar nas suas preferências com tranquilidade. Não existe resposta certa ou errada: o importante é que suas escolhas sejam ouvidas. Se algum termo parecer difícil, toque em “Quero entender melhor”.',
+        text: 'Que bom que vamos construir esse plano! 💜 Aqui você pode pensar nas suas preferências com tranquilidade. Não existe resposta certa ou errada: o importante é que suas escolhas sejam ouvidas. Se algum termo parecer difícil, toque em “Quero entender melhor”.',
         isUser: false,
       ));
     });
@@ -187,11 +221,13 @@ class _ChatScreenState extends State<ChatScreen> {
     final q = _questions[_currentQuestion];
     _multiSelection.clear();
     final options = q.multiple ? [...q.options, 'Concluir seleção'] : [...q.options];
+    if (q.options.isNotEmpty) options.add('Escrever minha resposta');
     if (BirthPlanExplanations.forQuestion(q.id) != null) {
       options.add('Quero entender melhor');
     }
     final intro = _introForQuestion(q);
     setState(() {
+      _textInputEnabled = q.options.isEmpty;
       if (intro.isNotEmpty && (_currentQuestion == 0 || _questions[_currentQuestion - 1].section != q.section)) {
         _messages.add(ChatMessage(text: intro, isUser: false));
       }
@@ -218,6 +254,49 @@ class _ChatScreenState extends State<ChatScreen> {
     return '';
   }
 
+  void _showPronounsPrompt() {
+    setState(() {
+      _awaitingPronouns = true;
+      _pronounCustomInput = false;
+      _textInputEnabled = false;
+      _messages.add(const ChatMessage(
+        text: 'Antes de continuar: como você prefere que a Petita e a equipe se refiram a você? 💜\n\n'
+            'Pronomes são palavras usadas no lugar do nome de alguém. '
+            'Exemplos: “Ela escolheu”, “Ele escolheu”, “Elu escolheu”. '
+            '“Elu” é uma forma neutra usada por algumas pessoas. '
+            'Você também pode pedir que usem apenas seu nome ou não informar. '
+            'Sua escolha é opcional e não muda seus cuidados de saúde.',
+        isUser: false,
+        options: [
+          'Ela/dela',
+          'Ele/dele',
+          'Elu/delu',
+          'Prefiro que usem meu nome',
+          'Quero escrever outra forma',
+          'Prefiro não informar',
+        ],
+      ));
+    });
+    _scrollToBottom();
+  }
+
+  Future<void> _savePronouns(String pronouns) async {
+    await _storage.saveTreatmentPreferences(
+      TreatmentPreferences(pronouns: pronouns),
+    );
+    if (!mounted) return;
+    setState(() {
+      _messages.add(ChatMessage(
+        text: pronouns.isEmpty ? 'Prefiro não informar' : pronouns,
+        isUser: true,
+      ));
+      _awaitingPronouns = false;
+      _pronounCustomInput = false;
+      _textInputEnabled = false;
+    });
+    await _showCurrentQuestion();
+  }
+
   Future<void> _answerCurrentQuestion(List<String> values) async {
     if (_answering || _currentQuestion < 0) return;
     final q = _questions[_currentQuestion];
@@ -227,10 +306,31 @@ class _ChatScreenState extends State<ChatScreen> {
     try {
       _answers.removeWhere((a) => a.questionId == q.id);
       _answers.add(BirthPlanAnswer(questionId: q.id, values: cleaned));
+      String? gestationalEstimate;
+      if (q.id == 'dpp') {
+        gestationalEstimate = GestationalAgeService.estimate(cleaned.first);
+        _answers.removeWhere((a) => a.questionId == 'semanas_gestacao');
+        if (gestationalEstimate != null) {
+          _answers.add(BirthPlanAnswer(
+            questionId: 'semanas_gestacao',
+            values: [gestationalEstimate],
+          ));
+        }
+      }
       await _storage.saveAnswers(_answers);
       if (!mounted) return;
 
       _currentQuestion++;
+      if (q.id == 'dpp' && gestationalEstimate != null &&
+          _currentQuestion < _questions.length &&
+          _questions[_currentQuestion].id == 'semanas_gestacao') {
+        _currentQuestion++;
+      }
+      if (q.id == 'nome_gestante' &&
+          await _storage.loadTreatmentPreferences() == null) {
+        _showPronounsPrompt();
+        return;
+      }
       if (_currentQuestion >= _questions.length) {
         setState(() => _messages.add(const ChatMessage(
             text: 'Você conseguiu! 💜 Obrigada por compartilhar suas escolhas comigo. Seu Plano de Parto está pronto para ser revisado com calma. Você pode conferir as respostas, conversar com a equipe de saúde e gerar o PDF quando quiser.',
@@ -239,6 +339,7 @@ class _ChatScreenState extends State<ChatScreen> {
           )));
         _currentQuestion = -1;
         _multiSelection.clear();
+        _textInputEnabled = true;
         _scrollToBottom();
       } else {
         await _showCurrentQuestion();
@@ -446,6 +547,33 @@ class _ChatScreenState extends State<ChatScreen> {
 
   Future<void> _handleOption(String option) async {
     if (_petitaSearching || _answering) return;
+    if (_awaitingPronouns) {
+      if (option == 'Quero escrever outra forma') {
+        setState(() {
+          _pronounCustomInput = true;
+          _textInputEnabled = true;
+          _messages.add(const ChatMessage(
+            text: 'Escreva como prefere ser tratada ou tratado. Por exemplo: “Use apenas meu nome”.',
+            isUser: false,
+          ));
+        });
+        _scrollToBottom();
+        return;
+      }
+      await _savePronouns(option == 'Prefiro não informar' ? '' : option);
+      return;
+    }
+    if (option == 'Escrever minha resposta' && _currentQuestion >= 0) {
+      setState(() {
+        _textInputEnabled = true;
+        _messages.add(const ChatMessage(
+          text: 'Pode escrever sua resposta no campo abaixo. Só avançarei depois que você enviar.',
+          isUser: false,
+        ));
+      });
+      _scrollToBottom();
+      return;
+    }
     if (option == 'Quero entender melhor' && _currentQuestion >= 0) {
       final explanation = BirthPlanExplanations.forQuestion(_questions[_currentQuestion].id);
       if (explanation != null) {
@@ -455,8 +583,8 @@ class _ChatScreenState extends State<ChatScreen> {
             text: '$explanation\n\nAgora você pode escolher a opção que combina mais com o que deseja. Se ainda tiver dúvidas, converse com a equipe de saúde.',
             isUser: false,
             options: _questions[_currentQuestion].multiple
-                ? [..._questions[_currentQuestion].options, 'Concluir seleção', 'Quero entender melhor']
-                : [..._questions[_currentQuestion].options, 'Quero entender melhor'],
+                ? [..._questions[_currentQuestion].options, 'Concluir seleção', 'Escrever minha resposta', 'Quero entender melhor']
+                : [..._questions[_currentQuestion].options, 'Escrever minha resposta', 'Quero entender melhor'],
           ));
         });
         _scrollToBottom();
@@ -480,6 +608,7 @@ class _ChatScreenState extends State<ChatScreen> {
       final current = _questions[_currentQuestion];
       if (current.allowOther && option == 'Sim, vou descrever') {
         setState(() {
+          _textInputEnabled = true;
           _messages.add(ChatMessage(text: option, isUser: true));
           _messages.add(const ChatMessage(
             text: 'Digite sua resposta no campo de mensagem para registrar no plano.',
@@ -491,7 +620,9 @@ class _ChatScreenState extends State<ChatScreen> {
       }
       if (current.id == 'ubs_referencia' && option == 'Outra UBS') {
         await _showManualUbsWarning();
+        if (!mounted) return;
         setState(() {
+          _textInputEnabled = true;
           _messages.add(const ChatMessage(text: 'Outra UBS', isUser: true));
           _messages.add(const ChatMessage(
             text: 'Sem problema. Digite o nome da sua UBS de referência no campo de mensagem para registrar no plano.\n\nImportante: como ela não foi selecionada da lista oficial, ela aparecerá no PDF, mas as dúvidas não poderão ser respondidas pela Equipe UBS via chat até que uma UBS oficial seja vinculada ao seu perfil.',
@@ -507,9 +638,9 @@ class _ChatScreenState extends State<ChatScreen> {
       if (option == 'Concluir seleção') {
         if (_multiSelection.isEmpty) {
           setState(() => _messages.add(ChatMessage(
-                text: 'Selecione pelo menos uma opção ou digite uma resposta no campo de mensagem.',
+                text: 'Selecione pelo menos uma opção ou toque em “Escrever minha resposta”.',
                 isUser: false,
-                options: [..._questions[_currentQuestion].options, 'Concluir seleção',
+                options: [..._questions[_currentQuestion].options, 'Concluir seleção', 'Escrever minha resposta',
                   if (BirthPlanExplanations.forQuestion(_questions[_currentQuestion].id) != null)
                     'Quero entender melhor'],
               )));
@@ -557,8 +688,8 @@ class _ChatScreenState extends State<ChatScreen> {
               progress: _progress,
               currentSection: _currentSectionName,
               inPlanFlow: _currentQuestion >= 0,
-              currentStep: _currentQuestion >= 0 ? _currentQuestion + 1 : 0,
-              totalSteps: _questions.length,
+              currentStep: _visibleCurrentStep,
+              totalSteps: _visibleTotalSteps,
             ),
             Expanded(
               child: ListView.builder(
@@ -581,13 +712,16 @@ class _ChatScreenState extends State<ChatScreen> {
                             final isSelected = _currentQuestion >= 0 && _questions[_currentQuestion].multiple && _multiSelection.contains(o);
                             final isFinish = o == 'Concluir seleção';
                             final isHelp = o == 'Quero entender melhor';
-                            return _ChoicePill(
-                              label: o,
-                              icon: isHelp ? Icons.lightbulb_outline_rounded : (isFinish ? Icons.check_circle_outline : _optionIcon(o)),
-                              selected: isSelected,
-                              primary: isFinish,
-                              help: isHelp,
-                              onTap: () => _handleOption(o),
+                            return Padding(
+                              padding: const EdgeInsets.only(bottom: 10),
+                              child: _ChoicePill(
+                                label: o,
+                                icon: isHelp ? Icons.lightbulb_outline_rounded : (isFinish ? Icons.check_circle_outline : _optionIcon(o)),
+                                selected: isSelected,
+                                primary: isFinish,
+                                help: isHelp,
+                                onTap: () => _handleOption(o),
+                              ),
                             );
                           }).toList(),
                         ),
@@ -596,7 +730,11 @@ class _ChatScreenState extends State<ChatScreen> {
                 },
               ),
             ),
-            _ChatInput(controller: _controller, onSend: () => _send()),
+            _ChatInput(
+              controller: _controller,
+              enabled: _textInputEnabled,
+              onSend: () => _send(),
+            ),
           ],
         ),
       ),
@@ -811,8 +949,9 @@ class _ChoicePill extends StatelessWidget {
 }
 
 class _ChatInput extends StatelessWidget {
-  const _ChatInput({required this.controller, required this.onSend});
+  const _ChatInput({required this.controller, required this.enabled, required this.onSend});
   final TextEditingController controller;
+  final bool enabled;
   final VoidCallback onSend;
 
   @override
@@ -827,16 +966,19 @@ class _ChatInput extends StatelessWidget {
             Expanded(
               child: TextField(
                 controller: controller,
+                enabled: enabled,
                 minLines: 1,
                 maxLines: 4,
-                decoration: const InputDecoration(hintText: 'Digite sua mensagem...'),
+                decoration: InputDecoration(
+                  hintText: enabled ? 'Digite sua mensagem...' : 'Escolha uma opção ou toque em “Escrever minha resposta”',
+                ),
                 onSubmitted: (_) => onSend(),
               ),
             ),
             const SizedBox(width: 8),
             FloatingActionButton.small(
-              onPressed: onSend,
-              backgroundColor: AppColors.primaryPink,
+              onPressed: enabled ? onSend : null,
+              backgroundColor: enabled ? AppColors.primaryPink : Colors.grey,
               foregroundColor: Colors.white,
               child: const Icon(Icons.send),
             ),
@@ -846,6 +988,12 @@ class _ChatInput extends StatelessWidget {
             'A Petita pode cometer erros. Confirme informações importantes com a equipe de saúde.',
             textAlign: TextAlign.center,
             style: TextStyle(fontSize: 10.5, color: Color(0xFF777777), height: 1.2),
+          ),
+          const SizedBox(height: 4),
+          const Text(
+            'Desenvolvedor: Lucca Araújo',
+            textAlign: TextAlign.center,
+            style: TextStyle(fontSize: 10, color: Color(0xFF777777)),
           ),
         ]),
       ),
