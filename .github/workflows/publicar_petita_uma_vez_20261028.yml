@@ -19,7 +19,7 @@ concurrency:
 
 jobs:
   build:
-    if: github.event.head_commit.message == 'deploy(petita): publicação Web única autorizada em 28-10-2026'
+    if: "github.event.head_commit.message == 'deploy(petita): publicação Web única autorizada em 28-10-2026'"
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
