@@ -155,7 +155,15 @@ void main() {
     final answers = await StorageService().loadAnswers();
     expect(answers.last.questionId, 'prioridade_parto');
     expect(answers.last.values, ['Minha prioridade escrita sintética']);
-    expect(find.text('Minha prioridade escrita sintética'), findsWidgets);
+    // O ListView.builder virtualiza mensagens antigas. Rolar para conferir
+    // que a resposta continua presente no histórico, não só no armazenamento.
+    await tester.scrollUntilVisible(
+      find.text('Minha prioridade escrita sintética'),
+      -180,
+      scrollable: find.byType(Scrollable).first,
+      maxScrolls: 30,
+    );
+    expect(find.text('Minha prioridade escrita sintética'), findsOneWidget);
   });
 
   testWidgets('blank input does not advance or persist an answer',
