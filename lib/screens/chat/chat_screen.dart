@@ -581,13 +581,16 @@ class _ChatScreenState extends State<ChatScreen> {
                             final isSelected = _currentQuestion >= 0 && _questions[_currentQuestion].multiple && _multiSelection.contains(o);
                             final isFinish = o == 'Concluir seleção';
                             final isHelp = o == 'Quero entender melhor';
-                            return _ChoicePill(
-                              label: o,
-                              icon: isHelp ? Icons.lightbulb_outline_rounded : (isFinish ? Icons.check_circle_outline : _optionIcon(o)),
-                              selected: isSelected,
-                              primary: isFinish,
-                              help: isHelp,
-                              onTap: () => _handleOption(o),
+                            return Padding(
+                              padding: const EdgeInsets.only(bottom: 10),
+                              child: _ChoicePill(
+                                label: o,
+                                icon: isHelp ? Icons.lightbulb_outline_rounded : (isFinish ? Icons.check_circle_outline : _optionIcon(o)),
+                                selected: isSelected,
+                                primary: isFinish,
+                                help: isHelp,
+                                onTap: () => _handleOption(o),
+                              ),
                             );
                           }).toList(),
                         ),
@@ -846,6 +849,12 @@ class _ChatInput extends StatelessWidget {
             'A Petita pode cometer erros. Confirme informações importantes com a equipe de saúde.',
             textAlign: TextAlign.center,
             style: TextStyle(fontSize: 10.5, color: Color(0xFF777777), height: 1.2),
+          ),
+          const SizedBox(height: 4),
+          const Text(
+            'Desenvolvedor: Lucca Araújo',
+            textAlign: TextAlign.center,
+            style: TextStyle(fontSize: 10, color: Color(0xFF777777)),
           ),
         ]),
       ),
