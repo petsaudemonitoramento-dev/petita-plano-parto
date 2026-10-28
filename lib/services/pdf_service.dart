@@ -5,6 +5,7 @@ import 'package:printing/printing.dart';
 import '../config/app_info.dart';
 import '../models/birth_plan_answer.dart';
 import '../models/birth_plan_question.dart';
+import '../models/treatment_preferences.dart';
 
 enum BirthPlanPdfFormat { declaracao, resumoVisual }
 
@@ -31,8 +32,11 @@ class PdfService {
     required List<BirthPlanQuestion> questions,
     required List<BirthPlanAnswer> answers,
     BirthPlanPdfFormat format = BirthPlanPdfFormat.declaracao,
+    TreatmentPreferences? treatment,
   }) async {
-    final bytes = await buildBirthPlanPdf(questions: questions, answers: answers, format: format);
+    final bytes = await buildBirthPlanPdf(
+      questions: questions, answers: answers, format: format, treatment: treatment,
+    );
     final filename = format == BirthPlanPdfFormat.resumoVisual ? 'plano_de_parto_resumo_pet_saude.pdf' : 'plano_de_parto_declaracao_pet_saude.pdf';
     await Printing.sharePdf(bytes: bytes, filename: filename);
   }
@@ -41,6 +45,7 @@ class PdfService {
     required List<BirthPlanQuestion> questions,
     required List<BirthPlanAnswer> answers,
     BirthPlanPdfFormat format = BirthPlanPdfFormat.declaracao,
+    TreatmentPreferences? treatment,
   }) async {
     // Embed both weights of one family; never rely on reader substitutions or
     // switch families for punctuation in the middle of a paragraph.
@@ -52,10 +57,15 @@ class PdfService {
     // pdf treats wordSpacing as a multiplier: 1 preserves natural spaces.
     ).copyWith(defaultTextStyle: const pw.TextStyle(letterSpacing: 0, wordSpacing: 1));
     final doc = pw.Document(theme: theme);
-    final logoPet = pw.MemoryImage((await rootBundle.load('assets/images/pet_saude_logo.png')).buffer.asUint8List());
-    final logoPetAvatar = pw.MemoryImage((await rootBundle.load('assets/images/pet_saude_avatar.png')).buffer.asUint8List());
-    final logoUfcg = pw.MemoryImage((await rootBundle.load('assets/images/ufcg_logo.png')).buffer.asUint8List());
-    final petita = pw.MemoryImage((await rootBundle.load('assets/images/petita.png')).buffer.asUint8List());
+    // A mascote também é usada na interface e deve integrar o bundle. Em
+    // publicações Web antigas um logotipo ausente impedia todo o PDF.
+    // Se uma marca opcional não carregar, mantenha o documento acessível.
+    final petita = pw.MemoryImage(
+      (await rootBundle.load('assets/images/petita.png')).buffer.asUint8List(),
+    );
+    final logoPet = await _loadLogoOrMascot('assets/images/pet_saude_logo.png', petita);
+    final logoPetAvatar = await _loadLogoOrMascot('assets/images/pet_saude_avatar.png', petita);
+    final logoUfcg = await _loadLogoOrMascot('assets/images/ufcg_logo.png', petita);
     final map = {for (final a in answers) a.questionId: a.values};
 
     if (format == BirthPlanPdfFormat.resumoVisual) {
@@ -68,6 +78,7 @@ class PdfService {
           logoPetAvatar: logoPetAvatar,
           petita: petita,
           map: map,
+          treatment: treatment,
         ),
       ));
       // Preserve the legacy overview and include the full saved record on
@@ -95,7 +106,7 @@ class PdfService {
       return doc.save();
     }
 
-    final paragraphs = _declarationParagraphs(map);
+    final paragraphs = _declarationParagraphs(map, treatment);
     // Keep a readable, fixed 10 pt body. Oversized declarations must use the
     // complete report rather than reducing the font until the text fits.
     try {
@@ -114,6 +125,15 @@ class PdfService {
       return await doc.save();
     } on StateError {
       throw BirthPlanPdfTooLongException();
+    }
+  }
+
+  Future<pw.MemoryImage> _loadLogoOrMascot(String path, pw.MemoryImage fallback) async {
+    try {
+      return pw.MemoryImage((await rootBundle.load(path)).buffer.asUint8List());
+    } catch (_) {
+      // Nunca descartar respostas clínicas por ausência do asset de marca.
+      return fallback;
     }
   }
 
@@ -166,13 +186,19 @@ class PdfService {
     );
   }
 
-  List<String> _declarationParagraphs(Map<String, List<String>> map) {
+  List<String> _declarationParagraphs(
+    Map<String, List<String>> map,
+    TreatmentPreferences? treatment,
+  ) {
     final name = _selected(map, 'nome_gestante');
     final opening = StringBuffer('Eu, ${name == null || name.toLowerCase().contains('prefiro não informar') ? '________________________________' : name}, por meio deste Plano de Parto, manifesto minhas preferências para o trabalho de parto, o nascimento e os cuidados iniciais com meu bebê.');
     final dpp = _selected(map, 'dpp');
     final ubs = _selected(map, 'ubs_referencia');
     if (dpp != null) opening.write(' Minha data provável do parto é $dpp.');
     if (ubs != null) opening.write(' Minha unidade de referência é $ubs.');
+    if (treatment != null && treatment.includeInPdf && treatment.hasPronouns) {
+      opening.write(' Peço que a equipe se refira a mim desta forma: ${treatment.pronouns}.');
+    }
     final semanas = _selected(map, 'semanas_gestacao');
     if (semanas != null) opening.write(' Idade gestacional informada: $semanas.');
     final paragraphs = <String>[opening.toString()];
@@ -232,6 +258,7 @@ class PdfService {
     required pw.MemoryImage logoPetAvatar,
     required pw.MemoryImage petita,
     required Map<String, List<String>> map,
+    TreatmentPreferences? treatment,
   }) {
     final nome = _value(map, 'nome_gestante', 'Não informado');
     final dpp = _value(map, 'dpp', 'Não informada');
@@ -244,6 +271,11 @@ class PdfService {
         _header(logoUfcg: logoUfcg, logoPet: logoPet, petita: petita),
         pw.SizedBox(height: 5),
         _dataBox(nome: nome, dpp: dpp, ubs: ubs, acompanhante: acompanhante, data: data),
+        if (treatment != null && treatment.includeInPdf && treatment.hasPronouns) ...[
+          pw.SizedBox(height: 5),
+          pw.Text('Preferência de tratamento para a equipe: ${treatment.pronouns}',
+            style: pw.TextStyle(fontSize: 9, color: _darkBlue, fontWeight: pw.FontWeight.bold)),
+        ],
         pw.SizedBox(height: 8),
         pw.Row(
           crossAxisAlignment: pw.CrossAxisAlignment.start,
