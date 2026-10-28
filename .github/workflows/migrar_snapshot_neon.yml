@@ -15,6 +15,9 @@ permissions:
 jobs:
   snapshot-neon:
     if: ${{ github.ref == 'refs/heads/main' && inputs.confirm == true }}
+    # Secrets foram cadastrados no Environment com este nome.
+    # Somente jobs que declaram este Environment recebem seus secrets.
+    environment: PETITA_SOURCE_DATABASE_URL
     runs-on: ubuntu-26.04
     timeout-minutes: 30
     env:
