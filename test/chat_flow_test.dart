@@ -82,6 +82,18 @@ void main() {
     expect(find.widgetWithText(InkWell, 'Ver meu plano'), findsOneWidget);
   });
 
+  testWidgets('opção Outro aguarda texto e salva a frase, não o marcador',
+      (tester) async {
+    await reachPriorities(tester);
+    await tapChoice(tester, 'Outro');
+    expect(tester.widget<TextField>(find.byType(TextField).first).enabled, isTrue);
+    expect(await StorageService().loadAnswers(), hasLength(5));
+    await sendText(tester, 'Preferência personalizada sintética');
+    final saved = await StorageService().loadAnswers();
+    expect(saved.last.questionId, 'prioridade_parto');
+    expect(saved.last.values, ['Preferência personalizada sintética']);
+  });
+
   testWidgets('empty multiple selection keeps choices available to recover',
       (tester) async {
     final questions = await BirthPlanFlowService().loadQuestions();
