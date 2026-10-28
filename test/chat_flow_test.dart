@@ -15,6 +15,12 @@ void main() {
     await tester.pumpWidget(const MaterialApp(home: ChatScreen()));
     await tester.pumpAndSettle();
     await tapChoice(tester, 'Montar meu plano');
+    if ((await StorageService().loadAnswers()).isNotEmpty) {
+      // Novas versões só retomam dados locais mediante escolha explícita.
+      expect(find.text('Encontramos um plano salvo'), findsOneWidget);
+      await tester.tap(find.text('Continuar meu plano'));
+      await advanceChat(tester);
+    }
   }
 
   String testDpp() {
