@@ -41,6 +41,8 @@ jobs:
         run: |
           flutter pub get --enforce-lockfile
           git diff --exit-code -- pubspec.yaml pubspec.lock
+      - name: Preparar utilitarios para testes de PDF
+        run: sudo apt-get update -qq && sudo apt-get install -y poppler-utils
       - name: Analisar e testar offline
         run: |
           python3 -m unittest discover -s tools -p test_android_secret_scanner.py -v
