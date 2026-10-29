@@ -38,6 +38,8 @@ jobs:
           cache: true
       - name: Instalar SDK/NDK
         run: sdkmanager 'platforms;android-36' 'build-tools;36.0.0' 'ndk;28.2.13676358'
+      - name: Instalar utilitários para validar PDFs
+        run: sudo apt-get update -qq && sudo apt-get install -y poppler-utils
       - name: Validar dependências e questionário
         run: |
           flutter pub get --enforce-lockfile
