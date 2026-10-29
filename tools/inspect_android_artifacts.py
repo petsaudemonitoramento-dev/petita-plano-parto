@@ -108,8 +108,31 @@ def inspect(apk, kind, sdk, output):
     # A manifest declaration alone does not prove Kotlin compiled the Activity.
     activity_code = run(analyzer, 'dex', 'code', '--class', 'br.edu.ufcg.petsaude.petita.MainActivity', apk).stdout
     assert 'MainActivity' in activity_code, 'Launcher Activity missing from DEX'
-    paths = run(tools / 'aapt', 'dump', 'xmltree', apk, 'res/xml/flutter_printing_file_paths.xml').stdout
-    assert 'cache-path' in paths and '/share/' in paths and 'root-path' not in paths
+    # AAPT2 can collapse/rename resource file paths in release builds.
+    # Do not assume the source file name survives packaging: inspect all
+    # packaged XMLs with the Android resource parser and require a safe
+    # FileProvider declaration, without trusting a renamed path.
+    with zipfile.ZipFile(apk) as resource_archive:
+        xml_entries = sorted(
+            name for name in resource_archive.namelist()
+            if name.startswith('res/') and name.endswith('.xml')
+        )
+    preferred = 'res/xml/flutter_printing_file_paths.xml'
+    if preferred in xml_entries:
+        xml_entries.remove(preferred)
+        xml_entries.insert(0, preferred)
+    paths = None
+    for xml_entry in xml_entries:
+        check_paths = run(tools / 'aapt', 'dump', 'xmltree', apk, xml_entry, check=False)
+        if check_paths.returncode != 0:
+            continue
+        if 'cache-path' in check_paths.stdout and '/share/' in check_paths.stdout:
+            assert 'root-path' not in check_paths.stdout, (
+                'FileProvider paths expose a root directory'
+            )
+            paths = check_paths.stdout
+            break
+    assert paths is not None, 'No safe Flutter printing FileProvider paths found inside APK'
     certificate = run(tools / 'apksigner', 'verify', '--verbose', '--print-certs', apk, check=False)
     assert (certificate.returncode == 0) == (kind == 'debug'), 'Unexpected signing status'
     fingerprint = re.findall(r'certificate SHA-256 digest: ([0-9a-f]+)', certificate.stdout)
