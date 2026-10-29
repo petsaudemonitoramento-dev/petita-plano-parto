@@ -1,0 +1,82 @@
+name: Testar APK leve no Appetize
+
+# Execucao exclusivamente manual. Nao gera, assina ou publica um novo APK.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: petita-appetize-teste
+  cancel-in-progress: false
+
+jobs:
+  enviar-apk:
+    name: Enviar APK x86_64 para Appetize
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Confirmar token Appetize
+        env:
+          APPETIZE_API_TOKEN: ${{ secrets.APPETIZE_API_TOKEN }}
+        shell: bash
+        run: |
+          if [[ -z "$APPETIZE_API_TOKEN" ]]; then
+            echo "::error::Adicione APPETIZE_API_TOKEN em Settings > Secrets and variables > Actions > Repository secrets."
+            exit 1
+          fi
+
+      - name: Baixar APK leve da release oficial
+        shell: bash
+        run: |
+          set -euo pipefail
+          APK="Petita-Teste-Leve-x86_64-20261029.apk"
+          URL="https://github.com/petsaudemonitoramento-dev/petita-plano-parto/releases/download/petita-apk-leve-teste-20261029/$APK"
+          curl --fail --location --show-error --silent --retry 3 --retry-all-errors "$URL" --output "$APK"
+
+          # Confere o tamanho do artefato desta release para evitar HTML/arquivos incorretos.
+          EXPECTED_BYTES=24779403
+          ACTUAL_BYTES="$(wc -c < "$APK" | tr -d '[:space:]')"
+          if [[ "$ACTUAL_BYTES" != "$EXPECTED_BYTES" ]]; then
+            echo "::error::Tamanho inesperado: $ACTUAL_BYTES bytes (esperados: $EXPECTED_BYTES)."
+            exit 1
+          fi
+
+          unzip -tqq "$APK"
+          if ! unzip -Z1 "$APK" | grep -Fxq "AndroidManifest.xml"; then
+            echo "::error::O arquivo nao contem AndroidManifest.xml."
+            exit 1
+          fi
+          echo "APK verificado: $ACTUAL_BYTES bytes, ZIP valido e AndroidManifest presente."
+
+      - name: Enviar APK ao Appetize
+        id: appetize
+        uses: appetizeio/github-action-appetize@v1.1.0
+        with:
+          apiToken: ${{ secrets.APPETIZE_API_TOKEN }}
+          platform: android
+          appFile: Petita-Teste-Leve-x86_64-20261029.apk
+          fileType: apk
+          note: "Petita - teste Android x86_64 (release 2026-10-29)"
+
+      - name: Exibir link para testar no navegador
+        env:
+          PUBLIC_KEY: ${{ steps.appetize.outputs.publicKey }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ -z "$PUBLIC_KEY" ]]; then
+            echo "::error::O Appetize nao retornou o identificador do app."
+            exit 1
+          fi
+          APP_URL="https://appetize.io/app/$PUBLIC_KEY"
+          echo "Appetize: $APP_URL"
+          {
+            echo "## Petita - APK leve no Appetize"
+            echo
+            echo "[Abrir Petita no emulador Android]($APP_URL)"
+            echo
+            echo "Fonte: release petita-apk-leve-teste-20261029 (x86_64, 24,8 MB)."
+            echo "Use somente dados ficticios. Aplicativo de teste, nao homologado."
+          } >> "$GITHUB_STEP_SUMMARY"
