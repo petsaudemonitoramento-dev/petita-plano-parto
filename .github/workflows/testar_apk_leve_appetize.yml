@@ -44,7 +44,7 @@ jobs:
           fi
 
           unzip -tqq "$APK"
-          if ! unzip -Z1 "$APK" | grep -Fxq "AndroidManifest.xml"; then
+          if ! unzip -Z1 "$APK" | grep -Fx "AndroidManifest.xml" > /dev/null; then
             echo "::error::O arquivo nao contem AndroidManifest.xml."
             exit 1
           fi
