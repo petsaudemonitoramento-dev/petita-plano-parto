@@ -1,0 +1,96 @@
+name: Enviar Petita Android ao Appetize (teste interno)
+
+on:
+  push:
+    branches:
+      - ops/appetize-upload-petita-20261029
+    paths:
+      - .github/workflows/enviar_petita_appetize.yml
+      - .github/appetize-upload-trigger.txt
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: apetita-appetize-test
+  cancel-in-progress: false
+
+jobs:
+  enviar:
+    if: github.repository == 'petsaudemonitoramento-dev/petita-plano-parto'
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - name: Enviar APK inspecionado pelo endereco publico
+        env:
+          APPETIZE_API_TOKEN: ${{ secrets.APPETIZE_API_TOKEN }}
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import json
+          import os
+          import re
+          import sys
+          import urllib.error
+          import urllib.request
+
+          token = os.getenv("APPETIZE_API_TOKEN", "")
+          if not token:
+              print("IMPEDIMENTO: configurar APPETIZE_API_TOKEN em GitHub Settings > Secrets and variables > Actions.")
+              sys.exit(2)
+
+          # APK debug aprovado em CI, destinado somente a testes ficticios.
+          apk_url = (
+              "https://github.com/petsaudemonitoramento-dev/petita-plano-parto/"
+              "releases/download/petita-teste-20261029/"
+              "Petita-Teste-Android-2026-10-29.apk"
+          )
+          body = {
+              "platform": "android",
+              "url": apk_url,
+              "note": "Petita - teste tecnico interno Android (somente dados ficticios); build 29/10/2026",
+          }
+          req = urllib.request.Request(
+              "https://api.appetize.io/v1/apps",
+              data=json.dumps(body).encode("utf-8"),
+              headers={
+                  "X-API-KEY": token,
+                  "Content-Type": "application/json",
+                  "Accept": "application/json",
+                  "User-Agent": "Petita-Appetize-Upload/1.0",
+              },
+              method="POST",
+          )
+          try:
+              with urllib.request.urlopen(req, timeout=100) as response:
+                  status = response.status
+                  data = json.load(response)
+          except urllib.error.HTTPError as exc:
+              print("Appetize recusou o envio (HTTP %s)." % exc.code)
+              try:
+                  details = json.loads(exc.read(4000).decode("utf-8", "replace"))
+                  for key in ("message", "code", "error", "detail"):
+                      value = details.get(key) if isinstance(details, dict) else None
+                      if isinstance(value, str):
+                          print("%s: %s" % (key, value.replace(token, "[REDACTED]")[:350]))
+              except (ValueError, UnicodeError):
+                  pass
+              sys.exit(1)
+          except Exception as exc:
+              print("Falha na comunicacao com Appetize: %s" % type(exc).__name__)
+              sys.exit(1)
+          print("Appetize recebeu requisicao (HTTP %s)." % status)
+          if not isinstance(data, dict):
+              print("Formato de resposta inesperado.")
+              sys.exit(1)
+          key = data.get("publicKey") or data.get("buildId")
+          url = data.get("appURL") or data.get("publicURL")
+          if isinstance(url, str) and url.startswith("https://appetize.io/"):
+              print("LINK PARA TESTAR: %s" % url)
+          elif isinstance(key, str) and re.fullmatch(r"[A-Za-z0-9_-]{8,128}", key):
+              print("LINK PARA TESTAR: https://appetize.io/app/%s" % key)
+          else:
+              print("Envio aceito, mas sem identificador de app validado.")
+              sys.exit(1)
+          PY
