@@ -64,6 +64,23 @@ CREATE TABLE IF NOT EXISTS petita_atendimento.duvidas (
 CREATE INDEX IF NOT EXISTS duvidas_fila_ubs
  ON petita_atendimento.duvidas(ubs_codigo,situacao,criada_em DESC);
 
+-- Vinculo real requer confirmacao administrativa, nao simples escolha da usuaria.
+CREATE TABLE IF NOT EXISTS petita_privado.solicitacoes_vinculo_gestantes (
+ id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+ usuario_id uuid NOT NULL REFERENCES petita_atendimento.acessos(usuario_id),
+ ubs_codigo text NOT NULL REFERENCES public.ubs(code),
+ situacao text NOT NULL DEFAULT 'pendente'
+   CHECK (situacao IN ('pendente','aprovada','recusada','cancelada')),
+ solicitado_em timestamptz NOT NULL DEFAULT now(),
+ decidido_por uuid REFERENCES petita_atendimento.acessos(usuario_id),
+ decidido_em timestamptz
+);
+CREATE UNIQUE INDEX IF NOT EXISTS vinculo_gestante_pendente_usuario
+ ON petita_privado.solicitacoes_vinculo_gestantes(usuario_id)
+ WHERE situacao = 'pendente';
+REVOKE ALL ON petita_privado.solicitacoes_vinculo_gestantes FROM PUBLIC;
+ALTER TABLE petita_privado.solicitacoes_vinculo_gestantes ENABLE ROW LEVEL SECURITY;
+
 -- Esta ligacao privada NUNCA e incluida na fila da equipe.
 CREATE TABLE IF NOT EXISTS petita_privado.autoria_duvidas (
  duvida_id uuid PRIMARY KEY REFERENCES petita_atendimento.duvidas(id) ON DELETE CASCADE,
