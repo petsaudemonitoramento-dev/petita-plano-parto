@@ -41,7 +41,10 @@ def inspect(apk, abi, sdk):
     xml = run(analyzer, 'manifest', 'print', apk)
     manifest = ET.fromstring(xml)
     assert manifest.get('package') == EXPECTED_PACKAGE, 'Unexpected package ID'
-    assert manifest.get(ANDROID_NS + 'versionCode') == '20', 'Unexpected version code'
+    # Flutter assigns a distinct versionCode to each split-per-ABI APK:
+    # original versionCode 20 + 1000 * ABI identifier (arm64=2, x86_64=3).
+    expected_version = {'arm64-v8a': 2020, 'x86_64': 3020}[abi]
+    assert int(manifest.get(ANDROID_NS + 'versionCode')) == expected_version, 'Unexpected split APK version code'
     app = manifest.find('application')
     assert app.get(ANDROID_NS + 'label') == 'Petita', 'Unexpected application label'
     assert app.get(ANDROID_NS + 'debuggable', 'false') == 'false', 'Debugging unexpectedly enabled'
