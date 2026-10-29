@@ -46,6 +46,19 @@ jobs:
         run: python3 tools/inspect_android_artifacts.py --source-only
       - name: Compilar APK debug interno sem backend
         run: flutter build apk --debug --no-pub --dart-define=PETITA_INTERNAL_TEST=true
+      # Independent gate: a safe debug APK remains downloadable even if the
+      # separate unsigned release configuration needs further investigation.
+      - name: Inspecionar APK debug antes de disponibilizar
+        env:
+          PETITA_PR_HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: python3 tools/inspect_android_artifacts.py --debug-only
+      - name: Guardar APK debug aprovado para testes internos
+        uses: actions/upload-artifact@v4
+        with:
+          name: petita-apk-debug-verificado-${{ github.run_id }}
+          retention-days: 7
+          if-no-files-found: error
+          path: build/app/outputs/flutter-apk/app-debug.apk
       - name: Validar compilação release sem assinatura de distribuição
         run: |
           # Flutter 3.44 must regenerate registrants excluding dev-only plugins.
