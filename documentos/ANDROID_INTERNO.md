@@ -15,6 +15,8 @@ Branch independente `feat/android-plataforma-permanente`, originada da main `784
 
 Manifest principal pede apenas INTERNET; não pede câmera, microfone, contatos, localização, notificações ou armazenamento amplo. O manifest mesclado também é inspecionado; AndroidX pode adicionar somente a permissão de receptor privado com proteção de assinatura.
 
+O receiver AndroidX `ProfileInstallReceiver` é removido explicitamente pelo merger por ser exclusivamente de diagnóstico/benchmark e não necessário ao fluxo da Petita. Os AARs oficiais profileinstaller 1.3.1/1.4.1 declaram esse receiver exportado com permissão DUMP; a aplicação mantém somente MainActivity exportada. A inspeção não aceita novos componentes exportados sem revisão. Em falha, manifests e resumo de componentes são guardados em artifact diagnóstico separado, sem publicar APK reprovado.
+
 Cleartext HTTP e CAs instaladas pelo usuário são bloqueados; somente trust store do sistema. Nenhuma orientação fixa: o Flutter continua responsivo para orientação, teclado, fonte e telas diferentes. AllowBackup=false, regras de cloud backup e transferência excluem arquivos, preferências, bancos e armazenamento externo do app. Verificar transferência também em aparelhos/fabricantes reais antes de liberar dados sensíveis; esse recurso não cifra o SharedPreferences atual.
 
 O plugin printing 5.15.0 fornece FileProvider não exportado, authority por applicationId e URIs temporárias para cache/share. O inspetor verifica esses atributos no APK. Não é concedida leitura global de armazenamento. O plugin pode manter temporários em cache; destinatários externos controlam as cópias compartilhadas. Revogação local não pode apagar PDFs enviados a outros aplicativos.

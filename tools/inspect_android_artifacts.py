@@ -60,14 +60,14 @@ def inspect(apk, kind, sdk, output):
     assert app.get(NS + 'debuggable', 'false') == ('true' if kind == 'debug' else 'false')
     permissions = [x.get(NS + 'name') for x in manifest.findall('uses-permission')]
     allowed = {'android.permission.INTERNET', expected + '.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION'}
-    assert set(permissions) <= allowed, 'Unexpected merged permission'
+    assert set(permissions) <= allowed, 'Unexpected merged permission: ' + repr(permissions)
     providers = app.findall('provider')
     provider = next(p for p in providers if p.get(NS + 'name').endswith('PrintFileProvider'))
     assert provider.get(NS + 'authorities') == expected + '.flutter.printing'
     assert provider.get(NS + 'exported') == 'false'
     assert provider.get(NS + 'grantUriPermissions') == 'true'
     exported = [node.get(NS + 'name') for node in app if node.get(NS + 'exported') == 'true']
-    assert exported == ['br.edu.ufcg.petsaude.petita.MainActivity'], 'Unexpected exported component'
+    assert exported == ['br.edu.ufcg.petsaude.petita.MainActivity'], 'Unexpected exported component: ' + repr(exported)
     # A manifest declaration alone does not prove Kotlin compiled the Activity.
     activity_code = run(analyzer, 'dex', 'code', '--class', 'br.edu.ufcg.petsaude.petita.MainActivity', apk).stdout
     assert 'MainActivity' in activity_code, 'Launcher Activity missing from DEX'
@@ -111,11 +111,28 @@ def main():
     args.output.mkdir(parents=True, exist_ok=True)
     debug = ROOT / 'build/app/outputs/flutter-apk/app-debug.apk'
     release = ROOT / 'build/app/outputs/flutter-apk/app-release.apk'
+    # Preserve safe manifest diagnostics for both APKs before any assertion can
+    # reject one. The separate CI artifact never includes a rejected APK.
+    diagnostics = []
+    analyzer = args.sdk / 'cmdline-tools/latest/bin/apkanalyzer'
+    for kind, apk in [('debug', debug), ('releasecheck', release)]:
+        xml = run(analyzer, 'manifest', 'print', apk).stdout
+        (args.output / f'{kind}-manifest.xml').write_text(xml)
+        manifest = ET.fromstring(xml)
+        app = manifest.find('application')
+        diagnostics.append({'kind': kind, 'package': manifest.get('package'),
+                            'exportedComponents': [{'name': node.get(NS + 'name'), 'permission': node.get(NS + 'permission')}
+                                                   for node in app if node.get(NS + 'exported') == 'true'],
+                            'permissions': [node.get(NS + 'name') for node in manifest.findall('uses-permission')]})
+    (args.output / 'manifest-component-diagnostics.json').write_text(json.dumps(diagnostics, indent=2))
+    print('Merged manifest diagnostics:', json.dumps(diagnostics), flush=True)
     artifacts = [inspect(debug, 'debug', args.sdk, args.output), inspect(release, 'releasecheck', args.sdk, args.output)]
+    assert not run('git', 'diff', '--name-only').stdout.strip(), 'Build changed tracked source files; reconcile before claiming commit provenance'
     report = {'purpose': 'internal synthetic-data tests only; not an INPI registration hash',
               'commit': run('git', 'rev-parse', 'HEAD').stdout.strip(),
               'tree': run('git', 'rev-parse', 'HEAD^{tree}').stdout.strip(),
               'pullRequestHead': os.environ.get('PETITA_PR_HEAD_SHA'),
+              'trackedWorkingTreeClean': True,
               'workflowRun': os.environ.get('GITHUB_RUN_ID'),
               'flutter': run('flutter', '--version', '--machine').stdout,
               'internalTestDefine': True, 'questionnaireSha256': QUESTION_HASH, 'officialIconSha256': ICON_HASH,

@@ -54,6 +54,16 @@ jobs:
         env:
           PETITA_PR_HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
         run: python3 tools/inspect_android_artifacts.py
+      - name: Guardar diagnósticos de manifest mesmo em falha de inspeção
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: petita-android-manifest-diagnostics-${{ github.run_id }}
+          retention-days: 7
+          if-no-files-found: warn
+          path: |
+            build/android-evidence/*-manifest.xml
+            build/android-evidence/manifest-component-diagnostics.json
       - name: Guardar exclusivamente artefatos de testes fictícios
         uses: actions/upload-artifact@v4
         with:
