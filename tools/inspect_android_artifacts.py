@@ -79,8 +79,22 @@ def inspect(apk, kind, sdk, output):
     with zipfile.ZipFile(apk) as archive:
         for entry in archive.infolist():
             payload = archive.read(entry)
-            for pattern in [rb'postgres(?:ql)?://[^\s]{1,200}:[^\s]{1,200}@', rb'-----BEGIN (?:RSA |EC )?PRIVATE KEY-----', rb'\bsb_secret_[A-Za-z0-9_-]{16,}', rb'\bsbp_[A-Za-z0-9_-]{20,}']:
-                assert not re.search(pattern, payload), 'Potential embedded credential; inspect privately'
+            # Identify the *rule* and ZIP entry, never the matched bytes.
+            # This keeps the check fail-closed while allowing safe diagnosis
+            # of false positives in binary/resources before any APK upload.
+            credential_rules = [
+                ('postgres-url', rb'postgres(?:ql)?://[^\s]{1,200}:[^\s]{1,200}@'),
+                ('private-key', rb'-----BEGIN (?:RSA |EC )?PRIVATE KEY-----'),
+                ('supabase-secret', rb'\bsb_secret_[A-Za-z0-9_-]{16,}'),
+                ('supabase-personal-token', rb'\bsbp_[A-Za-z0-9_-]{20,}'),
+            ]
+            for rule_name, pattern in credential_rules:
+                if re.search(pattern, payload):
+                    safe_entry = entry.filename.encode('unicode_escape').decode('ascii')[:180]
+                    raise AssertionError(
+                        f'Potential embedded credential; rule={rule_name}; '
+                        f'apk={kind}; zip-entry={safe_entry}; inspect privately'
+                    )
             for token in re.findall(rb'eyJ[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}', payload):
                 try:
                     segment = token.split(b'.')[1]
