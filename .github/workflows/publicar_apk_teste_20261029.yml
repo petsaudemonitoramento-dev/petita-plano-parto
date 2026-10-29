@@ -1,0 +1,60 @@
+name: Publicar APK Petita para teste interno (unica execucao)
+
+on:
+  push:
+    branches:
+      - release/petita-apk-interno-20261029
+    paths:
+      - .github/workflows/publicar_apk_teste_20261029.yml
+
+permissions:
+  actions: read
+  contents: write
+
+jobs:
+  publicar:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Baixar somente APK debug inspecionado pelo CI Android
+        uses: actions/download-artifact@v4
+        with:
+          name: petita-apk-debug-verificado-40869397639
+          run-id: 40869397639
+          github-token: ${{ github.token }}
+          path: dist
+
+      - name: Verificar SHA-256 do APK aprovado
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -f dist/app-debug.apk
+          echo "f5cd3709edab42766ac454e20a23f8843ced8d194071d9e3b853620af1554e49  dist/app-debug.apk" | sha256sum -c -
+          cp dist/app-debug.apk dist/Petita-Teste-Android-2026-10-29.apk
+
+      - name: Publicar GitHub prerelease com download direto do APK
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          cat > release-notes.txt <<'EOF'
+          Petita — APK para testes internos com dados inteiramente ficticios (29/10/2026).
+
+          AVISO: prototipo tecnico sem homologacao para coleta de dados reais e sem integracao Neon de producao. Nao utilizar com dados de gestantes reais.
+
+          Arquivo: APK debug, nao e release institucional e nao deve ser utilizado em assistencia.
+          SHA-256: f5cd3709edab42766ac454e20a23f8843ced8d194071d9e3b853620af1554e49
+
+          Android exige autorizacao manual para instalar um APK baixado do navegador.
+          EOF
+          if gh release view petita-teste-20261029 >/dev/null 2>&1; then
+            echo "Release existente: evitando sobrescrever APK divulgado."
+            exit 1
+          fi
+          gh release create petita-teste-20261029 \
+            "dist/Petita-Teste-Android-2026-10-29.apk" \
+            --target 2acad2dc7a70c6f5318ba246cc97d2085aa2ce95 \
+            --title "Petita — Teste interno Android (29/10/2026)" \
+            --notes-file release-notes.txt --prerelease
