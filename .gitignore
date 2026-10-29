@@ -30,3 +30,7 @@ Thumbs.db
 # Environment files
 .env
 *.env
+
+# Python build-inspection tools
+__pycache__/
+*.pyc
