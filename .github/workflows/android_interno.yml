@@ -36,6 +36,8 @@ jobs:
           git diff --exit-code -- pubspec.yaml pubspec.lock
       - name: Preparar ferramentas de validação PDF
         run: sudo apt-get update -qq && sudo apt-get install -y poppler-utils
+      - name: Testar detector de credenciais sem falsos positivos
+        run: python3 -m unittest discover -s tools -p test_android_secret_scanner.py -v
       - name: Analisar código
         run: flutter analyze --no-pub
       - name: Testar funções offline e inicialização sem backend
