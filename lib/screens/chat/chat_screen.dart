@@ -573,7 +573,7 @@ class _ChatScreenState extends State<ChatScreen> {
       final publicCode = data['public_code']?.toString() ?? 's/código';
       _pendingUbsQuestion = null;
       setState(() => _messages.add(ChatMessage(
-            text: 'Sua dúvida foi enviada de forma anonimizada para a Equipe UBS.\n\nCódigo da dúvida: $publicCode\n\nA equipe verá a dúvida, a UBS vinculada, a autopercepção de risco e os sinais informados, mas não verá seu nome, e-mail ou outros dados pessoais.',
+            text: 'Sua dúvida foi encaminhada à UBS vinculada ao seu perfil.\n\nCódigo da dúvida: $publicCode\n\nSeus dados cadastrais não são exibidos à equipe, mas evite informações identificáveis no texto. A UBS pode ou não responder, sem prazo definido. Caso precise de atendimento, procure a unidade presencialmente.',
             isUser: false,
             options: const ['Minhas dúvidas', 'Montar meu plano', 'Ver meu plano'],
           )));
@@ -1122,7 +1122,7 @@ class _ConfirmAnonymousSendDialogState extends State<_ConfirmAnonymousSendDialog
               border: Border.all(color: AppColors.primaryPink.withAlpha((255 * 0.35).round())),
             ),
             child: const Text(
-              'Sua dúvida será encaminhada de forma anônima. A Equipe UBS não verá seu nome, e-mail, telefone, CPF, cartão SUS ou plano completo.',
+              'A equipe da sua UBS verá apenas o código e o conteúdo da dúvida, sem seus dados cadastrais ou seu plano completo. Evite colocar nome, telefone, endereço, CPF ou outros dados que possam identificá-la no texto.',
               style: TextStyle(fontWeight: FontWeight.w700),
             ),
           ),
@@ -1130,12 +1130,12 @@ class _ConfirmAnonymousSendDialogState extends State<_ConfirmAnonymousSendDialog
           CheckboxListTile(
             value: _anonymousAck,
             onChanged: (v) => setState(() => _anonymousAck = v ?? false),
-            title: const Text('Entendi que a dúvida será enviada de forma anônima.'),
+            title: const Text('Entendi que meus dados de cadastro não serão exibidos à equipe, mas o texto que escrevo pode revelar minha identidade.'),
           ),
           CheckboxListTile(
             value: _responseAck,
             onChanged: (v) => setState(() => _responseAck = v ?? false),
-            title: const Text('Entendi que a resposta não é imediata e depende da disponibilidade da UBS.'),
+            title: const Text('Entendi que a equipe não tem compromisso de responder por este canal e não há prazo de resposta. Em caso de urgência, procurarei atendimento presencial.'),
           ),
         ],
       ),
@@ -1175,7 +1175,7 @@ class _QuestionToUbsDialogState extends State<_QuestionToUbsDialog> {
     'Diminuição dos movimentos do bebê',
   ];
 
-  bool get _canSend => _questionController.text.trim().isNotEmpty && _urgencyAck;
+  bool get _canSend => _questionController.text.trim().isNotEmpty && _urgencyAck && _risk != 'high' && _warningSigns.isEmpty;
 
   @override
   void initState() {
@@ -1200,7 +1200,7 @@ class _QuestionToUbsDialogState extends State<_QuestionToUbsDialog> {
                 border: Border.all(color: AppColors.primaryPink.withAlpha((255 * 0.35).round())),
               ),
               child: const Text(
-                'Este canal não é atendimento de urgência. As respostas dependem da disponibilidade da UBS e podem não ser imediatas. Em caso de sinais de alerta, procure uma maternidade, pronto atendimento ou serviço de urgência.',
+                'Este canal é educativo e não funciona como plantão ou atendimento de urgência. A equipe não tem obrigação de responder por este canal. Para dúvida urgente ou sinais de alerta, procure pessoalmente sua UBS, uma maternidade, UPA ou serviço de urgência.',
                 style: TextStyle(fontWeight: FontWeight.w700),
               ),
             ),
@@ -1246,9 +1246,9 @@ class _QuestionToUbsDialogState extends State<_QuestionToUbsDialog> {
               Container(
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(color: const Color(0xFFFFF3E8), borderRadius: BorderRadius.circular(14), border: Border.all(color: AppColors.petOrange)),
-                child: const Text('Atenção: se você marcou alto risco ou algum sinal de alerta, este canal pode não ser adequado. Procure atendimento presencial imediatamente se precisar de avaliação rápida.', style: TextStyle(fontWeight: FontWeight.w900, color: AppColors.petDarkBlue)),
+                child: const Text('Atenção: você marcou alto risco ou sinal de alerta. Não é possível enviar essa dúvida por aqui. Procure atendimento presencial imediatamente na UBS, maternidade, UPA ou serviço de urgência, conforme a situação.', style: TextStyle(fontWeight: FontWeight.w900, color: AppColors.petDarkBlue)),
               ),
-            CheckboxListTile(value: _urgencyAck, onChanged: (v) => setState(() => _urgencyAck = v ?? false), title: const Text('Entendi que este canal não é para urgências.')),
+            CheckboxListTile(value: _urgencyAck, onChanged: (v) => setState(() => _urgencyAck = v ?? false), title: const Text('Entendi que dúvidas urgentes e sinais de alerta exigem atendimento presencial e não serão encaminhados por este canal.')),
           ]),
         ),
       ),
