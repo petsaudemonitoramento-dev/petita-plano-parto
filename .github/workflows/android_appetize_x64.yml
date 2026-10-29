@@ -1,0 +1,105 @@
+name: Petita Appetize - APK Android x86_64 de teste
+
+# Workflow pontual e isolado: nao modifica publicacao Web ou o APK para
+# celulares ARM. Executa no commit auditado da PR Android.
+on:
+  push:
+    branches:
+      - feat/android-plataforma-permanente
+    paths:
+      - .github/workflows/android_appetize_x64.yml
+
+permissions:
+  contents: write
+
+jobs:
+  build-validate-publish:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    steps:
+      - name: Baixar o commit exato
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+          cache: gradle
+      - uses: android-actions/setup-android@v3
+        with:
+          packages: platform-tools
+          log-accepted-android-sdk-licenses: false
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.44.0'
+          channel: stable
+          cache: true
+      - name: Preparar Android SDK
+        run: sdkmanager 'platforms;android-36' 'build-tools;36.0.0' 'ndk;28.2.13676358'
+      - name: Instalar dependencias bloqueadas
+        run: |
+          flutter pub get --enforce-lockfile
+          git diff --exit-code -- pubspec.yaml pubspec.lock
+      - name: Analisar e testar offline
+        run: |
+          python3 -m unittest discover -s tools -p test_android_secret_scanner.py -v
+          flutter analyze --no-pub
+          flutter test --no-pub
+          python3 tools/inspect_android_artifacts.py --source-only
+      - name: Compilar debug somente para emulador Android x86_64
+        run: |
+          flutter build apk --debug --no-pub --target-platform android-x64 --dart-define=PETITA_INTERNAL_TEST=true
+      - name: Inspecionar e validar tamanho e ABI antes de divulgar
+        env:
+          PETITA_PR_HEAD_SHA: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+          python3 tools/inspect_android_artifacts.py --debug-only
+          python3 - <<'PY'
+          import pathlib, zipfile
+          apk=pathlib.Path('build/app/outputs/flutter-apk/app-debug.apk')
+          size=apk.stat().st_size
+          with zipfile.ZipFile(apk) as z:
+              architectures=sorted({part.split('/')[1] for part in z.namelist() if part.startswith('lib/') and len(part.split('/'))>2 and part.endswith('libflutter.so')})
+          print('APK size (MB):',round(size/1_000_000,1))
+          print('Flutter engine architectures:',architectures)
+          assert architectures == ['x86_64'], 'Expected emulator-only x86_64 build'
+          assert size < 100_000_000, 'APK exceeds the size budget for Appetize experiment'
+          PY
+          git diff --exit-code -- pubspec.yaml pubspec.lock
+          mkdir -p dist
+          cp build/app/outputs/flutter-apk/app-debug.apk dist/Petita-Appetize-Android-x64.apk
+          sha256sum dist/Petita-Appetize-Android-x64.apk > dist/SHA256SUMS.txt
+      - name: Guardar APK de teste aprovado
+        uses: actions/upload-artifact@v4
+        with:
+          name: petita-appetize-x64-${{ github.run_id }}
+          retention-days: 7
+          if-no-files-found: error
+          path: |
+            dist/Petita-Appetize-Android-x64.apk
+            dist/SHA256SUMS.txt
+            build/android-evidence/test-build-provenance.json
+      - name: Publicar link direto para teste em emulador (pre-release)
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          cat > /tmp/petita-appetize-notas.txt <<'EOF'
+          Variante APK DEBUG exclusiva para Android x86_64 virtual (Appetize e similares).
+          Somente para testes com dados ficticios; backend legado desativado.
+          Nao instalar em celulares ARM reais. Nao homologado para uso assistencial.
+          Este nao e o APK Android geral divulgado no site da Petita.
+          Arquivo foi compilado e inspecionado no GitHub Actions. SHA-256 em SHA256SUMS.txt.
+          EOF
+          if gh release view petita-appetize-x64-20261029 >/dev/null 2>&1; then
+            echo 'O release ja existe; recusando sobrescrita' >&2
+            exit 1
+          fi
+          gh release create petita-appetize-x64-20261029 \
+            dist/Petita-Appetize-Android-x64.apk dist/SHA256SUMS.txt \
+            --target "$GITHUB_SHA" \
+            --title "Petita - teste em emulador Android x64" \
+            --notes-file /tmp/petita-appetize-notas.txt --prerelease
