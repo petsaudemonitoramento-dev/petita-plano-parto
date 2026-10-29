@@ -43,6 +43,43 @@ def source_checks():
     assert (ROOT / 'android/app/src/main/res/mipmap-anydpi-v33/ic_launcher.xml').exists()
 
 
+
+def has_complete_pem_private_key(payload):
+    """Detect actual PEM private-key material, not parser strings in Dart VM.
+
+    A bare BEGIN delimiter appears in third-party crypto parsers bundled in
+    Flutter's debug kernel. Requiring a matching END delimiter and decodable
+    key body avoids that false positive without permitting valid PEM keys.
+    """
+    begin = re.compile(rb'-----BEGIN ((?:RSA |EC |OPENSSH |ENCRYPTED )?PRIVATE KEY)-----')
+    for marker in begin.finditer(payload):
+        end = b'-----END ' + marker.group(1) + b'-----'
+        # PEM keys have bounded encoded bodies. Large unrelated compiled
+        # sections must not be treated as a PEM body.
+        candidate = payload[marker.end():marker.end() + 16384]
+        end_index = candidate.find(end)
+        if end_index < 0:
+            continue
+        body = candidate[:end_index].strip()
+        # Support both actual newlines and escaped newlines inside strings.
+        body = body.replace(b'\\r\\n', b'\n').replace(b'\\n', b'\n')
+        lines = body.splitlines()
+        # Traditional PEM encrypted keys can have Proc-Type/DEK-Info headers.
+        encoded = b''.join(line.strip() for line in lines
+                           if line.strip() and b':' not in line)
+        if len(encoded) < 100:
+            continue
+        try:
+            decoded = base64.b64decode(encoded, validate=True)
+        except (ValueError, base64.binascii.Error):
+            continue
+        if len(decoded) >= 64 and (
+            decoded.startswith(b'\x30') or decoded.startswith(b'openssh-key-v1\x00')
+        ):
+            return True
+    return False
+
+
 def inspect(apk, kind, sdk, output):
     tools = sdk / 'build-tools/36.0.0'
     analyzer = sdk / 'cmdline-tools/latest/bin/apkanalyzer'
@@ -84,10 +121,16 @@ def inspect(apk, kind, sdk, output):
             # of false positives in binary/resources before any APK upload.
             credential_rules = [
                 ('postgres-url', rb'postgres(?:ql)?://[^\s]{1,200}:[^\s]{1,200}@'),
-                ('private-key', rb'-----BEGIN (?:RSA |EC )?PRIVATE KEY-----'),
+
                 ('supabase-secret', rb'\bsb_secret_[A-Za-z0-9_-]{16,}'),
                 ('supabase-personal-token', rb'\bsbp_[A-Za-z0-9_-]{20,}'),
             ]
+            if has_complete_pem_private_key(payload):
+                safe_entry = entry.filename.encode('unicode_escape').decode('ascii')[:180]
+                raise AssertionError(
+                    f'Potential embedded credential; rule=complete-private-key; '
+                    f'apk={kind}; zip-entry={safe_entry}; inspect privately'
+                )
             for rule_name, pattern in credential_rules:
                 if re.search(pattern, payload):
                     safe_entry = entry.filename.encode('unicode_escape').decode('ascii')[:180]
