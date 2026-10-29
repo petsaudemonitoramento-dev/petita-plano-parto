@@ -181,6 +181,8 @@ def inspect(apk, kind, sdk, output):
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--source-only', action='store_true')
+    parser.add_argument('--debug-only', action='store_true',
+                        help='Inspect only the installable debug APK before artifact upload')
     parser.add_argument('--sdk', type=Path, default=os.environ.get('ANDROID_HOME'))
     parser.add_argument('--output', type=Path, default=ROOT / 'build/android-evidence')
     args = parser.parse_args()
@@ -195,7 +197,10 @@ def main():
     # reject one. The separate CI artifact never includes a rejected APK.
     diagnostics = []
     analyzer = args.sdk / 'cmdline-tools/latest/bin/apkanalyzer'
-    for kind, apk in [('debug', debug), ('releasecheck', release)]:
+    to_inspect = [('debug', debug)] if args.debug_only else [
+        ('debug', debug), ('releasecheck', release),
+    ]
+    for kind, apk in to_inspect:
         xml = run(analyzer, 'manifest', 'print', apk).stdout
         (args.output / f'{kind}-manifest.xml').write_text(xml)
         manifest = ET.fromstring(xml)
@@ -206,7 +211,8 @@ def main():
                             'permissions': [node.get(NS + 'name') for node in manifest.findall('uses-permission')]})
     (args.output / 'manifest-component-diagnostics.json').write_text(json.dumps(diagnostics, indent=2))
     print('Merged manifest diagnostics:', json.dumps(diagnostics), flush=True)
-    artifacts = [inspect(debug, 'debug', args.sdk, args.output), inspect(release, 'releasecheck', args.sdk, args.output)]
+    artifacts = [inspect(apk, kind, args.sdk, args.output)
+                 for kind, apk in to_inspect]
     assert not run('git', 'diff', '--name-only').stdout.strip(), 'Build changed tracked source files; reconcile before claiming commit provenance'
     report = {'purpose': 'internal synthetic-data tests only; not an INPI registration hash',
               'commit': run('git', 'rev-parse', 'HEAD').stdout.strip(),
