@@ -1,0 +1,134 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#fcf9f6">
+<meta name="description" content="Conheça a Petita, um aplicativo educativo para construir seu plano de parto. Baixe a versão experimental para Android.">
+<meta property="og:title" content="Petita | Baixe o aplicativo para Android">
+<meta property="og:description" content="Sua voz merece ser ouvida. Conheça a Petita, o aplicativo educativo de plano de parto.">
+<meta property="og:type" content="website">
+<title>Petita — Seu plano de parto, sua voz</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&family=Nunito:wght@500;600;700;800;900&display=swap" rel="stylesheet">
+<style>
+:root{--ink:#372c39;--muted:#776d77;--pink:#bd6586;--pink-dark:#94516f;--rose:#f7e3e9;--cream:#fcf9f6;--lilac:#eae0f5;--line:#eee3e4;--green:#528c72}
+*{box-sizing:border-box}html{scroll-behavior:smooth}body{margin:0;min-width:320px;background:var(--cream);color:var(--ink);font:16px/1.65 'DM Sans',system-ui,sans-serif;overflow-x:hidden}a{color:inherit}button,a{-webkit-tap-highlight-color:transparent}img{max-width:100%}
+.container{width:min(1120px,calc(100% - 42px));margin:0 auto}
+header{position:relative;z-index:5;background:rgba(252,249,246,.92);border-bottom:1px solid rgba(236,219,224,.7)}
+.nav{height:86px;display:flex;align-items:center;justify-content:space-between;gap:18px}
+.brand{display:inline-flex;align-items:center;gap:11px;text-decoration:none;font-family:'Nunito',sans-serif;font-size:26px;font-weight:900;letter-spacing:-1.2px;color:#884e72}
+.brand-icon{height:43px;width:43px;object-fit:cover;border-radius:13px;box-shadow:0 4px 15px #bd658621}
+.header-right{display:flex;align-items:center;gap:25px}
+.header-link{font-weight:700;text-decoration:none;font-size:14px;color:#635766}
+.header-link:hover{color:var(--pink-dark)}.nav-chip{font-size:12px;padding:8px 15px;color:#96607b;background:#f8eaf0;border-radius:30px;font-weight:800;letter-spacing:.02em}
+.hero{padding:66px 0 68px;position:relative;overflow:hidden}
+.hero:before{content:"";position:absolute;border-radius:50%;width:540px;height:540px;right:-180px;top:-180px;background:radial-gradient(circle,#f4dee6 0,rgba(244,222,230,0) 65%);pointer-events:none}
+.hero-grid{display:grid;grid-template-columns:1.08fr .92fr;gap:56px;align-items:center;position:relative}
+.eyebrow{font-size:12px;font-weight:900;text-transform:uppercase;letter-spacing:2.2px;color:#9d6681;display:flex;align-items:center;gap:10px}
+.eyebrow:before{content:"";width:28px;height:2px;background:#bf7899}
+h1,h2,h3{font-family:'Nunito',system-ui,sans-serif;line-height:1.13;letter-spacing:-1.5px}
+h1{font-weight:900;font-size:clamp(47px,5.5vw,72px);margin:26px 0 24px;max-width:640px}
+h1 em{font-style:normal;color:var(--pink)}
+.lead{font-size:17px;color:#70626f;max-width:515px;line-height:1.88;margin:0}
+.actions{display:flex;flex-wrap:wrap;gap:13px;margin-top:31px}
+.btn{border:0;border-radius:14px;padding:16px 24px;min-height:57px;font:800 15px 'DM Sans',sans-serif;text-decoration:none;display:inline-flex;align-items:center;justify-content:center;gap:11px;transition:transform .18s,box-shadow .18s;cursor:pointer}
+.btn svg{width:20px;height:20px;flex-shrink:0}.btn:hover{transform:translateY(-2px)}
+.btn-main{background:var(--pink-dark);color:white;box-shadow:0 12px 26px #a3638540}
+.btn-main:hover{box-shadow:0 14px 31px #a3638552}.btn-sub{background:white;color:#80576d;border:1px solid #ead7e0}
+.meta{display:flex;align-items:center;gap:13px;flex-wrap:wrap;margin-top:19px;color:#877786;font-size:12px;font-weight:700}.meta span{display:inline-flex;align-items:center;gap:6px}
+.meta b{width:5px;height:5px;background:#d6abbf;border-radius:50%}
+.notice{margin-top:28px;border-left:3px solid #cd9aae;background:#fff9fa;color:#765a67;border-radius:0 12px 12px 0;padding:13px 15px;font-size:13px;max-width:520px;line-height:1.6}
+.visual{position:relative;display:flex;align-items:center;justify-content:center;min-height:488px}
+.orbit{position:absolute;width:min(97%,480px);aspect-ratio:1;border-radius:50%;background:linear-gradient(145deg,#f5dde9,#eee5f4 72%,#f8efdf);box-shadow:inset 0 0 0 1px #fff9,0 20px 80px #b783a928}
+.orbit:before,.orbit:after{content:"";position:absolute;border:1px dashed #cfaabb;border-radius:50%;inset:-25px;opacity:.55}
+.orbit:after{inset:28px;border-style:solid;border-color:#fff9}
+.mascot{width:min(64%,310px);position:relative;z-index:1;aspect-ratio:1;object-fit:cover;border-radius:32%;box-shadow:0 21px 50px #91587938;transform:rotate(-5deg)}
+.float{position:absolute;z-index:2;background:#fffefd;box-shadow:0 15px 38px #765d7726;border:1px solid #f4e5e9;border-radius:17px;padding:14px 18px;font-size:13px;color:#705d6d;font-weight:700;max-width:230px}
+.float strong{display:block;color:#67465d;font-size:15px}.f1{right:-6px;top:75px;transform:rotate(5deg)}.f2{left:-21px;bottom:95px;transform:rotate(-6deg)}
+.float .flower{font-size:24px;line-height:1}
+.mini-label{display:block;font-size:11px;text-transform:uppercase;letter-spacing:1px;color:#ab8296;margin-bottom:1px}
+.metrics{display:grid;grid-template-columns:repeat(3,1fr);gap:18px;padding:24px 0 73px}
+.metric{background:white;border:1px solid #f0e6e8;box-shadow:0 8px 30px #875b6410;border-radius:19px;padding:25px 26px}
+.metric h3{margin:4px 0 5px;font-size:36px;font-weight:900;color:#895575;letter-spacing:-2px}.metric p{margin:0;color:#807681;font-size:13px;font-weight:700}
+.metric-top{color:#ad7893;font-size:13px;display:flex;align-items:center;gap:8px;font-weight:800}
+.section{padding:70px 0}.soft{background:#fffdfb;border-top:1px solid #f1e8e9;border-bottom:1px solid #f1e8e9}
+.section-head{max-width:700px;margin-bottom:38px}.section-head h2{font-size:clamp(35px,4vw,51px);margin:15px 0}.section-head p{color:#7a6f7b;margin:0}
+.steps{display:grid;grid-template-columns:repeat(3,1fr);gap:19px}
+.step{padding:28px;border:1px solid #eee1e5;border-radius:22px;background:var(--cream);min-height:205px}
+.step-number{display:grid;place-items:center;width:38px;height:38px;background:#f1dce5;color:#a2607f;font-weight:900;border-radius:12px}
+.step h3{font-size:20px;letter-spacing:-.5px;margin:20px 0 9px}.step p{color:#766a75;font-size:14px;margin:0;line-height:1.75}
+.safety{background:linear-gradient(110deg,#f6e5ec,#f4e9f2);border-radius:25px;padding:31px 36px;display:flex;gap:22px;align-items:flex-start;margin-top:45px}
+.safety .symbol{font-size:29px;line-height:1}.safety h3{margin:0 0 8px;font-size:22px;letter-spacing:-.5px}.safety p{margin:0;color:#775f70;font-size:14px}
+.cta{text-align:center;padding:82px 20px 80px}.cta h2{font-size:clamp(32px,4vw,48px);margin:0 auto 17px;max-width:630px}.cta p{color:#756a76;max-width:610px;margin:0 auto 26px}.cta .btn{min-width:235px}
+footer{border-top:1px solid #eee2e8;padding:26px 0 38px;background:#fffdfb;color:#8d818a;font-size:12px}
+.footer-flex{display:flex;justify-content:space-between;gap:15px;flex-wrap:wrap}footer a{text-decoration:none;color:#9d6b85;font-weight:700}
+.browser-hint{margin-top:13px;color:#9e637a;font-size:13px;font-weight:700;display:none}
+@media(max-width:900px){.hero-grid{gap:25px}.visual{min-height:380px}.f1{right:0;top:40px}.f2{left:-4px;bottom:51px}.metrics{gap:10px}.metric{padding:18px}}
+@media(max-width:740px){.nav{height:72px}.header-link{display:none}.brand{font-size:24px}.brand-icon{height:38px;width:38px}.nav-chip{font-size:10px;padding:7px 10px}.hero{padding:48px 0 35px}.hero-grid{grid-template-columns:1fr;gap:12px}.hero-content{text-align:left}.eyebrow{font-size:11px}h1{font-size:clamp(43px,11vw,62px);margin:20px 0}.lead{font-size:15px}.visual{min-height:335px;margin:10px auto 0;width:min(100%,440px)}.orbit{width:310px}.mascot{width:215px}.f1{right:0;top:45px}.f2{left:0;bottom:45px}.float{padding:10px 12px;font-size:10px;max-width:160px}.float strong{font-size:12px}.metrics{grid-template-columns:1fr 1fr;padding:25px 0 50px}.metric:nth-child(3){grid-column:1/-1}.metric h3{font-size:29px}.steps{grid-template-columns:1fr;gap:13px}.step{min-height:auto}.section{padding:52px 0}.safety{padding:25px 22px;gap:14px}.cta{padding:65px 12px}.btn{min-height:55px}}
+@media(max-width:460px){.container{width:min(100% - 34px,1120px)}.actions{flex-direction:column;gap:10px}.actions .btn{width:100%}.hero{padding-top:39px}.visual{min-height:300px}.orbit{width:245px}.mascot{width:180px}.f1{top:23px;right:-3px}.f2{bottom:20px;left:-3px}.metric{padding:17px}.metric h3{font-size:25px}.metric p{font-size:12px}}
+@media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}.btn{transition:none}.btn:hover{transform:none}}
+</style>
+</head>
+<body>
+<header><div class="container nav">
+<a class="brand" href="#inicio" aria-label="Petita, voltar ao início"><img class="brand-icon" src="https://raw.githubusercontent.com/petsaudemonitoramento-dev/petita-plano-parto/main/assets/branding/Petita_icone_android_1024.png" alt="" loading="eager" onerror="this.style.display='none'">petita<span style="font-size:19px;color:#d5a0b8">✿</span></a>
+<div class="header-right"><a class="header-link" href="#como-instalar">Como instalar</a><a class="header-link" href="https://petsaudemonitoramento-dev.github.io/petita-plano-parto/" target="_blank" rel="noopener noreferrer">Versão Web</a><span class="nav-chip">TESTE INTERNO • ANDROID</span></div>
+</div></header>
+<main id="inicio">
+<section class="hero"><div class="container hero-grid">
+<div class="hero-content">
+<div class="eyebrow">Tecnologia para a saúde materna</div>
+<h1>Sua voz merece <em>ser ouvida.</em></h1>
+<p class="lead">Conheça a Petita, uma ferramenta educativa que ajuda a construir seu plano de parto, entender possibilidades e expressar preferências com mais clareza.</p>
+<div class="actions">
+<a class="btn btn-main" href="/api/download" id="download-primary" aria-label="Baixar Petita, APK de teste para Android"><svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12m-4-4 4 4 4-4M4 17v3h16v-3"/></svg>Baixar Petita para Android</a>
+<a class="btn btn-sub" href="https://petsaudemonitoramento-dev.github.io/petita-plano-parto/" target="_blank" rel="noopener noreferrer">Experimentar versão Web ↗</a>
+</div>
+<div class="meta"><span>✦ Download direto .APK</span><b></b><span>Android 7 ou superior</span><b></b><span>Versão de teste · 29/10/2026</span></div>
+<p class="browser-hint" id="ios-note">Você está em um iPhone ou iPad. O APK só pode ser instalado no Android. Você pode experimentar a versão Web acima.</p>
+<div class="notice"><strong>Importante:</strong> esta versão é destinada exclusivamente a testes com dados fictícios. Ainda não está homologada para uso assistencial nem para registrar informações reais de gestantes.</div>
+</div>
+<div class="visual" aria-label="Identidade visual oficial da Petita">
+<div class="orbit"></div>
+<img class="mascot" src="https://raw.githubusercontent.com/petsaudemonitoramento-dev/petita-plano-parto/main/assets/branding/Petita_icone_android_1024.png" alt="Ícone oficial da Petita" loading="eager">
+<div class="float f1"><span class="flower">✿</span><span class="mini-label">Do seu jeito</span><strong>Suas escolhas importam</strong></div>
+<div class="float f2"><span class="mini-label">Informação acessível</span><strong>Entender para decidir ♡</strong></div>
+</div>
+</div></section>
+<div class="container metrics" aria-label="Informações sobre o aplicativo">
+<div class="metric"><div class="metric-top">↧ Downloads do APK</div><h3 id="download-count" aria-live="polite">—</h3><p id="download-source">Contagem pública de downloads</p></div>
+<div class="metric"><div class="metric-top">✧ Conversa guiada</div><h3>31</h3><p>perguntas do plano de parto</p></div>
+<div class="metric"><div class="metric-top">♡ Acessível e educativa</div><h3>Offline</h3><p>preenchimento sem internet nesta versão</p></div>
+</div>
+<section class="section soft" id="como-instalar"><div class="container">
+<div class="section-head"><div class="eyebrow">É bem simples</div><h2>Como instalar no Android?</h2><p>Você não precisa criar conta nem extrair ZIP. O download é do arquivo APK diretamente.</p></div>
+<div class="steps">
+<div class="step"><span class="step-number">01</span><h3>Toque em baixar</h3><p>Pressione o botão de download no site. O arquivo <strong>.apk</strong> será salvo no celular. Recomendamos uma conexão Wi-Fi.</p></div>
+<div class="step"><span class="step-number">02</span><h3>Abra o arquivo</h3><p>Procure o APK na pasta Downloads ou na notificação do navegador. Toque para abrir.</p></div>
+<div class="step"><span class="step-number">03</span><h3>Confirme a instalação</h3><p>O Android solicitará sua confirmação e poderá pedir autorização temporária para instalar a partir do navegador.</p></div>
+</div>
+<div class="safety"><span class="symbol">🛡️</span><div><h3>Teste interno, com cuidado</h3><p>A Petita está em desenvolvimento. Use nomes e respostas inventados, não inclua dados de pacientes e não use o aplicativo para substituir orientações de profissionais de saúde. O APK é um build de depuração, ainda sem assinatura institucional de distribuição.</p></div></div>
+</div></section>
+<section class="cta"><div class="container">
+<div class="eyebrow" style="justify-content:center">Um projeto feito para escutar</div>
+<h2>Conheça a Petita no seu celular.</h2><p>Participe dos testes e ajude a melhorar a experiência do aplicativo. As funcionalidades online ainda estão em desenvolvimento.</p>
+<a class="btn btn-main" href="/api/download" id="download-bottom"><svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12m-4-4 4 4 4-4M4 17v3h16v-3"/></svg>Baixar versão de teste</a>
+</div></section>
+</main>
+<footer><div class="container footer-flex"><span>Petita · Projeto PET Saúde — UFCG · 2026</span><span>Desenvolvedor: Lucca Araújo · <a href="https://github.com/petsaudemonitoramento-dev/petita-plano-parto/releases/tag/petita-teste-20261029" target="_blank" rel="noopener noreferrer">Ver versão e integridade do APK</a></span></div></footer>
+<script>
+(function(){
+  var count=document.getElementById('download-count');
+  var source=document.getElementById('download-source');
+  if(/iPhone|iPad|iPod/i.test(navigator.userAgent)){document.getElementById('ios-note').style.display='block';}
+  fetch('/api/stats',{cache:'no-store'}).then(function(r){if(!r.ok)throw new Error('stats');return r.json()}).then(function(d){
+    if(typeof d.downloads!=='number')throw new Error('stats');
+    count.textContent=new Intl.NumberFormat('pt-BR').format(d.downloads);
+    source.textContent='Downloads do arquivo APK (não pessoas únicas)';
+  }).catch(function(){count.textContent='—';source.textContent='Estatísticas temporariamente indisponíveis'});
+})();
+</script>
+</body>
+</html>
