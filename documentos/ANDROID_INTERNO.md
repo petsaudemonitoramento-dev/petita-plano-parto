@@ -9,7 +9,7 @@ Branch independente `feat/android-plataforma-permanente`, originada da main `784
 - Flutter 3.44.0 / Dart 3.12.0; Java 17, Gradle 9.1.0 com checksum, AGP 9.0.1, Kotlin 2.3.20, compile/target SDK 36, mínimo 24 (Android 7). Combinação gerada pelo template oficial desta versão Flutter. Wrapper, scripts e jar versionados, sem local.properties ou chaves.
 - Ícones launcher mdpi–xxxhdpi, adaptativo API26+, monocromático API33+ e splash antigo/API31+ são derivados somente de `assets/branding/Petita_icone_android_1024.png`. Sem redesenho ou troca de cores da arte original. A versão temática usa alpha derivado da luminância; não utiliza uma foto colorida como máscara opaca.
 - [Preview estático de máscaras](evidencias/android/branding-preview.png). Não é captura de aparelho. O foreground mantém o desenho centralizado dentro da zona segura, com padding e fundo rosa; originais de Flutter e o PNG-fonte permanecem intactos.
-- Reproduzir recursos: `python3 tools/generate_android_branding.py` (Pillow 12.1.1). Builds usam PNGs já versionados, sem instalar gerador na execução do app. Hash da arte oficial conferido pelo gerador e pelo inspetor.
+- Reproduzir recursos: `python3 tools/generate_android_branding.py` (Pillow 12.3.0). Builds usam PNGs já versionados, sem instalar gerador na execução do app. Hash da arte oficial conferido pelo gerador e pelo inspetor.
 
 ## Segurança e permissões
 

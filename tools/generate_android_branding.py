@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Resize/pad the official artwork only; no redrawing or generated character.
 
-Reproduction dependency: Pillow 12.1.1. Runtime and CI builds use committed PNGs.
+Reproduction dependency: Pillow 12.3.0. Runtime and CI builds use committed PNGs.
 The monochrome alpha is derived from the source luminance, not a colored photo.
 """
 import hashlib
