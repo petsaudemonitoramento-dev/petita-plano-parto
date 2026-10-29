@@ -175,3 +175,80 @@ export default async function handler(req, res) {
       if (!rows.length) bad('Duvida indisponivel ou de outra UBS', 409);
       return send(res, 200, { situacao: 'encerrada_sem_resposta' });
     }
+
+    if (path.startsWith('/api/admin/')) requireRole(me, 'administrador');
+
+    if (method === 'GET' && path === '/api/admin/requests') {
+      const teams = await sql`SELECT id,usuario_id,ubs_codigo,justificativa,
+        situacao,solicitado_em FROM petita_atendimento.solicitacoes_acesso
+        WHERE situacao='pendente' ORDER BY solicitado_em ASC LIMIT 100`;
+      const patients = await sql`SELECT id,usuario_id,ubs_codigo,situacao,
+        solicitado_em FROM petita_privado.solicitacoes_vinculo_gestantes
+        WHERE situacao='pendente' ORDER BY solicitado_em ASC LIMIT 100`;
+      return send(res, 200, { equipes: teams, vinculos_gestantes: patients });
+    }
+
+    const teamApprove = match(path, /^\/api\/admin\/team-requests\/([0-9a-f-]{36})\/approve$/i);
+    if (method === 'POST' && teamApprove) {
+      const rows = await sql`WITH candidate AS (
+        SELECT r.id,r.usuario_id,r.ubs_codigo
+        FROM petita_atendimento.solicitacoes_acesso r
+        JOIN petita_atendimento.acessos a ON a.usuario_id=r.usuario_id
+        WHERE r.id=${teamApprove[1]} AND r.situacao='pendente'
+          AND a.papel='gestante' AND a.ativo IS TRUE
+      ), promoted AS (
+        UPDATE petita_atendimento.acessos SET papel='equipe_ubs',atualizado_em=now()
+        WHERE usuario_id IN (SELECT usuario_id FROM candidate)
+        RETURNING usuario_id
+      ), granted AS (
+        INSERT INTO petita_atendimento.vinculos_equipes
+          (usuario_id,ubs_codigo,autorizado_por,ativo)
+        SELECT p.usuario_id,c.ubs_codigo,${user},true
+        FROM candidate c JOIN promoted p USING (usuario_id)
+        ON CONFLICT(usuario_id) DO UPDATE SET
+          ubs_codigo=excluded.ubs_codigo,autorizado_por=excluded.autorizado_por,
+          autorizado_em=now(),ativo=true RETURNING usuario_id
+      ), finalized AS (
+        UPDATE petita_atendimento.solicitacoes_acesso
+        SET situacao='aprovada',decidido_por=${user},decidido_em=now()
+        WHERE id IN (SELECT id FROM candidate)
+          AND usuario_id IN (SELECT usuario_id FROM granted)
+        RETURNING id
+      ), audit AS (
+        INSERT INTO petita_atendimento.eventos_auditoria(ator_usuario_id,acao,referencia_id)
+        SELECT ${user},'solicitacao_aprovada',id FROM finalized
+      )
+      SELECT id FROM finalized`;
+      if (!rows.length) bad('Solicitacao nao autorizada ou ja decidida', 409);
+      return send(res, 200, { situacao: 'aprovada' });
+    }
+
+    const patientApprove = match(path, /^\/api\/admin\/patient-ubs-requests\/([0-9a-f-]{36})\/approve$/i);
+    if (method === 'POST' && patientApprove) {
+      // Admin deve confirmar o vinculo com a UBS por procedimento institucional,
+      // fora deste endpoint; ele nao recebe o conteudo das duvidas da paciente.
+      const rows = await sql`WITH candidate AS (
+        SELECT r.id,r.usuario_id,r.ubs_codigo
+        FROM petita_privado.solicitacoes_vinculo_gestantes r
+        JOIN petita_atendimento.acessos a ON a.usuario_id=r.usuario_id
+        WHERE r.id=${patientApprove[1]} AND r.situacao='pendente'
+          AND a.papel='gestante' AND a.ativo IS TRUE
+      ), linked AS (
+        INSERT INTO petita_privado.vinculos_gestantes(usuario_id,ubs_codigo)
+        SELECT usuario_id,ubs_codigo FROM candidate
+        ON CONFLICT(usuario_id) DO UPDATE SET
+          ubs_codigo=excluded.ubs_codigo,confirmado_em=now()
+        RETURNING usuario_id
+      ), finalized AS (
+        UPDATE petita_privado.solicitacoes_vinculo_gestantes
+        SET situacao='aprovada',decidido_por=${user},decidido_em=now()
+        WHERE id IN (SELECT id FROM candidate)
+          AND usuario_id IN (SELECT usuario_id FROM linked)
+        RETURNING id
+      ), audit AS (
+        INSERT INTO petita_atendimento.eventos_auditoria(ator_usuario_id,acao,referencia_id)
+        SELECT ${user},'ubs_vinculada',id FROM finalized
+      ) SELECT id FROM finalized`;
+      if (!rows.length) bad('Solicitacao nao autorizada ou ja decidida', 409);
+      return send(res, 200, { situacao: 'aprovada' });
+    }
