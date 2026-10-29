@@ -68,6 +68,9 @@ def inspect(apk, kind, sdk, output):
     assert provider.get(NS + 'grantUriPermissions') == 'true'
     exported = [node.get(NS + 'name') for node in app if node.get(NS + 'exported') == 'true']
     assert exported == ['br.edu.ufcg.petsaude.petita.MainActivity'], 'Unexpected exported component'
+    # A manifest declaration alone does not prove Kotlin compiled the Activity.
+    activity_code = run(analyzer, 'dex', 'code', '--class', 'br.edu.ufcg.petsaude.petita.MainActivity', apk).stdout
+    assert 'MainActivity' in activity_code, 'Launcher Activity missing from DEX'
     paths = run(tools / 'aapt', 'dump', 'xmltree', apk, 'res/xml/flutter_printing_file_paths.xml').stdout
     assert 'cache-path' in paths and '/share/' in paths and 'root-path' not in paths
     certificate = run(tools / 'apksigner', 'verify', '--verbose', '--print-certs', apk, check=False)
@@ -86,10 +89,11 @@ def inspect(apk, kind, sdk, output):
                     continue
                 assert claims.get('role') != 'service_role', 'Potential embedded privileged token; inspect privately'
     (output / f'{kind}-manifest.xml').write_text(xml)
+    (output / f'{kind}-main-activity-dex.txt').write_text(activity_code)
     (output / f'{kind}-pdf-provider.txt').write_text(paths)
     return {'file': apk.name, 'sha256': sha(apk), 'bytes': apk.stat().st_size, 'package': expected,
             'versionCode': 20, 'versionName': manifest.get(NS + 'versionName'), 'minSdk': 24, 'targetSdk': 36,
-            'permissions': permissions, 'exportedComponents': exported, 'certificateSha256': fingerprint,
+            'permissions': permissions, 'exportedComponents': exported, 'mainActivityInDex': True, 'certificateSha256': fingerprint,
             'signing': 'ephemeral Android debug key' if kind == 'debug' else 'unsigned; not installable/distributable',
             'credentialPatternCheck': 'passed; not a proof of absence of all possible secrets'}
 

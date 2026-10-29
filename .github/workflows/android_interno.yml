@@ -45,7 +45,11 @@ jobs:
       - name: Compilar APK debug interno sem backend
         run: flutter build apk --debug --no-pub --dart-define=PETITA_INTERNAL_TEST=true
       - name: Validar compilação release sem assinatura de distribuição
-        run: flutter build apk --release --no-pub --dart-define=PETITA_INTERNAL_TEST=true
+        run: |
+          # Flutter 3.44 must regenerate registrants excluding dev-only plugins.
+          # --no-pub would reuse the debug integration_test registration here.
+          flutter build apk --release --dart-define=PETITA_INTERNAL_TEST=true
+          git diff --exit-code -- pubspec.yaml pubspec.lock
       - name: Inspecionar APKs, permissões, assinatura e proveniência
         env:
           PETITA_PR_HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}

@@ -37,8 +37,8 @@ Workflow `android_interno.yml`, acionado por PR/main ou manualmente, sem deploy:
 2. Análise estática e toda suíte Flutter; testes específicos de sucesso, falha e timeout de inicialização.
 3. SHA-256 e 31 IDs canônicos intactos, hash da arte e verificações do scaffold.
 4. `flutter build apk --debug --no-pub --dart-define=PETITA_INTERNAL_TEST=true`.
-5. `flutter build apk --release --no-pub --dart-define=PETITA_INTERNAL_TEST=true`, **sem chave nem fallback para debug**.
-6. APKs inspecionados por apkanalyzer/aapt/apksigner: versão/ID, SDK, permissões/componentes exportados, backup/cleartext, FileProvider e ausência de padrões conhecidos de segredos. Esse scan não é prova matemática de ausência de todo segredo.
+5. `flutter build apk --release --dart-define=PETITA_INTERNAL_TEST=true`, **sem chave nem fallback para debug**. Nesse comando o Flutter regenera registrants sem plugins exclusivos de dev, como integration_test; `--no-pub` reutilizaria o registrant debug no Flutter 3.44. A instalação estrita já foi feita e o diff de pubspec/lockfile é conferido novamente após o build.
+6. APKs inspecionados por apkanalyzer/aapt/apksigner: versão/ID, SDK, permissões/componentes exportados, MainActivity efetivamente presente no DEX, backup/cleartext, FileProvider e ausência de padrões conhecidos de segredos. Esse scan não é prova matemática de ausência de todo segredo.
 7. Artifact `petita-android-internal-RUN_ID`, retido por sete dias: debug APK, release não assinada e `test-build-provenance.json` com commit realmente compilado, tree, head da PR, run, ferramentas e SHA-256 separado de cada APK. São hashes de teste, não hashes definitivos para INPI.
 8. Emulador Android 35: Wi-Fi/dados desligados, build interno, inicialização, cinco aceites, 31 respostas canônicas (incluindo idade estimada), pronomes opcionais, persistência nativa e bytes dos dois PDFs; invocação do compartilhador Android sem selecionar destino/rede. Capturas com dados sintéticos e resultados agregados em artifact próprio.
 
