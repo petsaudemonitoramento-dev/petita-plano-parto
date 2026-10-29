@@ -2,7 +2,7 @@ name: Testar fundação Neon isolada
 
 on:
   pull_request:
-    branches: [main]
+    branches: [main, infra/neon-identidade-rls]
   workflow_dispatch:
 
 permissions:
@@ -20,3 +20,5 @@ jobs:
         run: python3 -m py_compile tools/test_neon_foundation.py tools/check_frozen_questionnaire.py
       - name: Aplicar migração e testar autorização em PostgreSQL descartável
         run: python3 tools/test_neon_foundation.py
+      - name: Testar dúvidas, aprovação, concorrência e interrupção
+        run: python3 tools/test_neon_workflows.py

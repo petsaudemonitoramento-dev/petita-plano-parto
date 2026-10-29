@@ -213,51 +213,59 @@ class AuthorizationTests(unittest.TestCase):
         self.assertNotEqual(r.returncode, 0)
 
 
+def start_container():
+    # No exposed port; trust is only inside this networkless throwaway container.
+    docker("run", "-d", "--name", CONTAINER, "--network=none",
+           "--tmpfs", "/var/lib/postgresql/data:rw", "-e", "POSTGRES_HOST_AUTH_METHOD=trust",
+           "-e", "POSTGRES_DB=petita_test", IMAGE)
+    for _ in range(120):
+        # The entrypoint briefly starts a socket-only bootstrap server.
+        # TCP readiness (loopback inside network=none) waits for the final one.
+        if docker("exec", CONTAINER, "pg_isready", "-h", "127.0.0.1", "-U", "postgres", check=False).returncode == 0:
+            break
+        time.sleep(0.25)
+    else:
+        raise RuntimeError("isolated PostgreSQL did not become ready")
+    print("PostgreSQL:", sql("SHOW server_version", "postgres").stdout.strip(), flush=True)
+
+
+def setup_foundation():
+    sql("CREATE TABLE public.legacy_sentinel(value text); INSERT INTO public.legacy_sentinel VALUES ('synthetic-preservation-marker');", "postgres")
+    sql("CREATE ROLE petita_test_migrator LOGIN NOSUPERUSER NOCREATEDB CREATEROLE NOBYPASSRLS INHERIT; GRANT CREATE ON DATABASE petita_test TO petita_test_migrator;", "postgres")
+    # Verify schema/role creation without a PostgreSQL superuser.
+    migrate(user="petita_test_migrator")
+    sql(f"""
+      INSERT INTO petita.ubs(code,name) VALUES ('TEST-A','Synthetic A'),('TEST-B','Synthetic B');
+      INSERT INTO petita.profiles(id,display_name,role,ubs_code,active) VALUES
+        ('{A}','Synthetic patient A','patient','TEST-A',true),
+        ('{B}','Synthetic patient B','patient','TEST-B',true),
+        ('{TEAM_A}','Synthetic team A','ubs_team','TEST-B',true),
+        ('{TEAM_B}','Synthetic team B','ubs_team','TEST-A',true),
+        ('{ADMIN}','Synthetic admin','admin',NULL,true),
+        ('{INACTIVE}','Synthetic inactive','patient','TEST-A',false),
+        ('{UNAPPROVED}','Synthetic unapproved','ubs_team','TEST-A',true);
+      INSERT INTO petita_private.identities(issuer,subject,profile_id) VALUES
+        ('{ISSUER}','patient-a','{A}'),('{ISSUER}','patient-b','{B}'),
+        ('{ISSUER}','team-a','{TEAM_A}'),('{ISSUER}','team-b','{TEAM_B}'),
+        ('{ISSUER}','admin','{ADMIN}'),('{ISSUER}','inactive','{INACTIVE}'),
+        ('{ISSUER}','unapproved','{UNAPPROVED}');
+      INSERT INTO petita_private.ubs_memberships(profile_id,ubs_code,approved_by,approved_at) VALUES
+        ('{TEAM_A}','TEST-A','{ADMIN}',now()),('{TEAM_B}','TEST-B','{ADMIN}',now());
+      INSERT INTO petita.birth_plans(id,patient_id,ubs_code) VALUES
+        ('{PLAN_A}','{A}','TEST-A'),('{PLAN_B}','{B}','TEST-B');
+      CREATE ROLE petita_test_client LOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOBYPASSRLS INHERIT;
+      GRANT petita_runtime TO petita_test_client;
+      CREATE ROLE petita_test_helper LOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOBYPASSRLS INHERIT;
+      GRANT petita_authorizer TO petita_test_helper;
+    """, "postgres")
+
+
 def main():
     created = False
     try:
-        # No exposed port; trust is only inside this networkless throwaway container.
-        docker("run", "-d", "--name", CONTAINER, "--network=none",
-               "--tmpfs", "/var/lib/postgresql/data:rw", "-e", "POSTGRES_HOST_AUTH_METHOD=trust",
-               "-e", "POSTGRES_DB=petita_test", IMAGE)
+        start_container()
         created = True
-        for _ in range(120):
-            # The entrypoint briefly starts a socket-only bootstrap server.
-            # TCP readiness (loopback inside network=none) waits for the final one.
-            if docker("exec", CONTAINER, "pg_isready", "-h", "127.0.0.1", "-U", "postgres", check=False).returncode == 0:
-                break
-            time.sleep(0.25)
-        else:
-            raise RuntimeError("isolated PostgreSQL did not become ready")
-        print("PostgreSQL:", sql("SHOW server_version", "postgres").stdout.strip(), flush=True)
-        sql("CREATE TABLE public.legacy_sentinel(value text); INSERT INTO public.legacy_sentinel VALUES ('synthetic-preservation-marker');", "postgres")
-        sql("CREATE ROLE petita_test_migrator LOGIN NOSUPERUSER NOCREATEDB CREATEROLE NOBYPASSRLS INHERIT; GRANT CREATE ON DATABASE petita_test TO petita_test_migrator;", "postgres")
-        # Verify schema/role creation without a PostgreSQL superuser.
-        migrate(user="petita_test_migrator")
-        sql(f"""
-          INSERT INTO petita.ubs(code,name) VALUES ('TEST-A','Synthetic A'),('TEST-B','Synthetic B');
-          INSERT INTO petita.profiles(id,display_name,role,ubs_code,active) VALUES
-            ('{A}','Synthetic patient A','patient','TEST-A',true),
-            ('{B}','Synthetic patient B','patient','TEST-B',true),
-            ('{TEAM_A}','Synthetic team A','ubs_team','TEST-B',true),
-            ('{TEAM_B}','Synthetic team B','ubs_team','TEST-A',true),
-            ('{ADMIN}','Synthetic admin','admin',NULL,true),
-            ('{INACTIVE}','Synthetic inactive','patient','TEST-A',false),
-            ('{UNAPPROVED}','Synthetic unapproved','ubs_team','TEST-A',true);
-          INSERT INTO petita_private.identities(issuer,subject,profile_id) VALUES
-            ('{ISSUER}','patient-a','{A}'),('{ISSUER}','patient-b','{B}'),
-            ('{ISSUER}','team-a','{TEAM_A}'),('{ISSUER}','team-b','{TEAM_B}'),
-            ('{ISSUER}','admin','{ADMIN}'),('{ISSUER}','inactive','{INACTIVE}'),
-            ('{ISSUER}','unapproved','{UNAPPROVED}');
-          INSERT INTO petita_private.ubs_memberships(profile_id,ubs_code,approved_by,approved_at) VALUES
-            ('{TEAM_A}','TEST-A','{ADMIN}',now()),('{TEAM_B}','TEST-B','{ADMIN}',now());
-          INSERT INTO petita.birth_plans(id,patient_id,ubs_code) VALUES
-            ('{PLAN_A}','{A}','TEST-A'),('{PLAN_B}','{B}','TEST-B');
-          CREATE ROLE petita_test_client LOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOBYPASSRLS INHERIT;
-          GRANT petita_runtime TO petita_test_client;
-          CREATE ROLE petita_test_helper LOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOBYPASSRLS INHERIT;
-          GRANT petita_authorizer TO petita_test_helper;
-        """, "postgres")
+        setup_foundation()
         result = unittest.TextTestRunner(verbosity=2).run(unittest.defaultTestLoader.loadTestsFromTestCase(AuthorizationTests))
         return 0 if result.wasSuccessful() else 1
     except subprocess.CalledProcessError as error:

@@ -2,7 +2,7 @@ name: Verificar Pull Request Petita
 
 on:
   pull_request:
-    branches: [main]
+    branches: [main, infra/neon-identidade-rls]
   workflow_dispatch:
 
 permissions:
