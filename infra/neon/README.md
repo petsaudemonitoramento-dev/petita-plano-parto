@@ -1,5 +1,7 @@
 # Fundação institucional Neon — PR 1
 
+Complemento da segunda execução: [dúvidas e aprovação UBS, migrations 002/003](WORKFLOWS.md). O texto abaixo registra o escopo da fundação 001; os itens então previstos para a PR seguinte são implementados e delimitados no complemento.
+
 Esta primeira implementação entrega identidade de domínio, vínculo UBS e autorização do plano. Não é a migração completa do backend. Não modifica `public`, não importa dados e não conecta o Flutter ao novo schema. A aplicação Web permanece usando a integração existente até que seus substitutos sejam homologados.
 
 ## Arquitetura e fronteira de confiança
