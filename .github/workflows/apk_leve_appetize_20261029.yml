@@ -1,0 +1,126 @@
+name: Petita - APK leve Android para Appetize (teste interno)
+
+on:
+  push:
+    branches:
+      - test/apk-leve-appetize-20261029
+    paths:
+      - '.github/workflows/apk_leve_appetize_20261029.yml'
+      - 'tools/inspect_appetize_build.py'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build-and-publish:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 50
+    steps:
+      - name: Checkout do commit exato
+        uses: actions/checkout@v4
+      - name: Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+          cache: gradle
+      - name: Configurar Android SDK
+        uses: android-actions/setup-android@v3
+        with:
+          packages: platform-tools
+          log-accepted-android-sdk-licenses: false
+      - name: Instalar Flutter fixado
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.44.0'
+          channel: stable
+          cache: true
+      - name: Instalar SDK/NDK
+        run: sdkmanager 'platforms;android-36' 'build-tools;36.0.0' 'ndk;28.2.13676358'
+      - name: Validar dependências e questionário
+        run: |
+          flutter pub get --enforce-lockfile
+          git diff --exit-code -- pubspec.yaml pubspec.lock
+          flutter analyze --no-pub
+          flutter test --no-pub
+          python3 tools/inspect_android_artifacts.py --source-only
+          python3 -m unittest discover -s tools -p test_android_secret_scanner.py -v
+      - name: Compilar AOT otimizado separadamente por arquitetura
+        run: |
+          flutter build apk --release --split-per-abi --target-platform android-arm64,android-x64 --dart-define=PETITA_INTERNAL_TEST=true
+          git diff --exit-code -- pubspec.yaml pubspec.lock
+          test -s build/app/outputs/flutter-apk/app-x86_64-release.apk
+          test -s build/app/outputs/flutter-apk/app-arm64-v8a-release.apk
+          ls -lh build/app/outputs/flutter-apk/*-release.apk
+      - name: Assinar apenas para teste com chave efêmera da execução
+        shell: bash
+        run: |
+          set -euo pipefail
+          umask 077
+          mkdir -p dist
+          export PETITA_SIGN_PASS="$(openssl rand -hex 32)"
+          KEYFILE="$RUNNER_TEMP/petita-ephemeral-keystore.p12"
+          keytool -genkeypair -noprompt -storetype PKCS12 \
+            -keystore "$KEYFILE" -storepass "$PETITA_SIGN_PASS" \
+            -keypass "$PETITA_SIGN_PASS" -alias petita-test-ephemeral \
+            -keyalg RSA -keysize 3072 -validity 3 \
+            -dname "CN=Petita Teste Interno, O=Projeto PET Saude, C=BR" >/dev/null 2>&1
+          TOOLS="$ANDROID_HOME/build-tools/36.0.0"
+          for arch in x86_64 arm64-v8a; do
+            src="build/app/outputs/flutter-apk/app-${arch}-release.apk"
+            aligned="$RUNNER_TEMP/Petita-${arch}-aligned.apk"
+            output="dist/Petita-Teste-Leve-${arch}-20261029.apk"
+            "$TOOLS/zipalign" -p -f 4 "$src" "$aligned"
+            "$TOOLS/apksigner" sign \
+              --ks "$KEYFILE" --ks-key-alias petita-test-ephemeral \
+              --ks-pass env:PETITA_SIGN_PASS --key-pass env:PETITA_SIGN_PASS \
+              --out "$output" "$aligned"
+            "$TOOLS/apksigner" verify --verbose "$output"
+          done
+          rm -f "$KEYFILE"
+          printf '%s\n' "Chave temporária apagada; arquivos são exclusivamente para testes e não servem a atualizações institucionais."
+      - name: Inspecionar integridade, permissões, ABI e credenciais
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 tools/inspect_appetize_build.py --apk dist/Petita-Teste-Leve-x86_64-20261029.apk --abi x86_64 --sdk "$ANDROID_HOME"
+          python3 tools/inspect_appetize_build.py --apk dist/Petita-Teste-Leve-arm64-v8a-20261029.apk --abi arm64-v8a --sdk "$ANDROID_HOME"
+          (cd dist && sha256sum *.apk > SHA256SUMS.txt)
+          ls -lh dist/*.apk
+      - name: Guardar APKs leves verificados (sete dias)
+        uses: actions/upload-artifact@v4
+        with:
+          name: petita-apk-leve-interno-${{ github.run_id }}
+          path: |
+            dist/Petita-Teste-Leve-*.apk
+            dist/SHA256SUMS.txt
+          retention-days: 7
+          if-no-files-found: error
+      - name: Publicar prerelease de teste com download APK direto
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          cat > "$RUNNER_TEMP/notes.txt" <<'EOF'
+          Petita - APK leve Android para teste interno, sem dados reais.
+
+          Compilação Flutter otimizada (AOT), exclusivamente offline, sem inicializar o backend legado.
+          * x86_64: variante preferencial para emuladores Android, como Appetize.
+          * arm64-v8a: variante para aparelhos Android ARM64 reais.
+          * Assinatura efêmera de teste (não institucional, não reutilizável).
+          * Cada APK suporta somente sua arquitetura. Arquivos SHA256SUMS.txt para verificação.
+          * Não homologado para dados de gestantes ou uso assistencial.
+
+          Essa versão pode não atualizar o APK debug anterior devido a nome de pacote ou assinatura distintos.
+          EOF
+          TAG=petita-apk-leve-teste-20261029
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            echo "Tag já publicada: recusar substituição silenciosa."
+            exit 1
+          fi
+          gh release create "$TAG" dist/Petita-Teste-Leve-*.apk dist/SHA256SUMS.txt \
+            --target "$GITHUB_SHA" --title "Petita - APK leve para teste Android" \
+            --notes-file "$RUNNER_TEMP/notes.txt" --prerelease
