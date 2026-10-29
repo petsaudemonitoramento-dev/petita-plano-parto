@@ -252,3 +252,71 @@ export default async function handler(req, res) {
       if (!rows.length) bad('Solicitacao nao autorizada ou ja decidida', 409);
       return send(res, 200, { situacao: 'aprovada' });
     }
+
+    const rejectTeam = match(path, /^\/api\/admin\/team-requests\/([0-9a-f-]{36})\/reject$/i);
+    if (method === 'POST' && rejectTeam) {
+      const rows = await sql`WITH changed AS (
+        UPDATE petita_atendimento.solicitacoes_acesso
+        SET situacao='recusada',decidido_por=${user},decidido_em=now()
+        WHERE id=${rejectTeam[1]} AND situacao='pendente' RETURNING id
+      ), audit AS (
+        INSERT INTO petita_atendimento.eventos_auditoria(ator_usuario_id,acao,referencia_id)
+        SELECT ${user},'solicitacao_recusada',id FROM changed
+      ) SELECT id FROM changed`;
+      if (!rows.length) bad('Solicitacao indisponivel', 409);
+      return send(res, 200, { situacao: 'recusada' });
+    }
+
+    const rejectPatient = match(path, /^\/api\/admin\/patient-ubs-requests\/([0-9a-f-]{36})\/reject$/i);
+    if (method === 'POST' && rejectPatient) {
+      const rows = await sql`WITH changed AS (
+        UPDATE petita_privado.solicitacoes_vinculo_gestantes
+        SET situacao='recusada',decidido_por=${user},decidido_em=now()
+        WHERE id=${rejectPatient[1]} AND situacao='pendente' RETURNING id
+      ), audit AS (
+        INSERT INTO petita_atendimento.eventos_auditoria(ator_usuario_id,acao,referencia_id)
+        SELECT ${user},'solicitacao_recusada',id FROM changed
+      ) SELECT id FROM changed`;
+      if (!rows.length) bad('Solicitacao indisponivel', 409);
+      return send(res, 200, { situacao: 'recusada' });
+    }
+
+    if (method === 'POST' && path === '/api/admin/team/disable') {
+      const target = String(readBody(req).usuario_id ?? '');
+      if (!/^[0-9a-f-]{36}$/i.test(target) || target === user) bad('Usuario invalido');
+      const rows = await sql`WITH demoted AS (
+        UPDATE petita_atendimento.acessos
+        SET papel='gestante',atualizado_em=now()
+        WHERE usuario_id=${target} AND papel='equipe_ubs' RETURNING usuario_id
+      ), disabled AS (
+        UPDATE petita_atendimento.vinculos_equipes
+        SET ativo=false WHERE usuario_id IN (SELECT usuario_id FROM demoted)
+        RETURNING usuario_id
+      ), audit AS (
+        INSERT INTO petita_atendimento.eventos_auditoria(ator_usuario_id,acao,referencia_id)
+        SELECT ${user},'equipe_desativada',usuario_id FROM disabled
+      ) SELECT usuario_id FROM disabled`;
+      if (!rows.length) bad('Equipe nao encontrada', 409);
+      return send(res, 200, { status: 'revogado' });
+    }
+
+    if (method === 'GET' && path === '/api/admin/overview') {
+      // Informacoes operacionais agregadas, sem texto ou nome de gestantes.
+      const rows = await sql`SELECT u.name AS ubs, u.code AS ubs_codigo,
+        count(d.id)::integer AS total,
+        count(d.id) FILTER (WHERE d.situacao='pendente')::integer AS pendentes,
+        count(d.id) FILTER (WHERE d.situacao='respondida')::integer AS respondidas,
+        count(d.id) FILTER (WHERE d.situacao='encerrada_sem_resposta')::integer AS encerradas
+        FROM public.ubs u
+        LEFT JOIN petita_atendimento.duvidas d ON d.ubs_codigo=u.code
+        GROUP BY u.name,u.code ORDER BY u.name`;
+      return send(res, 200, { unidades: rows });
+    }
+
+    return send(res, 404, { erro: 'Rota nao encontrada' });
+  } catch (e) {
+    const status = [400,401,403,404,409,503].includes(e?.status) ? e.status : 500;
+    // Nao incluir mensagens internas do Postgres, SQL, payloads ou dados pessoais no erro.
+    return send(res, status, { erro: status === 500 ? 'Falha interna no atendimento da solicitacao' : e.message });
+  }
+}
