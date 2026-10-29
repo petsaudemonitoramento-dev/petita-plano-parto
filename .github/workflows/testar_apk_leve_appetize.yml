@@ -19,11 +19,11 @@ jobs:
     steps:
       - name: Confirmar token Appetize
         env:
-          APPETIZE_API_TOKEN: ${{ secrets.APPETIZE_API_TOKEN }}
+          APPETIZE_API_TOKEN: ${{ secrets.TOKEN_PETITA }}
         shell: bash
         run: |
           if [[ -z "$APPETIZE_API_TOKEN" ]]; then
-            echo "::error::Adicione APPETIZE_API_TOKEN em Settings > Secrets and variables > Actions > Repository secrets."
+            echo "::error::Adicione TOKEN_PETITA em Settings > Secrets and variables > Actions > Repository secrets."
             exit 1
           fi
 
@@ -54,7 +54,7 @@ jobs:
         id: appetize
         uses: appetizeio/github-action-appetize@v1.1.0
         with:
-          apiToken: ${{ secrets.APPETIZE_API_TOKEN }}
+          apiToken: ${{ secrets.TOKEN_PETITA }}
           platform: android
           appFile: Petita-Teste-Leve-x86_64-20261029.apk
           fileType: apk
