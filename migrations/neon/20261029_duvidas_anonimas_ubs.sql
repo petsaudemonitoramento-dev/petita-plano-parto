@@ -63,3 +63,46 @@ CREATE TABLE IF NOT EXISTS petita_atendimento.duvidas (
 );
 CREATE INDEX IF NOT EXISTS duvidas_fila_ubs
  ON petita_atendimento.duvidas(ubs_codigo,situacao,criada_em DESC);
+
+-- Esta ligacao privada NUNCA e incluida na fila da equipe.
+CREATE TABLE IF NOT EXISTS petita_privado.autoria_duvidas (
+ duvida_id uuid PRIMARY KEY REFERENCES petita_atendimento.duvidas(id) ON DELETE CASCADE,
+ gestante_usuario_id uuid NOT NULL REFERENCES petita_atendimento.acessos(usuario_id),
+ vinculada_em timestamptz NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS autoria_por_gestante
+ ON petita_privado.autoria_duvidas(gestante_usuario_id);
+
+CREATE TABLE IF NOT EXISTS petita_atendimento.respostas (
+ duvida_id uuid PRIMARY KEY REFERENCES petita_atendimento.duvidas(id),
+ texto text NOT NULL CHECK (length(btrim(texto)) BETWEEN 3 AND 4000),
+ respondida_por uuid NOT NULL REFERENCES petita_atendimento.acessos(usuario_id),
+ respondida_em timestamptz NOT NULL DEFAULT now()
+);
+CREATE TABLE IF NOT EXISTS petita_atendimento.eventos_auditoria (
+ id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+ ator_usuario_id uuid NOT NULL,
+ acao text NOT NULL CHECK (acao IN (
+  'solicitacao_aprovada','solicitacao_recusada','equipe_desativada',
+  'ubs_vinculada','duvida_respondida','duvida_encerrada'
+ )),
+ referencia_id uuid,
+ quando timestamptz NOT NULL DEFAULT now()
+);
+CREATE OR REPLACE VIEW petita_atendimento.fila_anonima AS
+ SELECT id,codigo_publico,ubs_codigo,categoria,texto,nivel_percebido,situacao,criada_em
+ FROM petita_atendimento.duvidas;
+
+REVOKE ALL ON ALL TABLES IN SCHEMA petita_atendimento FROM PUBLIC;
+REVOKE ALL ON ALL TABLES IN SCHEMA petita_privado FROM PUBLIC;
+REVOKE ALL ON ALL SEQUENCES IN SCHEMA petita_atendimento FROM PUBLIC;
+ALTER TABLE petita_atendimento.acessos ENABLE ROW LEVEL SECURITY;
+ALTER TABLE petita_atendimento.vinculos_equipes ENABLE ROW LEVEL SECURITY;
+ALTER TABLE petita_atendimento.solicitacoes_acesso ENABLE ROW LEVEL SECURITY;
+ALTER TABLE petita_atendimento.duvidas ENABLE ROW LEVEL SECURITY;
+ALTER TABLE petita_atendimento.respostas ENABLE ROW LEVEL SECURITY;
+ALTER TABLE petita_atendimento.eventos_auditoria ENABLE ROW LEVEL SECURITY;
+ALTER TABLE petita_privado.vinculos_gestantes ENABLE ROW LEVEL SECURITY;
+ALTER TABLE petita_privado.autoria_duvidas ENABLE ROW LEVEL SECURITY;
+-- Ausencia de policies libera acesso SOMENTE pelo backend DB autorizado.
+-- O backend devera validar JWT Neon, permissoes e vinculo antes de toda operacao.
