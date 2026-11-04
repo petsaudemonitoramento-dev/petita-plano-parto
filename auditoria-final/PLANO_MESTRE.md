@@ -62,3 +62,11 @@ Uma "janela de cinco horas" é **cota de uso**, não garantia de trabalho contí
 - Compartilhe status ao concluir marcos e ao detectar P0, não acumule por horas.
 - Se faltar tempo, prefira evidência de um P0 e checkpoint ao invés de 20 melhorias cosméticas.
 - Nenhum benchmark sem baseline; registre hardware/ambiente, unidade e repetições.
+
+
+## Modo operacional v2 (anti-bloqueio e uso somente em nuvem)
+- Codex Cloud no ambiente publicado ou GitHub Actions. **Nenhuma etapa depende de computador local**.
+- Usar bash tool/run_bounded_audit.sh NOME SEGUNDOS comando argumentos; exemplos: testes focados 180s, suíte 480s, builds 900s. Se TIMEOUT, registrar e trocar de tarefa; no máximo uma retentativa tecnicamente justificada.
+- Não repetir análise já feita na Janela A: retomar sempre de PROGRESSO.md/HANDOFF e dos commits. Não iniciar trabalho grande sem checkpoint antes.
+- Após cada marco, atualizar PROGRESSO.md + ACHADOS.md com evidências; os logs detalhados ficam temporariamente em /tmp e não devem conter dados reais nem chaves.
+- Parecer para congelamento do **código de registro** e parecer para **uso assistencial** são distintos. Não bloquear documentação do INPI por funcionalidades online ainda não entregues; registrar explicitamente escopo, limitações e riscos, sem declarar segurança clínica.
