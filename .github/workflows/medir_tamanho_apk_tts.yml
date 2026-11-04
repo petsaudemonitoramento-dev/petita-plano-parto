@@ -1,0 +1,45 @@
+name: Medir tamanho APK Petita ARM64 (comparativo)
+on:
+  push:
+    branches: ['feat/cards-consulta-pdf-voz-20261104']
+    paths: ['.github/workflows/medir_tamanho_apk_tts.yml']
+permissions:
+  contents: read
+jobs:
+  apk-size:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    strategy:
+      fail-fast: false
+      matrix:
+        ref: [main, feat/cards-consulta-pdf-voz-20261104]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ matrix.ref }}
+          persist-credentials: false
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.44.0'
+          channel: stable
+          cache: true
+      - name: Dependencias
+        run: flutter pub get --enforce-lockfile
+      - name: Gerar projeto Android temporario para medicao
+        run: flutter create --platforms=android --project-name plano_parto_pet_saude .
+      - name: Configurar TTS Android somente na branch nova
+        if: matrix.ref != 'main'
+        run: python3 tool/prepare_android_tts_manifest.py
+      - name: Compilar release ARM64 sem publicar
+        run: flutter build apk --release --split-per-abi --target-platform android-arm64 --dart-define=PETITA_INTERNAL_TEST=true --no-pub
+      - name: Registrar tamanho
+        shell: bash
+        run: |
+          set -euo pipefail
+          path=build/app/outputs/flutter-apk/app-arm64-v8a-release.apk
+          test -s "$path"
+          bytes="$(stat -c%s "$path")"
+          echo "PETITA_SIZE ${{ matrix.ref }} bytes=$bytes"
+          echo "## PETITA SIZE - ${{ matrix.ref }}" >> "$GITHUB_STEP_SUMMARY"
+          echo "ARM64 release APK bytes: **$bytes**" >> "$GITHUB_STEP_SUMMARY"
+          echo "Flutter 3.44.0; split-per-abi; PETITA_INTERNAL_TEST=true; generated Android project" >> "$GITHUB_STEP_SUMMARY"
