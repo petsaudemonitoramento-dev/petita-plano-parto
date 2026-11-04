@@ -4,6 +4,8 @@
 
 **Nota:** a franquia de uso de cinco horas pode acabar antes do tempo; sua disponibilidade depende do saldo do plano. Não podemos agendar duas sessões como se fossem 10 horas garantidas.
 
+**Se o seletor de branch do Codex não aparecer:** na primeira tarefa, peça que ele verifique a branch e execute `git fetch origin audit/codex-final-petita-20261104` seguido de checkout isolado dessa branch. Se o ambiente não permitir checkout/commits, **não trabalhe na `main`**: pare e reporte o bloqueio. Na segunda janela, priorize continuar a mesma tarefa/branch em vez de criar nova do zero.
+
 ---
 
 ## PROMPT A — janela 1: diagnóstico e segurança
