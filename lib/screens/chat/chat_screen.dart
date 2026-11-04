@@ -1175,42 +1175,106 @@ class _ChatHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final size = MediaQuery.sizeOf(context);
+    final narrow = size.width < 370;
+    final short = size.height < 700;
     return Container(
-      padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
-      decoration: BoxDecoration(
-        gradient: const LinearGradient(colors: [Color(0xFF6332AB), Color(0xFFAB53D8), Color(0xFFE56BAC)]),
-        boxShadow: [BoxShadow(color: Colors.black.withAlpha((255 * 0.04).round()), blurRadius: 12, offset: const Offset(0, 5))],
+      padding: EdgeInsets.fromLTRB(
+        narrow ? 8 : 16,
+        short ? 6 : 12,
+        narrow ? 8 : 16,
+        short ? 8 : 16,
       ),
-      child: Column(children: [
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          colors: [Color(0xFF6332AB), Color(0xFFAB53D8), Color(0xFFE56BAC)],
+        ),
+        boxShadow: [
+          BoxShadow(color: Colors.black.withAlpha(10),
+              blurRadius: 12, offset: const Offset(0, 5)),
+        ],
+      ),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
         Row(children: [
-          InkWell(
-            onTap: () => Navigator.pop(context),
-            borderRadius: BorderRadius.circular(18),
-            child: const Padding(padding: EdgeInsets.all(8), child: Icon(Icons.arrow_back, color: Colors.white)),
+          IconButton(
+            tooltip: 'Voltar',
+            visualDensity: VisualDensity.compact,
+            onPressed: () => Navigator.pop(context),
+            icon: const Icon(Icons.arrow_back, color: Colors.white),
           ),
-          Container(padding: const EdgeInsets.all(3), decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16), boxShadow: [BoxShadow(color: AppColors.primaryPink.withAlpha((255 * 0.14).round()), blurRadius: 12)]), child: CircleAvatar(radius: 19, backgroundColor: AppColors.softPink, child: ClipOval(child: Image.asset('assets/images/petita.png', fit: BoxFit.cover)))),
-          const SizedBox(width: 10),
-          const Expanded(
-            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text('Petita', style: TextStyle(fontWeight: FontWeight.w900, color: Colors.white, fontSize: 19)),
-              Text('Com você em cada escolha 💗', style: TextStyle(color: Colors.white, fontSize: 12)),
-            ]),
+          Container(
+            padding: const EdgeInsets.all(3),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(14),
+            ),
+            child: CircleAvatar(
+              radius: narrow ? 16 : 19,
+              backgroundColor: AppColors.softPink,
+              child: ClipOval(child: Image.asset(
+                  'assets/images/petita.png', fit: BoxFit.cover)),
+            ),
           ),
-          IconButton(onPressed: () => Navigator.pushNamed(context, AppRoutes.profile), icon: const Icon(Icons.person_outline, color: Colors.white)),
+          const SizedBox(width: 9),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text('Petita',
+                    style: TextStyle(
+                        fontWeight: FontWeight.w900,
+                        color: Colors.white, fontSize: 19)),
+                if (!short && !narrow)
+                  const Text('Com você em cada escolha 💗',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(color: Colors.white, fontSize: 12)),
+              ],
+            ),
+          ),
+          IconButton(
+            tooltip: 'Meu perfil',
+            visualDensity: VisualDensity.compact,
+            onPressed: () => Navigator.pushNamed(context, AppRoutes.profile),
+            icon: const Icon(Icons.person_outline, color: Colors.white),
+          ),
         ]),
         if (inPlanFlow) ...[
-          const SizedBox(height: 10),
-          Row(children: [
-            Flexible(child: Text(currentSection, style: const TextStyle(fontWeight: FontWeight.w800, color: Colors.white), overflow: TextOverflow.ellipsis)),
-            const Spacer(),
-            Text('Etapa $currentStep de $totalSteps', style: const TextStyle(fontSize: 12, color: Colors.white, fontWeight: FontWeight.w800)),
-          ]),
-          const SizedBox(height: 8),
+          SizedBox(height: short ? 5 : 10),
+          if (narrow)
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(currentSection, maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                        fontWeight: FontWeight.w800, color: Colors.white)),
+                Text('Etapa $currentStep de $totalSteps',
+                    style: const TextStyle(
+                        fontSize: 12, color: Colors.white,
+                        fontWeight: FontWeight.w800)),
+              ],
+            )
+          else
+            Row(children: [
+              Expanded(
+                child: Text(currentSection, maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                        fontWeight: FontWeight.w800, color: Colors.white)),
+              ),
+              const SizedBox(width: 10),
+              Text('Etapa $currentStep de $totalSteps',
+                  style: const TextStyle(
+                      fontSize: 12, color: Colors.white,
+                      fontWeight: FontWeight.w800)),
+            ]),
+          SizedBox(height: short ? 5 : 8),
           ClipRRect(
             borderRadius: BorderRadius.circular(999),
             child: LinearProgressIndicator(
               value: progress,
-              minHeight: 8,
+              minHeight: short ? 5 : 8,
               backgroundColor: Colors.white24,
               valueColor: const AlwaysStoppedAnimation<Color>(Colors.white),
             ),
@@ -1365,10 +1429,13 @@ class _ChatInput extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final keyboardVisible = MediaQuery.viewInsetsOf(context).bottom > 0;
+    final short = MediaQuery.sizeOf(context).height < 700;
     return SafeArea(
       top: false,
       child: Container(
-        padding: const EdgeInsets.fromLTRB(14, 8, 14, 10),
+        padding: EdgeInsets.fromLTRB(
+            12, 8, 12, keyboardVisible ? 5 : 8),
         color: AppColors.background,
         child: Column(mainAxisSize: MainAxisSize.min, children: [
           Row(children: [
@@ -1377,33 +1444,40 @@ class _ChatInput extends StatelessWidget {
                 controller: controller,
                 enabled: enabled,
                 minLines: 1,
-                maxLines: 4,
+                maxLines: 3,
+                textInputAction: TextInputAction.send,
                 decoration: InputDecoration(
-                  hintText: enabled ? 'Digite sua mensagem...' : 'Escolha uma opção ou toque em “Escrever minha resposta”',
+                  hintText: enabled
+                      ? 'Digite sua resposta...'
+                      : 'Escolha uma alternativa acima',
+                  isDense: true,
+                  contentPadding: const EdgeInsets.symmetric(
+                      horizontal: 12, vertical: 12),
                 ),
                 onSubmitted: (_) => onSend(),
               ),
             ),
             const SizedBox(width: 8),
-            FloatingActionButton.small(
+            IconButton.filled(
+              tooltip: 'Enviar resposta',
               onPressed: enabled ? onSend : null,
-              backgroundColor: enabled ? AppColors.primaryPink : Colors.grey,
-              foregroundColor: Colors.white,
-              child: const Icon(Icons.send),
+              style: IconButton.styleFrom(
+                backgroundColor: enabled ? AppColors.primaryPink : Colors.grey,
+                foregroundColor: Colors.white,
+                minimumSize: const Size(48, 48),
+              ),
+              icon: const Icon(Icons.send),
             ),
           ]),
-          const SizedBox(height: 6),
-          const Text(
-            'A Petita pode cometer erros. Confirme informações importantes com a equipe de saúde.',
-            textAlign: TextAlign.center,
-            style: TextStyle(fontSize: 10.5, color: Color(0xFF777777), height: 1.2),
-          ),
-          const SizedBox(height: 4),
-          const Text(
-            'Desenvolvedor: Lucca Araújo',
-            textAlign: TextAlign.center,
-            style: TextStyle(fontSize: 10, color: Color(0xFF777777)),
-          ),
+          if (!keyboardVisible && !short) ...[
+            const SizedBox(height: 5),
+            const Text(
+              'Confirme informações de saúde com a equipe da UBS.',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                  fontSize: 11, color: Color(0xFF777777), height: 1.2),
+            ),
+          ],
         ]),
       ),
     );
