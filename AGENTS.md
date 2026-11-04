@@ -1,44 +1,32 @@
-# AGENTS.md — Petita / auditoria final controlada
+# Petita — regras permanentes para agentes Codex
 
-Este repositório contém a **Petita**, aplicativo Flutter de Plano de Parto para o PET Saúde/UFCG. Sua finalidade é educativa; informações relacionadas à gestação são sensíveis. **Prioridade:** segurança e privacidade > integridade de dados > confiabilidade e acessibilidade > desempenho > mudanças estéticas. Não adicione funcionalidades novas durante a auditoria sem necessidade demonstrada.
+Projeto: Flutter Android/Web, plano de parto e orientação educativa; dados sobre gestação são sensíveis. Fonte canônica: petsaudemonitoramento-dev/petita-plano-parto. Auditoria final: issue #21, etapas #22/#23, branch audit/codex-final-petita-20261104, plano em auditoria-final/PLANO_MESTRE.md.
 
-## Missão atual
-Ler `auditoria-final/PLANO_MESTRE.md` e `auditoria-final/PROMPTS_CODEX.md`. Há duas janelas planejadas, com controle em `auditoria-final/PROGRESSO.md`. Painel GitHub: issue #21; janela A issue #22; janela B issue #23.
-A auditoria **não está concluída por haver este arquivo**. Inspecione o código, reproduza as hipóteses, corrija apenas achados comprovados e registre resultados verificáveis.
+## Execução estritamente remota
+- **Codex Cloud no ambiente publicado. Nunca usar computador/IDE/VS Code/terminal/ADB local do usuário.** Se faltar ferramenta, usar apenas o ambiente Cloud ou **GitHub Actions**; se ambos falharem, registrar bloqueio, continuar com análise estática e não solicitar PC local.
+- Não refazer o aplicativo nem criar recursos novos. Ordem: **segurança e privacidade > integridade offline > correção > acessibilidade > desempenho > manutenção**.
+- Evitar respostas intermináveis e releitura integral dos mesmos arquivos. Fazer inspeção dirigida, buscas seletivas e pequenos patches. Um problema por commit/PR.
 
-## Limites inegociáveis
-1. Trabalhar somente na branch de auditoria ou em sub-branches dela. Abrir PRs pequenas; **não alterar diretamente `main`**, não fazer merge sem revisão, não publicar APK/Web/Play Store, não disparar workflows de release.
-2. **Não acessar nem modificar ambientes reais** Neon/Supabase/Google Cloud, dados reais, pacientes, autenticação produtiva, RLS produtiva, contas, backups ou segredos sem autorização explícita e mecanismo seguro. Testes offline com dados sintéticos e mocks.
-3. Não imprimir, copiar, commitar ou expor chaves, tokens, senhas, keystores, arquivos `.env`, sessões, CPF/e-mail/identidade de gestantes. Se detectar possível vazamento: descreva **tipo e caminho**, não o valor; proponha rotação segura.
-4. `assets/data/birth_plan_flow.json`: **31 perguntas e textos canônicos imutáveis byte a byte**, salvo autorização separada. Registrar SHA-256 antes/depois. Não modificar orientações médicas, termos, política de privacidade ou textos de urgência sem revisão especializada.
-5. As perguntas reservadas para consulta permanecem sem resposta até decisão da gestante; notas são offline; dúvidas online devem obedecer à UBS designada, permanecer anônimas para a equipe, sem expectativa ou obrigação de resposta, com alerta de urgência. Não confundir anonimato para profissionais com ausência de identidade no servidor.
-6. Preservar compatibilidade de dados locais, especialmente `SharedPreferences`, consentimentos, PDF de uma página na declaração e compatibilidade com versões Android previamente instaladas. Se alteração requer migração de dados ou assinatura, registrar como bloqueio.
-7. Diferenciar estado real e intenção: o código de produção ainda inicializa `supabase_flutter`, enquanto o Neon é o destino planejado/ativado para Auth e dados. **Não afirmar que o login Google/Neon funciona antes de prova ponta-a-ponta.**
-8. Nunca declarar "seguro", "LGPD conforme" ou "pronto para uso assistencial" apenas por testes automatizados. Relatar limite de cobertura e riscos residuais.
+## Limites de segurança
+- Somente branch de auditoria/PR. **Sem push na main, merge, releases, publicação de APK/site ou operação em banco/contas de produção.**
+- Usar apenas fixtures fictícias e mocks para fluxos que envolvam gestantes/UBS; não conectar Neon/Supabase/Google produtivos sem autorização separada. Não registrar, exibir ou copiar chaves privadas, senhas, tokens, sessões, respostas reais ou PII; achou exposição? Indicar caminho/tipo, não valor.
+- O arquivo assets/data/birth_plan_flow.json (31 perguntas) é imutável byte a byte. Registrar SHA-256 inicial e final. Proteger avisos de urgência, direito de não responder, consentimentos e políticas; textos clínicos só mudam com revisão humana.
+- Isolamento entre UBS, anonimato perante profissionais, autorização admin **do lado servidor**, dúvidas urgentes direcionadas à unidade/serviço de saúde e ausência de obrigação de resposta são invariantes. Dúvidas para consulta permanecem offline e **não equivalem a respostas**.
+- A arquitetura Flutter ainda usa supabase_flutter; Neon foi provisionado separadamente. **Não alegar migração/login Google concluídos** nem criar autenticação improvisada.
+- Preservar dados de instalações anteriores, geração de PDF e acessibilidade de cards. APK antigo pode ter assinatura diferente: tratar upgrade como risco, não recomendar desinstalação automática.
+- Nenhum CI verde prova LGPD/segurança remota/homologação clínica. Distinguir **confirmado / suspeito / não testado**.
 
-## Ciclo de trabalho obrigatório
-- Antes: registrar em `auditoria-final/PROGRESSO.md` o baseline (branch, commit, comando, escopo).
-- Para cada marco: (a) investigar (b) listar arquivos e evidências reproduzíveis (c) realizar mudança mínima, caso autorizada (d) executar teste relevante (e) atualizar **imediatamente** PROGRESSO, criar commit/PR, e comentar no issue #21 se houver permissão. Não aguardar o fim da janela para informar.
-- Cada atualização deve conter: `Marco [ID] | status | evidência | teste | próximo passo | bloqueio`. Atualizações úteis por conclusão de subetapa, não por cada linha lida.
-- Antes de qualquer limite, interrupção ou final de turno, deixar **HANDOFF**: último commit, alterações não commitadas, riscos P0/P1, testes executados, pendências e primeira ação exata na retomada. Se a limitação chegar abruptamente, checkpoints anteriores preservam o estado.
-- Não inventar testes, tempos, medição de APK nem evidências. Classificar hipóteses como "não verificado" até reproduzir. No final, declarar `GO / GO-COM-RESSALVAS / NO-GO` por funcionalidade e globalmente, sujeito a revisão humana.
+## Anti-travamento obrigatório
+- Cada comando externo potencialmente lento deve ter limite de execução (timeout -k 15s SEGUNDOS comando, quando disponível). Ex.: dependências 300 s; teste focado 120–180 s; suíte 480 s; build 900 s. Reduza ainda mais quando não houver progresso.
+- **Um teste pendurado nunca pode monopolizar a tarefa.** Interromper, coletar trecho útil do log e classificar como TIMEOUT/BLOQUEADO. Retentar **uma vez somente** se houver correção concreta e limitada; depois continuar a próxima prioridade.
+- Nunca usar loops de polling infinitos, sleep longo, espera sem deadline, download sem limites, nem ficar repetindo o mesmo comando com o mesmo erro. Não esconder testes falhos nem remover cobertura só para gerar verde.
+- Primeiro testar o escopo modificado; suíte completa e build no gate final. Se faltar Flutter/Android no Cloud, usar CI remoto existente; não gastar a franquia com instalação repetida de SDK.
+- Se um comando não produzir saída, observar apenas até seu prazo explícito; registrar estado e migrar de tarefa. Nunca depender de retorno de uma ferramenta específica para continuar toda a auditoria.
 
-## Comandos base (preferir o CI existente)
-```bash
-flutter --version
-flutter pub get --enforce-lockfile
-flutter analyze --no-pub
-flutter test --no-pub
-# Flutter Web quando apropriado:
-flutter build web --release --no-wasm-dry-run --no-pub
-```
-O Android é gerado nos workflows; não assumir que a pasta `android/` existe no checkout. Para teste local, seguir `.github/workflows/validar_apk_tts.yml`. Use compilação `--debug` não publicada. Evite remover `test/`, snapshots ou arquivos de evidência para fazer o CI passar.
+## Checkpoints recuperáveis
+- Ao iniciar: branch, commit, estado do repo, hash do questionário, próximos 2 marcos.
+- Depois de cada marco útil **e sempre após encontrar P0**: atualizar auditoria-final/PROGRESSO.md + ACHADOS.md; commit; comentário no issue #21 se a conexão permitir. Mensagem: [marco] feito / teste e resultado / risco / próximo / bloqueio.
+- Antes de interrupção: HANDOFF contendo branch, último SHA, testes e comandos **com duração/resultado**, alterações não commitadas, achados e **primeiro comando da retomada**. Commits importam mais que memória do chat; nunca presumir persistência de workspace.
+- Entrega final: auditoria-final/PARECER_FINAL.md com **GO / GO COM RESSALVAS / NO-GO** e evidências/limites. Rastreabilidade do registro: commit congelado e SHA-256 **do pacote exatamente submetido**; sem submissão ao NITT/INPI sem autorização.
 
-## Relatório de severidade
-- **P0**: acesso indevido a dados de saúde, exposição de segredos, privilégio administrativo sem servidor, vazamento entre UBS, perda irrecuperável silenciosa, orientação de urgência insegura.
-- **P1**: falha funcional relevante, falha offline, perda de dado após upgrade, quebra de PDF, falha persistente/performance degradada.
-- **P2**: UX, acessibilidade, otimização de custo/latência, documentação ou manutenção sem risco imediato.
-Cada achado: ID, requisito, risco, `arquivo:linha`, reprodução, evidência, correção, teste e risco residual.
-
-## Registro de software
-Ao congelar o conteúdo, registrar commit, conjunto representativo de arquivos, hash SHA-256 do **arquivo efetivamente entregue**, dependências/licenças, autoria e changelog. Não modificar artefato depois de calcular hash nem afirmar que o registro implica homologação clínica. Sem upload ao NITT/INPI sem aprovação explícita.
+Leia o plano mestre apenas para o marco em execução; o prompt específico da janela está em auditoria-final/PROMPTS_CODEX.md.
