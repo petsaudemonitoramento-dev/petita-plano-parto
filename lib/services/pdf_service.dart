@@ -38,20 +38,17 @@ class PdfService {
   }
 
   Future<_PdfResources> _readPdfResources() async {
-    final data = await Future.wait([
-      rootBundle.load('assets/fonts/DejaVuSans.ttf'),
-      rootBundle.load('assets/fonts/DejaVuSans-Bold.ttf'),
-      rootBundle.load('assets/images/petita.png'),
-    ]);
-    final petita = pw.MemoryImage(data[2].buffer.asUint8List());
-    final logos = await Future.wait([
-      _loadLogoOrMascot('assets/images/pet_saude_logo.png', petita),
-      _loadLogoOrMascot('assets/images/pet_saude_avatar.png', petita),
-      _loadLogoOrMascot('assets/images/ufcg_logo.png', petita),
-    ]);
+    final fontRegular = await rootBundle.load('assets/fonts/DejaVuSans.ttf');
+    final fontBold = await rootBundle.load('assets/fonts/DejaVuSans-Bold.ttf');
+    final mascotBytes = await rootBundle.load('assets/images/petita.png');
+    final petita = pw.MemoryImage(mascotBytes.buffer.asUint8List());
+    final logoPet = await _loadLogoOrMascot('assets/images/pet_saude_logo.png', petita);
+    final logoPetAvatar = await _loadLogoOrMascot('assets/images/pet_saude_avatar.png', petita);
+    final logoUfcg = await _loadLogoOrMascot('assets/images/ufcg_logo.png', petita);
     return _PdfResources(
-      regular: pw.Font.ttf(data[0]), bold: pw.Font.ttf(data[1]),
-      petita: petita, logoPet: logos[0], logoPetAvatar: logos[1], logoUfcg: logos[2],
+      regular: pw.Font.ttf(fontRegular), bold: pw.Font.ttf(fontBold),
+      petita: petita, logoPet: logoPet,
+      logoPetAvatar: logoPetAvatar, logoUfcg: logoUfcg,
     );
   }
 
