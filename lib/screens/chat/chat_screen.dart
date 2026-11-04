@@ -43,6 +43,7 @@ class _ChatScreenState extends State<ChatScreen> {
   bool _pronounCustomInput = false;
   bool _petitaSearching = false;
   bool _showCardExplanation = false;
+  String? _cardFeedback;
   final FlutterTts _tts = FlutterTts();
   bool _readingVoice = false;
   int _typingDots = 1;
@@ -299,6 +300,7 @@ class _ChatScreenState extends State<ChatScreen> {
     final q = _questions[_currentQuestion];
     _multiSelection.clear();
     _showCardExplanation = false;
+    _cardFeedback = null;
     await _tts.stop();
     if (mounted) setState(() => _readingVoice = false);
     final options = q.multiple ? [...q.options, 'Concluir seleção'] : [...q.options];
@@ -732,13 +734,16 @@ class _ChatScreenState extends State<ChatScreen> {
     if (_currentQuestion >= 0 && _questions[_currentQuestion].multiple) {
       if (option == 'Concluir seleção') {
         if (_multiSelection.isEmpty) {
-          setState(() => _messages.add(ChatMessage(
+          setState(() {
+            _cardFeedback = 'Selecione pelo menos uma opção ou toque em “Escrever minha resposta”.';
+            _messages.add(ChatMessage(
                 text: 'Selecione pelo menos uma opção ou toque em “Escrever minha resposta”.',
                 isUser: false,
                 options: [..._questions[_currentQuestion].options, 'Concluir seleção', 'Escrever minha resposta',
                   if (BirthPlanExplanations.forQuestion(_questions[_currentQuestion].id) != null)
                     'Quero entender melhor'],
-              )));
+              ));
+          });
           _scrollToBottom();
           return;
         }
@@ -869,6 +874,52 @@ class _ChatScreenState extends State<ChatScreen> {
     }
   }
 
+
+  Widget _buildPronounsCard() {
+    const options = [
+      'Ela/dela',
+      'Ele/dele',
+      'Elu/delu',
+      'Prefiro que usem meu nome',
+      'Quero escrever outra forma',
+      'Prefiro não informar',
+    ];
+    return SingleChildScrollView(
+      padding: const EdgeInsets.fromLTRB(16, 20, 16, 18),
+      child: Card(
+        color: Colors.white,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(24),
+          side: const BorderSide(color: Color(0xFFEDE3F8)),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(20),
+          child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+            const Text('COMO PREFERE SER TRATADA?', style: TextStyle(
+              fontWeight: FontWeight.bold, color: AppColors.primaryPink,
+            )),
+            const SizedBox(height: 12),
+            const Text('Antes de continuar, como prefere que a Petita e a equipe se refiram a você?',
+                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+            const SizedBox(height: 12),
+            const Text('Essa escolha é opcional e não muda seus cuidados de saúde.'),
+            const SizedBox(height: 16),
+            ...options.map((o) => Padding(
+              padding: const EdgeInsets.only(bottom: 10),
+              child: _ChoicePill(
+                label: o,
+                icon: _optionIcon(o),
+                onTap: () => _handleOption(o),
+              ),
+            )),
+            if (_pronounCustomInput)
+              const Text('Escreva sua preferência no campo abaixo e toque em enviar.'),
+          ]),
+        ),
+      ),
+    );
+  }
+
   Widget _buildQuestionCard() {
     final q = _questions[_currentQuestion];
     final options = <String>[
@@ -918,6 +969,12 @@ class _ChatScreenState extends State<ChatScreen> {
                   ),
                 );
               }),
+              if (_cardFeedback != null)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 12),
+                  child: Text(_cardFeedback!, style: const TextStyle(
+                      color: AppColors.petOrange, fontWeight: FontWeight.bold)),
+                ),
               if (_textInputEnabled)
                 const Padding(
                   padding: EdgeInsets.only(bottom: 12),
@@ -975,9 +1032,11 @@ class _ChatScreenState extends State<ChatScreen> {
               totalSteps: _visibleTotalSteps,
             ),
             Expanded(
-              child: _currentQuestion >= 0 && !_awaitingPronouns
-                  ? _buildQuestionCard()
-                  : ListView.builder(
+              child: _awaitingPronouns
+                  ? _buildPronounsCard()
+                  : _currentQuestion >= 0
+                      ? _buildQuestionCard()
+                      : ListView.builder(
                 controller: _scrollController,
                 padding: const EdgeInsets.fromLTRB(14, 14, 14, 14),
                 itemCount: _messages.length + (_petitaSearching ? 1 : 0),
