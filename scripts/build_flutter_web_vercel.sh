@@ -11,6 +11,8 @@ export PATH="$FLUTTER_SDK_DIR/bin:$PATH"
 export PUB_CACHE="${PUB_CACHE:-$HOME/.pub-cache}"
 flutter --version
 flutter pub get --enforce-lockfile
+flutter analyze --no-pub
+flutter test --no-pub test/chat_responsive_test.dart test/chat_flow_test.dart test/consultation_offline_test.dart --reporter expanded
 flutter build web --release --base-href "/" --pwa-strategy=none \
   --no-wasm-dry-run --dart-define=PETITA_INTERNAL_TEST=true --no-pub
 test -s build/web/index.html
