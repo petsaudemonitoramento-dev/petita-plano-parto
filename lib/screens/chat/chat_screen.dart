@@ -40,6 +40,7 @@ class _ChatScreenState extends State<ChatScreen> {
   bool _awaitingPronouns = false;
   bool _pronounCustomInput = false;
   bool _petitaSearching = false;
+  bool _showCardExplanation = false;
   int _typingDots = 1;
   Timer? _typingTimer;
   _QuestionDialogResult? _pendingUbsQuestion;
@@ -201,13 +202,14 @@ class _ChatScreenState extends State<ChatScreen> {
     // respondida. Quem tocava em "Montar meu plano" via "Etapa 10 de 31"
     // sem saber que suas respostas antigas ainda estavam salvas no navegador.
     final saved = await _storage.loadAnswers();
+    final deferred = await _storage.loadConsultationPending();
     if (!mounted) return;
 
     var answers = saved;
     var restarting = false;
-    if (saved.isNotEmpty) {
+    if (saved.isNotEmpty || deferred.isNotEmpty) {
       final answeredIds = saved.map((answer) => answer.questionId).toSet();
-      final completed = _questions.every((q) => answeredIds.contains(q.id));
+      final completed = _questions.every((q) => answeredIds.contains(q.id) || deferred.contains(q.id));
       final choice = await showDialog<_PlanStartChoice>(
         context: context,
         builder: (dialogContext) => AlertDialog(
@@ -215,7 +217,7 @@ class _ChatScreenState extends State<ChatScreen> {
           content: Text(
             'Este dispositivo tem ${saved.length} resposta(s) armazenada(s). '
             'Você pode continuar de onde parou ou começar um novo plano.\n\n'
-            'Começar de novo apagará as respostas e os pronomes deste plano '
+            'Começar de novo apagará respostas, dúvidas reservadas para consulta e pronomes '
             'salvos neste dispositivo, mas não apagará seu perfil nem seu aceite.',
           ),
           actions: [
@@ -253,8 +255,13 @@ class _ChatScreenState extends State<ChatScreen> {
     if (!mounted) return;
     _answers = answers;
     final answeredIds = _answers.map((answer) => answer.questionId).toSet();
-    final next = _questions.indexWhere((question) => !answeredIds.contains(question.id));
-    _currentQuestion = next < 0 ? 0 : next;
+    final pending = await _storage.loadConsultationPending();
+    final next = _questions.indexWhere((question) => !answeredIds.contains(question.id) && !pending.contains(question.id));
+    if (next < 0) {
+      if (mounted) Navigator.pushNamed(context, AppRoutes.summary);
+      return;
+    }
+    _currentQuestion = next;
     _multiSelection.clear();
     _awaitingPronouns = false;
     _pronounCustomInput = false;
@@ -280,6 +287,7 @@ class _ChatScreenState extends State<ChatScreen> {
     _setPetitaSearching(false);
     final q = _questions[_currentQuestion];
     _multiSelection.clear();
+    _showCardExplanation = false;
     final options = q.multiple ? [...q.options, 'Concluir seleção'] : [...q.options];
     if (q.options.isNotEmpty) options.add('Escrever minha resposta');
     if (BirthPlanExplanations.forQuestion(q.id) != null) {
@@ -378,6 +386,7 @@ class _ChatScreenState extends State<ChatScreen> {
         }
       }
       await _storage.saveAnswers(_answers);
+      await _storage.resolveQuestionForConsultation(q.id);
       if (!mounted) return;
 
       _currentQuestion++;
@@ -748,6 +757,130 @@ class _ChatScreenState extends State<ChatScreen> {
     });
   }
 
+
+  bool get _canDeferCurrentQuestion {
+    if (_currentQuestion < 0 || _currentQuestion >= _questions.length) return false;
+    const administrative = {'nome_gestante', 'ubs_referencia', 'dpp', 'semanas_gestacao'};
+    return !administrative.contains(_questions[_currentQuestion].id);
+  }
+
+  Future<void> _deferCurrentQuestion() async {
+    if (_answering || !_canDeferCurrentQuestion) return;
+    _answering = true;
+    try {
+      final q = _questions[_currentQuestion];
+      await _storage.deferQuestionForConsultation(q.id);
+      if (!mounted) return;
+      setState(() {
+        _messages.add(ChatMessage(
+          text: 'Vou conversar sobre esta pergunta na próxima consulta.',
+          isUser: true,
+        ));
+        _currentQuestion++;
+        _multiSelection.clear();
+        _textInputEnabled = false;
+      });
+      if (_currentQuestion >= _questions.length) {
+        setState(() {
+          _messages.add(const ChatMessage(
+            text: 'Seu roteiro está pronto. As perguntas deixadas para a próxima consulta estão em Meu Plano de Parto; não foram registradas como escolhas.',
+            isUser: false,
+            options: ['Ver meu plano'],
+          ));
+          _currentQuestion = -1;
+          _textInputEnabled = true;
+        });
+      } else {
+        await _showCurrentQuestion();
+      }
+    } finally {
+      _answering = false;
+    }
+  }
+
+  Widget _buildQuestionCard() {
+    final q = _questions[_currentQuestion];
+    final options = <String>[
+      ...q.options,
+      if (q.multiple) 'Concluir seleção',
+      if (q.options.isNotEmpty) 'Escrever minha resposta',
+    ];
+    final explanation = BirthPlanExplanations.forQuestion(q.id);
+    return SingleChildScrollView(
+      padding: const EdgeInsets.fromLTRB(16, 20, 16, 18),
+      child: Card(
+        color: Colors.white,
+        elevation: 2,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(24),
+          side: const BorderSide(color: Color(0xFFEDE3F8)),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Text(q.section.toUpperCase(),
+                  style: const TextStyle(color: AppColors.primaryPink, fontWeight: FontWeight.w800, letterSpacing: 0.6)),
+              const SizedBox(height: 10),
+              Text(q.question,
+                  style: const TextStyle(fontSize: 21, height: 1.35, fontWeight: FontWeight.w800, color: AppColors.petDarkBlue)),
+              const SizedBox(height: 18),
+              ...options.map((option) {
+                final isSelected = q.multiple && _multiSelection.contains(option);
+                return Padding(
+                  padding: const EdgeInsets.only(bottom: 10),
+                  child: _ChoicePill(
+                    label: option,
+                    icon: option == 'Concluir seleção' ? Icons.check_circle_outline
+                        : _optionIcon(option),
+                    selected: isSelected,
+                    primary: option == 'Concluir seleção',
+                    help: false,
+                    onTap: () => _handleOption(option),
+                  ),
+                );
+              }),
+              if (_textInputEnabled)
+                const Padding(
+                  padding: EdgeInsets.only(bottom: 12),
+                  child: Text('Você pode escrever sua resposta no campo abaixo.',
+                      style: TextStyle(fontSize: 13)),
+                ),
+              if (explanation != null) ...[
+                TextButton.icon(
+                  onPressed: () => setState(() => _showCardExplanation = !_showCardExplanation),
+                  icon: const Icon(Icons.lightbulb_outline),
+                  label: Text(_showCardExplanation ? 'Ocultar explicação' : 'Quero entender melhor'),
+                ),
+                if (_showCardExplanation)
+                  Semantics(
+                    liveRegion: true,
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      child: Text(explanation, style: const TextStyle(height: 1.4)),
+                    ),
+                  ),
+              ],
+              if (_canDeferCurrentQuestion) ...[
+                const Divider(height: 28),
+                OutlinedButton.icon(
+                  onPressed: _deferCurrentQuestion,
+                  icon: const Icon(Icons.bookmark_add_outlined),
+                  label: const Text('Conversar sobre isto na próxima consulta',
+                      textAlign: TextAlign.center),
+                ),
+                const SizedBox(height: 6),
+                const Text('Esta pergunta ficará em aberto e poderá ser respondida depois, com a profissional.',
+                    style: TextStyle(fontSize: 12, color: AppColors.textPrimary)),
+              ],
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     if (_loading) return const Scaffold(body: Center(child: CircularProgressIndicator()));
@@ -765,7 +898,9 @@ class _ChatScreenState extends State<ChatScreen> {
               totalSteps: _visibleTotalSteps,
             ),
             Expanded(
-              child: ListView.builder(
+              child: _currentQuestion >= 0 && !_awaitingPronouns
+                  ? _buildQuestionCard()
+                  : ListView.builder(
                 controller: _scrollController,
                 padding: const EdgeInsets.fromLTRB(14, 14, 14, 14),
                 itemCount: _messages.length + (_petitaSearching ? 1 : 0),
