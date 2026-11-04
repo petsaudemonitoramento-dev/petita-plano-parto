@@ -877,6 +877,46 @@ class _ChatScreenState extends State<ChatScreen> {
   }
 
 
+
+  // Um unico painel centralizado, com margens que diminuem nos celulares
+  // estreitos. O conteudo cresce verticalmente e rola: nunca e comprimido
+  // a uma altura fixa nem cortado quando o tamanho da fonte aumenta.
+  Widget _buildAdaptivePanel({required Widget child}) {
+    return LayoutBuilder(builder: (context, constraints) {
+      final width = constraints.maxWidth;
+      final compact = width < 360;
+      final lowHeight = MediaQuery.sizeOf(context).height < 700;
+      final outer = compact ? 8.0 : width < 430 ? 12.0 : 20.0;
+      final inner = compact ? 12.0 : width < 430 ? 16.0 : 24.0;
+      return SingleChildScrollView(
+        key: const Key('petita_cards_scroll'),
+        keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+        padding: EdgeInsets.fromLTRB(
+          outer, lowHeight ? 8 : 16, outer, 20,
+        ),
+        child: Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 660),
+            child: Material(
+              color: Colors.white,
+              elevation: 1.5,
+              borderRadius: BorderRadius.circular(compact ? 18 : 24),
+              child: Container(
+                width: double.infinity,
+                padding: EdgeInsets.all(inner),
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(compact ? 18 : 24),
+                  border: Border.all(color: const Color(0xFFEDE3F8)),
+                ),
+                child: child,
+              ),
+            ),
+          ),
+        ),
+      );
+    });
+  }
+
   Widget _buildPronounsCard() {
     const options = [
       'Ela/dela',
@@ -886,39 +926,31 @@ class _ChatScreenState extends State<ChatScreen> {
       'Quero escrever outra forma',
       'Prefiro não informar',
     ];
-    return SingleChildScrollView(
-      padding: const EdgeInsets.fromLTRB(16, 20, 16, 18),
-      child: Card(
-        color: Colors.white,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(24),
-          side: const BorderSide(color: Color(0xFFEDE3F8)),
-        ),
-        child: Padding(
-          padding: const EdgeInsets.all(20),
-          child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-            const Text('COMO PREFERE SER TRATADA?', style: TextStyle(
-              fontWeight: FontWeight.bold, color: AppColors.primaryPink,
-            )),
-            const SizedBox(height: 12),
-            const Text('Antes de continuar, como prefere que a Petita e a equipe se refiram a você?',
-                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
-            const SizedBox(height: 12),
-            const Text('Essa escolha é opcional e não muda seus cuidados de saúde.'),
-            const SizedBox(height: 16),
-            ...options.map((o) => Padding(
-              padding: const EdgeInsets.only(bottom: 10),
-              child: _ChoicePill(
-                label: o,
-                icon: _optionIcon(o),
-                onTap: () => _handleOption(o),
-              ),
-            )),
-            if (_pronounCustomInput)
-              const Text('Escreva sua preferência no campo abaixo e toque em enviar.'),
-          ]),
-        ),
-      ),
+    return _buildAdaptivePanel(
+      child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+        const Text('COMO PREFERE SER TRATADA?', style: TextStyle(
+          fontWeight: FontWeight.bold, color: AppColors.primaryPink,
+        )),
+        const SizedBox(height: 10),
+        const Text('Antes de continuar, como prefere que a Petita e a equipe se refiram a você?',
+            style: TextStyle(fontSize: 19, height: 1.3, fontWeight: FontWeight.bold)),
+        const SizedBox(height: 10),
+        const Text('Essa escolha é opcional e não muda seus cuidados de saúde.'),
+        const SizedBox(height: 16),
+        ...options.map((o) => Padding(
+          padding: const EdgeInsets.only(bottom: 9),
+          child: _ChoicePill(
+            label: o,
+            icon: _optionIcon(o),
+            onTap: () => _handleOption(o),
+          ),
+        )),
+        if (_pronounCustomInput)
+          const Padding(
+            padding: EdgeInsets.only(top: 6),
+            child: Text('Escreva sua preferência no campo abaixo e toque em enviar.'),
+          ),
+      ]),
     );
   }
 
@@ -930,89 +962,108 @@ class _ChatScreenState extends State<ChatScreen> {
       if (q.options.isNotEmpty) 'Escrever minha resposta',
     ];
     final explanation = BirthPlanExplanations.forQuestion(q.id);
-    return SingleChildScrollView(
-      padding: const EdgeInsets.fromLTRB(16, 20, 16, 18),
-      child: Card(
-        color: Colors.white,
-        elevation: 2,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(24),
-          side: const BorderSide(color: Color(0xFFEDE3F8)),
-        ),
-        child: Padding(
-          padding: const EdgeInsets.all(20),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Text(q.section.toUpperCase(),
-                  style: const TextStyle(color: AppColors.primaryPink, fontWeight: FontWeight.w800, letterSpacing: 0.6)),
-              const SizedBox(height: 10),
-              Text(q.question,
-                  style: const TextStyle(fontSize: 21, height: 1.35, fontWeight: FontWeight.w800, color: AppColors.petDarkBlue)),
-              const SizedBox(height: 12),
-              OutlinedButton.icon(
-                onPressed: _toggleQuestionVoice,
-                icon: Icon(_readingVoice ? Icons.stop_circle_outlined : Icons.volume_up_outlined),
-                label: Text(_readingVoice ? 'Parar leitura' : 'Ouvir pergunta e alternativas'),
-              ),
-              const SizedBox(height: 18),
-              ...options.map((option) {
-                final isSelected = q.multiple && _multiSelection.contains(option);
-                return Padding(
-                  padding: const EdgeInsets.only(bottom: 10),
-                  child: _ChoicePill(
-                    label: option,
-                    icon: option == 'Concluir seleção' ? Icons.check_circle_outline
-                        : _optionIcon(option),
-                    selected: isSelected,
-                    primary: option == 'Concluir seleção',
-                    help: false,
-                    onTap: () => _handleOption(option),
-                  ),
-                );
-              }),
-              if (_cardFeedback != null)
-                Padding(
-                  padding: const EdgeInsets.only(bottom: 12),
-                  child: Text(_cardFeedback!, style: const TextStyle(
-                      color: AppColors.petOrange, fontWeight: FontWeight.bold)),
-                ),
-              if (_textInputEnabled)
-                const Padding(
-                  padding: EdgeInsets.only(bottom: 12),
-                  child: Text('Você pode escrever sua resposta no campo abaixo.',
-                      style: TextStyle(fontSize: 13)),
-                ),
-              if (explanation != null) ...[
-                TextButton.icon(
-                  onPressed: () => setState(() => _showCardExplanation = !_showCardExplanation),
-                  icon: const Icon(Icons.lightbulb_outline),
-                  label: Text(_showCardExplanation ? 'Ocultar explicação' : 'Quero entender melhor'),
-                ),
-                if (_showCardExplanation)
-                  Semantics(
-                    liveRegion: true,
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 12),
-                      child: Text(explanation, style: const TextStyle(height: 1.4)),
-                    ),
-                  ),
-              ],
-              if (_canDeferCurrentQuestion) ...[
-                const Divider(height: 28),
-                OutlinedButton.icon(
-                  onPressed: _deferCurrentQuestion,
-                  icon: const Icon(Icons.bookmark_add_outlined),
-                  label: const Text('Conversar sobre isto na próxima consulta',
-                      textAlign: TextAlign.center),
-                ),
-                const SizedBox(height: 6),
-                const Text('Esta pergunta ficará em aberto e poderá ser respondida depois, com a profissional.',
-                    style: TextStyle(fontSize: 12, color: AppColors.textPrimary)),
-              ],
-            ],
+    final compact = MediaQuery.sizeOf(context).width < 360;
+    return _buildAdaptivePanel(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Text(q.section.toUpperCase(),
+              style: const TextStyle(
+                color: AppColors.primaryPink,
+                fontWeight: FontWeight.w800,
+                letterSpacing: 0.5,
+              )),
+          const SizedBox(height: 9),
+          Text(q.question,
+              style: TextStyle(
+                fontSize: compact ? 19 : 21,
+                height: 1.3,
+                fontWeight: FontWeight.w800,
+                color: AppColors.petDarkBlue,
+              )),
+          const SizedBox(height: 14),
+          OutlinedButton.icon(
+            key: const Key('petita_voice_button'),
+            onPressed: _toggleQuestionVoice,
+            style: OutlinedButton.styleFrom(
+              minimumSize: const Size(0, 48),
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+            ),
+            icon: Icon(_readingVoice ? Icons.stop_circle_outlined : Icons.volume_up_outlined),
+            label: Text(
+              _readingVoice ? 'Parar leitura' : 'Ouvir pergunta e alternativas',
+              textAlign: TextAlign.center,
+              softWrap: true,
+            ),
           ),
-        ),
+          const SizedBox(height: 16),
+          ...options.map((option) {
+            final isSelected = q.multiple && _multiSelection.contains(option);
+            return Padding(
+              padding: const EdgeInsets.only(bottom: 9),
+              child: _ChoicePill(
+                label: option,
+                icon: option == 'Concluir seleção'
+                    ? Icons.check_circle_outline : _optionIcon(option),
+                selected: isSelected,
+                primary: option == 'Concluir seleção',
+                help: false,
+                onTap: () => _handleOption(option),
+              ),
+            );
+          }),
+          if (_cardFeedback != null)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 12),
+              child: Text(_cardFeedback!, style: const TextStyle(
+                  color: AppColors.petOrange, fontWeight: FontWeight.bold)),
+            ),
+          if (_textInputEnabled)
+            const Padding(
+              padding: EdgeInsets.only(bottom: 12),
+              child: Text('Você pode escrever sua resposta no campo abaixo.',
+                  style: TextStyle(fontSize: 13)),
+            ),
+          if (explanation != null) ...[
+            TextButton.icon(
+              onPressed: () => setState(
+                  () => _showCardExplanation = !_showCardExplanation),
+              icon: const Icon(Icons.lightbulb_outline),
+              label: Text(
+                _showCardExplanation ? 'Ocultar explicação' : 'Quero entender melhor',
+                textAlign: TextAlign.center,
+              ),
+            ),
+            if (_showCardExplanation)
+              Semantics(
+                liveRegion: true,
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                  child: Text(explanation,
+                      style: const TextStyle(height: 1.4)),
+                ),
+              ),
+          ],
+          if (_canDeferCurrentQuestion) ...[
+            const Divider(height: 24),
+            OutlinedButton.icon(
+              onPressed: _deferCurrentQuestion,
+              style: OutlinedButton.styleFrom(
+                minimumSize: const Size(0, 52),
+                padding: const EdgeInsets.symmetric(
+                    horizontal: 10, vertical: 12),
+              ),
+              icon: const Icon(Icons.bookmark_add_outlined),
+              label: const Text('Conversar sobre isto na próxima consulta',
+                  textAlign: TextAlign.center),
+            ),
+            const SizedBox(height: 8),
+            const Text(
+              'Esta pergunta ficará em aberto e poderá ser respondida depois, com a profissional.',
+              style: TextStyle(fontSize: 12.5, color: AppColors.textPrimary),
+            ),
+          ],
+        ],
       ),
     );
   }
@@ -1076,11 +1127,16 @@ class _ChatScreenState extends State<ChatScreen> {
                 },
               ),
             ),
-            _ChatInput(
-              controller: _controller,
-              enabled: _textInputEnabled,
-              onSend: () => _send(),
-            ),
+            // Nos cards de alternativas, nao ocupar a parte inferior
+            // da tela com um campo desabilitado e avisos repetidos.
+            // O campo reaparece automaticamente quando a usuaria escolhe
+            // escrever uma resposta ou retorna ao chat.
+            if (_textInputEnabled || (!_awaitingPronouns && _currentQuestion < 0))
+              _ChatInput(
+                controller: _controller,
+                enabled: _textInputEnabled,
+                onSend: () => _send(),
+              ),
           ],
         ),
       ),
@@ -1276,16 +1332,23 @@ class _ChoicePill extends StatelessWidget {
           border: Border.all(color: help ? const Color(0xFFE6A34E) : AppColors.primaryPink.withAlpha((255 * 0.7).round())),
           boxShadow: [BoxShadow(color: Colors.black.withAlpha((255 * 0.025).round()), blurRadius: 6, offset: const Offset(0, 3))],
         ),
-        constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width - 36),
-        child: Row(mainAxisSize: MainAxisSize.max, children: [
-          Icon(icon, size: 20, color: filled ? Colors.white : (help ? const Color(0xFF8B5D1D) : AppColors.primaryPink)),
-          const SizedBox(width: 7),
-          Flexible(
+        constraints: const BoxConstraints(minHeight: 54),
+        child: Row(children: [
+          Icon(icon, size: 20,
+              color: filled ? Colors.white
+                  : (help ? const Color(0xFF8B5D1D) : AppColors.primaryPink)),
+          const SizedBox(width: 10),
+          Expanded(
             child: Text(
               label,
               softWrap: true,
-              overflow: TextOverflow.visible,
-              style: TextStyle(fontSize: 15, color: filled ? Colors.white : (help ? const Color(0xFF8B5D1D) : AppColors.petDarkBlue), fontWeight: FontWeight.w700),
+              style: TextStyle(
+                fontSize: 15,
+                height: 1.3,
+                color: filled ? Colors.white
+                    : (help ? const Color(0xFF8B5D1D) : AppColors.petDarkBlue),
+                fontWeight: FontWeight.w700,
+              ),
             ),
           ),
         ]),
