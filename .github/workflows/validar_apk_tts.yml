@@ -1,0 +1,37 @@
+name: Validar APK Android e TTS (sem publicar)
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'lib/**'
+      - 'pubspec.yaml'
+      - 'pubspec.lock'
+      - 'tool/prepare_android_tts_manifest.py'
+      - '.github/workflows/validar_apk_tts.yml'
+permissions:
+  contents: read
+jobs:
+  apk-debug:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.44.0'
+          channel: stable
+          cache: true
+      - name: Resolver dependencias travadas
+        run: flutter pub get --enforce-lockfile
+      - name: Preparar estrutura Android sem sobrescrever app
+        run: flutter create --platforms=android --project-name plano_parto_pet_saude .
+      - name: Permitir descoberta local do servico de voz
+        run: python3 tool/prepare_android_tts_manifest.py
+      - name: Verificar sintaxe e analisar app
+        run: flutter analyze --no-pub
+      - name: Compilar APK debug de teste (nao assinado para producao)
+        run: flutter build apk --debug --no-pub
+      - name: Verificar artefato e manifesto
+        run: |
+          test -s build/app/outputs/flutter-apk/app-debug.apk
+          grep -q "android.intent.action.TTS_SERVICE" android/app/src/main/AndroidManifest.xml
