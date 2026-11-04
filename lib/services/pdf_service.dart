@@ -28,6 +28,93 @@ class PdfService {
   static final PdfColor _petOrange = PdfColor.fromHex('#F04B1C');
   static final PdfColor _text = PdfColor.fromHex('#1F2D3D');
 
+
+  // Mantem fontes e imagens em cache durante a sessao, evitando carregamentos
+  // e decodificacoes repetidos a cada toque em Gerar PDF.
+  static Future<_PdfResources>? _pdfResources;
+
+  Future<_PdfResources> _loadPdfResources() {
+    return _pdfResources ??= _readPdfResources();
+  }
+
+  Future<_PdfResources> _readPdfResources() async {
+    final data = await Future.wait([
+      rootBundle.load('assets/fonts/DejaVuSans.ttf'),
+      rootBundle.load('assets/fonts/DejaVuSans-Bold.ttf'),
+      rootBundle.load('assets/images/petita.png'),
+    ]);
+    final petita = pw.MemoryImage(data[2].buffer.asUint8List());
+    final logos = await Future.wait([
+      _loadLogoOrMascot('assets/images/pet_saude_logo.png', petita),
+      _loadLogoOrMascot('assets/images/pet_saude_avatar.png', petita),
+      _loadLogoOrMascot('assets/images/ufcg_logo.png', petita),
+    ]);
+    return _PdfResources(
+      regular: pw.Font.ttf(data[0]), bold: pw.Font.ttf(data[1]),
+      petita: petita, logoPet: logos[0], logoPetAvatar: logos[1], logoUfcg: logos[2],
+    );
+  }
+
+  Future<Uint8List> buildConsultationGuidePdf({
+    required List<BirthPlanQuestion> questions,
+    required Set<String> pendingQuestionIds,
+    required String notes,
+  }) async {
+    final resources = await _loadPdfResources();
+    final doc = pw.Document(
+      theme: pw.ThemeData.withFont(
+        base: resources.regular,
+        bold: resources.bold,
+        italic: resources.regular,
+        boldItalic: resources.bold,
+      ),
+    );
+    final pending = questions.where((q) => pendingQuestionIds.contains(q.id)).toList();
+    doc.addPage(pw.MultiPage(
+      pageFormat: PdfPageFormat.a4,
+      margin: const pw.EdgeInsets.all(35),
+      build: (_) => [
+        pw.Row(mainAxisAlignment: pw.MainAxisAlignment.spaceBetween, children: [
+          pw.Image(resources.logoUfcg, width: 70, height: 34),
+          pw.Text('PETITA', style: pw.TextStyle(
+              color: _pink, fontSize: 20, fontWeight: pw.FontWeight.bold)),
+          pw.Image(resources.logoPet, width: 70, height: 34),
+        ]),
+        pw.SizedBox(height: 16),
+        pw.Text('Roteiro para a próxima consulta',
+            style: pw.TextStyle(fontSize: 16, fontWeight: pw.FontWeight.bold, color: _darkBlue)),
+        pw.SizedBox(height: 8),
+        pw.Text('As perguntas abaixo foram deixadas em aberto. Este roteiro não registra escolhas no Plano de Parto e não substitui o diálogo com a equipe de saúde.',
+            style: const pw.TextStyle(fontSize: 10)),
+        pw.SizedBox(height: 18),
+        if (pending.isEmpty)
+          pw.Text('Nenhuma pergunta do questionário foi deixada em aberto.')
+        else
+          ...pending.asMap().entries.map((entry) => pw.Padding(
+            padding: const pw.EdgeInsets.only(bottom: 14),
+            child: pw.Column(crossAxisAlignment: pw.CrossAxisAlignment.start, children: [
+              pw.Text('${entry.key + 1}. ${entry.value.question}',
+                  style: pw.TextStyle(fontSize: 11, fontWeight: pw.FontWeight.bold)),
+              pw.SizedBox(height: 13),
+              pw.Container(height: 1, color: _borderPink),
+            ]),
+          )),
+        pw.SizedBox(height: 12),
+        pw.Text('Outras dúvidas que quero conversar',
+            style: pw.TextStyle(fontSize: 12, fontWeight: pw.FontWeight.bold, color: _darkBlue)),
+        pw.SizedBox(height: 8),
+        if (notes.trim().isEmpty)
+          pw.Text('____________________________________________________________')
+        else
+          pw.Text(notes.trim(), style: const pw.TextStyle(fontSize: 11)),
+        pw.SizedBox(height: 20),
+        pw.Text('Documento preparado localmente. Apenas a gestante decide se deseja apresentá-lo à equipe.',
+            style: const pw.TextStyle(fontSize: 9)),
+      ],
+    ));
+    return doc.save();
+  }
+
   Future<void> shareBirthPlanPdf({
     required List<BirthPlanQuestion> questions,
     required List<BirthPlanAnswer> answers,
@@ -49,8 +136,9 @@ class PdfService {
   }) async {
     // Embed both weights of one family; never rely on reader substitutions or
     // switch families for punctuation in the middle of a paragraph.
-    final regular = pw.Font.ttf(await rootBundle.load('assets/fonts/DejaVuSans.ttf'));
-    final bold = pw.Font.ttf(await rootBundle.load('assets/fonts/DejaVuSans-Bold.ttf'));
+    final resources = await _loadPdfResources();
+    final regular = resources.regular;
+    final bold = resources.bold;
     final theme = pw.ThemeData.withFont(
       base: regular, bold: bold, italic: regular, boldItalic: bold,
       fontFallback: const [],
@@ -60,12 +148,10 @@ class PdfService {
     // A mascote também é usada na interface e deve integrar o bundle. Em
     // publicações Web antigas um logotipo ausente impedia todo o PDF.
     // Se uma marca opcional não carregar, mantenha o documento acessível.
-    final petita = pw.MemoryImage(
-      (await rootBundle.load('assets/images/petita.png')).buffer.asUint8List(),
-    );
-    final logoPet = await _loadLogoOrMascot('assets/images/pet_saude_logo.png', petita);
-    final logoPetAvatar = await _loadLogoOrMascot('assets/images/pet_saude_avatar.png', petita);
-    final logoUfcg = await _loadLogoOrMascot('assets/images/ufcg_logo.png', petita);
+    final petita = resources.petita;
+    final logoPet = resources.logoPet;
+    final logoPetAvatar = resources.logoPetAvatar;
+    final logoUfcg = resources.logoUfcg;
     final map = {for (final a in answers) a.questionId: a.values};
 
     if (format == BirthPlanPdfFormat.resumoVisual) {
@@ -680,4 +766,22 @@ class _SinglePageColumn extends pw.Column {
       throw StateError('O conteúdo excedeu a altura disponível da página.');
     }
   }
+}
+
+
+class _PdfResources {
+  const _PdfResources({
+    required this.regular,
+    required this.bold,
+    required this.petita,
+    required this.logoPet,
+    required this.logoPetAvatar,
+    required this.logoUfcg,
+  });
+  final pw.Font regular;
+  final pw.Font bold;
+  final pw.MemoryImage petita;
+  final pw.MemoryImage logoPet;
+  final pw.MemoryImage logoPetAvatar;
+  final pw.MemoryImage logoUfcg;
 }
