@@ -28,6 +28,8 @@ class ChatScreen extends StatefulWidget {
 class _ChatScreenState extends State<ChatScreen> {
   final _controller = TextEditingController();
   final _scrollController = ScrollController();
+  final _cardScrollController = ScrollController();
+  final _inputFocusNode = FocusNode();
   final _storage = StorageService();
   final _online = SupabaseService();
   late final ChatbotService _chatbot;
@@ -43,6 +45,7 @@ class _ChatScreenState extends State<ChatScreen> {
   bool _pronounCustomInput = false;
   bool _petitaSearching = false;
   bool _showCardExplanation = false;
+  bool _writingModeSelected = false;
   String? _cardFeedback;
   final FlutterTts _tts = FlutterTts();
   bool _readingVoice = false;
@@ -69,6 +72,8 @@ class _ChatScreenState extends State<ChatScreen> {
     _typingTimer?.cancel();
     _tts.stop();
     _controller.dispose();
+    _inputFocusNode.dispose();
+    _cardScrollController.dispose();
     _scrollController.dispose();
     super.dispose();
   }
@@ -301,6 +306,7 @@ class _ChatScreenState extends State<ChatScreen> {
     _multiSelection.clear();
     _showCardExplanation = false;
     _cardFeedback = null;
+    _writingModeSelected = false;
     if (_readingVoice) {
       try { await _tts.stop(); } catch (_) { /* Voice playback is optional. */ }
       if (mounted) setState(() => _readingVoice = false);
@@ -313,6 +319,7 @@ class _ChatScreenState extends State<ChatScreen> {
     final intro = _introForQuestion(q);
     setState(() {
       _textInputEnabled = q.options.isEmpty || q.id == 'nome_gestante' || q.id == 'observacoes_finais';
+      _writingModeSelected = _textInputEnabled;
       if (intro.isNotEmpty && (_currentQuestion == 0 || _questions[_currentQuestion - 1].section != q.section)) {
         _messages.add(ChatMessage(text: intro, isUser: false));
       }
@@ -322,7 +329,7 @@ class _ChatScreenState extends State<ChatScreen> {
         options: options,
       ));
     });
-    _scrollToBottom();
+    _resetCardScrollToTop();
   }
 
   String _introForQuestion(BirthPlanQuestion q) {
@@ -638,6 +645,7 @@ class _ChatScreenState extends State<ChatScreen> {
         setState(() {
           _pronounCustomInput = true;
           _textInputEnabled = true;
+          _writingModeSelected = true;
           _messages.add(const ChatMessage(
             text: 'Escreva como prefere ser tratada ou tratado. Por exemplo: “Use apenas meu nome”.',
             isUser: false,
@@ -654,6 +662,7 @@ class _ChatScreenState extends State<ChatScreen> {
         (option == 'Outro' || option == 'Outra preferência' || option == 'Outra posição')) {
       setState(() {
         _textInputEnabled = true;
+          _writingModeSelected = true;
         _messages.add(const ChatMessage(
           text: 'Pode explicar sua outra preferência com suas próprias palavras. Só seguirei após o envio.',
           isUser: false,
@@ -663,14 +672,7 @@ class _ChatScreenState extends State<ChatScreen> {
       return;
     }
     if (option == 'Escrever minha resposta' && _currentQuestion >= 0) {
-      setState(() {
-        _textInputEnabled = true;
-        _messages.add(const ChatMessage(
-          text: 'Pode escrever sua resposta no campo abaixo. Só avançarei depois que você enviar.',
-          isUser: false,
-        ));
-      });
-      _scrollToBottom();
+      _enableWritingMode();
       return;
     }
     if (option == 'Quero entender melhor' && _currentQuestion >= 0) {
@@ -708,6 +710,7 @@ class _ChatScreenState extends State<ChatScreen> {
       if (current.allowOther && option == 'Sim, vou descrever') {
         setState(() {
           _textInputEnabled = true;
+          _writingModeSelected = true;
           _messages.add(ChatMessage(text: option, isUser: true));
           _messages.add(const ChatMessage(
             text: 'Digite sua resposta no campo de mensagem para registrar no plano.',
@@ -722,6 +725,7 @@ class _ChatScreenState extends State<ChatScreen> {
         if (!mounted) return;
         setState(() {
           _textInputEnabled = true;
+          _writingModeSelected = true;
           _messages.add(const ChatMessage(text: 'Outra UBS', isUser: true));
           _messages.add(const ChatMessage(
             text: 'Sem problema. Digite o nome da sua UBS de referência no campo de mensagem para registrar no plano.\n\nImportante: como ela não foi selecionada da lista oficial, ela aparecerá no PDF, mas as dúvidas não poderão ser respondidas pela Equipe UBS via chat até que uma UBS oficial seja vinculada ao seu perfil.',
@@ -767,6 +771,30 @@ class _ChatScreenState extends State<ChatScreen> {
     }
 
     _send(option);
+  }
+
+
+  void _resetCardScrollToTop() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || !_cardScrollController.hasClients) return;
+      // Novo card sempre inicia do comeco; o deslocamento do card anterior
+      // nao deve ser herdado mesmo quando o anterior era muito longo.
+      _cardScrollController.jumpTo(0);
+    });
+  }
+
+  void _enableWritingMode() {
+    if (!mounted) return;
+    setState(() {
+      _textInputEnabled = true;
+      _writingModeSelected = true;
+      _cardFeedback = null;
+    });
+    // Fazer o toque produzir feedback imediato e abrir o teclado,
+    // inclusive se o campo ja estiver disponivel para a pergunta.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted && _textInputEnabled) _inputFocusNode.requestFocus();
+    });
   }
 
   void _scrollToBottom() {
@@ -890,6 +918,7 @@ class _ChatScreenState extends State<ChatScreen> {
       final inner = compact ? 12.0 : width < 430 ? 16.0 : 24.0;
       return SingleChildScrollView(
         key: const Key('petita_cards_scroll'),
+        controller: _cardScrollController,
         keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
         padding: EdgeInsets.fromLTRB(
           outer, lowHeight ? 8 : 16, outer, 20,
@@ -998,13 +1027,16 @@ class _ChatScreenState extends State<ChatScreen> {
           ),
           const SizedBox(height: 16),
           ...options.map((option) {
-            final isSelected = q.multiple && _multiSelection.contains(option);
+            final isSelected = (q.multiple && _multiSelection.contains(option)) ||
+                (option == 'Escrever minha resposta' && _writingModeSelected);
             return Padding(
               padding: const EdgeInsets.only(bottom: 9),
               child: _ChoicePill(
                 label: option,
-                icon: option == 'Concluir seleção'
-                    ? Icons.check_circle_outline : _optionIcon(option),
+                icon: isSelected && option == 'Escrever minha resposta'
+                    ? Icons.check_circle_rounded
+                    : (option == 'Concluir seleção'
+                        ? Icons.check_circle_outline : _optionIcon(option)),
                 selected: isSelected,
                 primary: option == 'Concluir seleção',
                 help: false,
@@ -1018,11 +1050,36 @@ class _ChatScreenState extends State<ChatScreen> {
               child: Text(_cardFeedback!, style: const TextStyle(
                   color: AppColors.petOrange, fontWeight: FontWeight.bold)),
             ),
-          if (_textInputEnabled)
-            const Padding(
-              padding: EdgeInsets.only(bottom: 12),
-              child: Text('Você pode escrever sua resposta no campo abaixo.',
-                  style: TextStyle(fontSize: 13)),
+          if (_writingModeSelected)
+            Semantics(
+              liveRegion: true,
+              child: Container(
+                key: const Key('petita_writing_confirmation'),
+                margin: const EdgeInsets.only(bottom: 12),
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 11),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF3EBFF),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: AppColors.primaryPink.withAlpha(95)),
+                ),
+                child: const Row(
+                  children: [
+                    Icon(Icons.check_circle, color: AppColors.primaryPink, size: 20),
+                    SizedBox(width: 9),
+                    Expanded(
+                      child: Text(
+                        'Modo escrita ativado. Digite abaixo e toque em enviar.',
+                        style: TextStyle(
+                          color: AppColors.petDarkBlue,
+                          fontSize: 13,
+                          height: 1.3,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
             ),
           if (explanation != null) ...[
             TextButton.icon(
@@ -1134,6 +1191,7 @@ class _ChatScreenState extends State<ChatScreen> {
             if (_textInputEnabled || (!_awaitingPronouns && _currentQuestion < 0))
               _ChatInput(
                 controller: _controller,
+                focusNode: _inputFocusNode,
                 enabled: _textInputEnabled,
                 onSend: () => _send(),
               ),
@@ -1423,8 +1481,9 @@ class _ChoicePill extends StatelessWidget {
 }
 
 class _ChatInput extends StatelessWidget {
-  const _ChatInput({required this.controller, required this.enabled, required this.onSend});
+  const _ChatInput({required this.controller, required this.focusNode, required this.enabled, required this.onSend});
   final TextEditingController controller;
+  final FocusNode focusNode;
   final bool enabled;
   final VoidCallback onSend;
 
@@ -1443,6 +1502,7 @@ class _ChatInput extends StatelessWidget {
             Expanded(
               child: TextField(
                 controller: controller,
+                focusNode: focusNode,
                 enabled: enabled,
                 minLines: 1,
                 maxLines: 3,
