@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:printing/printing.dart';
 import '../../config/app_theme.dart';
 import '../../models/birth_plan_answer.dart';
 import '../../models/birth_plan_question.dart';
@@ -24,6 +25,9 @@ class _BirthPlanSummaryScreenState extends State<BirthPlanSummaryScreen> {
   List<BirthPlanAnswer> _answers = [];
   TreatmentPreferences? _treatment;
   bool _loading = true;
+  bool _generatingPdf = false;
+  final _consultationNotesController = TextEditingController();
+  Set<String> _pendingForConsultation = <String>{};
 
   @override
   void initState() {
@@ -35,31 +39,48 @@ class _BirthPlanSummaryScreenState extends State<BirthPlanSummaryScreen> {
     final questions = await BirthPlanFlowService().loadQuestions();
     final answers = await _storage.loadAnswers();
     final treatment = await _storage.loadTreatmentPreferences();
+    final pending = await _storage.loadConsultationPending();
+    final notes = await _storage.loadConsultationNotes();
     if (mounted) {
       setState(() {
         _questions = questions;
         _answers = answers;
         _treatment = treatment;
+        _pendingForConsultation = pending;
+        _consultationNotesController.text = notes;
         _loading = false;
       });
     }
   }
 
   Future<void> _generatePdf(BirthPlanPdfFormat format) async {
-    if (_answers.isEmpty) return;
+    if (_answers.isEmpty || _generatingPdf) return;
+    setState(() => _generatingPdf = true);
+    // Deixe o indicador visivel antes da etapa intensiva de criacao do PDF.
+    await WidgetsBinding.instance.endOfFrame;
     try {
-      await PdfService().shareBirthPlanPdf(
+      final bytes = await PdfService().buildBirthPlanPdf(
         questions: _questions,
         answers: _answers,
         format: format,
         treatment: _treatment,
       );
+      if (!mounted) return;
+      setState(() => _generatingPdf = false);
+      final filename = format == BirthPlanPdfFormat.resumoVisual
+          ? 'plano_de_parto_resumo_pet_saude.pdf'
+          : 'plano_de_parto_declaracao_pet_saude.pdf';
+      await Printing.sharePdf(bytes: bytes, filename: filename);
     } on BirthPlanPdfTooLongException catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.message)));
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Não foi possível gerar/compartilhar o PDF: $e')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Não foi possível preparar o PDF. Suas respostas continuam salvas.')),
+      );
+    } finally {
+      if (mounted) setState(() => _generatingPdf = false);
     }
   }
  
@@ -172,7 +193,7 @@ class _BirthPlanSummaryScreenState extends State<BirthPlanSummaryScreen> {
     ].join(' • ');
     return Scaffold(
       appBar: AppBar(title: const Text('Meu Plano de Parto')),
-      body: SafeArea(
+      body: Stack(children: [SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(20),
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
@@ -238,6 +259,25 @@ class _BirthPlanSummaryScreenState extends State<BirthPlanSummaryScreen> {
           ]),
         ),
       ),
+      if (_generatingPdf)
+        Positioned.fill(
+          child: AbsorbPointer(
+            child: Container(
+              color: Colors.white.withAlpha(235),
+              child: const Center(child: Column(mainAxisSize: MainAxisSize.min, children: [
+                CircularProgressIndicator(),
+                SizedBox(height: 20),
+                Text('Preparando seu Plano de Parto...',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(fontSize: 19, fontWeight: FontWeight.bold, color: AppColors.petDarkBlue)),
+                SizedBox(height: 8),
+                Text('Suas respostas estão salvas. Não precisa tocar novamente.',
+                    textAlign: TextAlign.center),
+              ])),
+            ),
+          ),
+        ),
+      ]),
     );
   }
 }
