@@ -24,9 +24,22 @@ void main() {
       )),
     ));
     await tester.pumpAndSettle();
-    await tapChoice(tester, 'Montar meu plano');
+    // Centralizar a escolha no viewport. O helper do fluxo tradicional
+    // pode ultrapassar o item ao rolar 250 px em telas muito baixas.
+    final start = find.widgetWithText(InkWell, 'Montar meu plano').last;
+    await Scrollable.ensureVisible(
+      tester.element(start),
+      alignment: 0.5,
+      duration: const Duration(milliseconds: 100),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(start);
+    await advanceChat(tester);
     expect(find.text('Encontramos um plano salvo'), findsOneWidget);
-    await tester.tap(find.text('Continuar meu plano'));
+    final resume = find.text('Continuar meu plano');
+    await tester.ensureVisible(resume);
+    await tester.pumpAndSettle();
+    await tester.tap(resume);
     await advanceChat(tester);
     expect(find.byKey(const Key('petita_cards_scroll')), findsOneWidget);
     expect(find.byType(TextField), findsNothing);
