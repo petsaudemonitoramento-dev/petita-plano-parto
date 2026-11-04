@@ -25,6 +25,12 @@ jobs:
         run: flutter pub get --enforce-lockfile
       - name: Preparar estrutura Android sem sobrescrever app
         run: flutter create --platforms=android --project-name plano_parto_pet_saude .
+      - name: Remover exemplos padrao gerados pelo flutter create
+        run: |
+          rm -f test/widget_test.dart
+          if grep -q 'package:flutter_lints/flutter.yaml' analysis_options.yaml 2>/dev/null; then
+            rm -f analysis_options.yaml
+          fi
       - name: Permitir descoberta local do servico de voz
         run: python3 tool/prepare_android_tts_manifest.py
       - name: Verificar sintaxe e analisar app
