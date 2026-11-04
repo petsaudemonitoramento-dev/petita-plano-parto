@@ -66,7 +66,6 @@ class _BirthPlanSummaryScreenState extends State<BirthPlanSummaryScreen> {
         treatment: _treatment,
       );
       if (!mounted) return;
-      setState(() => _generatingPdf = false);
       final filename = format == BirthPlanPdfFormat.resumoVisual
           ? 'plano_de_parto_resumo_pet_saude.pdf'
           : 'plano_de_parto_declaracao_pet_saude.pdf';
@@ -157,6 +156,8 @@ class _BirthPlanSummaryScreenState extends State<BirthPlanSummaryScreen> {
       updated.add(BirthPlanAnswer(questionId: question.id, values: result));
       await _storage.saveAnswers(updated);
       await _storage.resolveQuestionForConsultation(question.id);
+      // Nao descartar observacoes digitadas antes de resolver uma pendencia.
+      await _storage.saveConsultationNotes(_consultationNotesController.text);
       await _load();
     } finally {
       freeText.dispose();
