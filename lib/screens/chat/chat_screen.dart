@@ -1178,6 +1178,7 @@ class _ChatHeader extends StatelessWidget {
     final size = MediaQuery.sizeOf(context);
     final narrow = size.width < 370;
     final short = size.height < 700;
+    final keyboardVisible = MediaQuery.viewInsetsOf(context).bottom > 0;
     return Container(
       padding: EdgeInsets.fromLTRB(
         narrow ? 8 : 16,
@@ -1239,7 +1240,7 @@ class _ChatHeader extends StatelessWidget {
             icon: const Icon(Icons.person_outline, color: Colors.white),
           ),
         ]),
-        if (inPlanFlow) ...[
+        if (inPlanFlow && !keyboardVisible) ...[
           SizedBox(height: short ? 5 : 10),
           if (narrow)
             Column(
