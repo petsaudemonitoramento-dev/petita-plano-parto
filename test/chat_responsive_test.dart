@@ -81,4 +81,46 @@ void main() {
     expect(find.byKey(const Key('petita_cards_scroll')), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
+
+  testWidgets('novo card volta automaticamente ao topo depois de rolar',
+      (tester) async {
+    await openQuestion(tester, const Size(320, 568), 1.1);
+    final questions = await BirthPlanFlowService().loadQuestions();
+    final card = find.byKey(const Key('petita_cards_scroll'));
+    final scrollController =
+        tester.widget<SingleChildScrollView>(card).controller!;
+    final defer = find.text('Conversar sobre isto na próxima consulta');
+    await tester.ensureVisible(defer);
+    await tester.pumpAndSettle();
+    expect(scrollController.offset, greaterThan(0));
+
+    await tester.tap(defer);
+    await advanceChat(tester);
+
+    expect(find.text(questions[5].question), findsOneWidget);
+    expect(scrollController.offset, closeTo(0, 0.5));
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('opcao de escrita muda de cor, exibe confirmacao e foca campo',
+      (tester) async {
+    await openQuestion(tester, const Size(393, 852), 1.0);
+    final option = find.text('Escrever minha resposta');
+    await tester.ensureVisible(option);
+    await tester.tap(option);
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const Key('petita_writing_confirmation')),
+        findsOneWidget);
+    expect(find.textContaining('Modo escrita ativado'), findsOneWidget);
+    final pill = tester.widget<AnimatedContainer>(
+      find.ancestor(of: option, matching: find.byType(AnimatedContainer)).first,
+    );
+    expect((pill.decoration! as BoxDecoration).color,
+        const Color(0xFF9B4DE0));
+    expect(tester.widget<TextField>(find.byType(TextField).first)
+        .focusNode!.hasFocus, isTrue);
+    expect(tester.takeException(), isNull);
+  });
+
 }
