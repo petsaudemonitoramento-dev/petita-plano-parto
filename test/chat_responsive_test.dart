@@ -30,7 +30,7 @@ void main() {
     await Scrollable.ensureVisible(
       tester.element(start),
       alignment: 0.5,
-      duration: const Duration(milliseconds: 100),
+      duration: Duration.zero,
     );
     await tester.pumpAndSettle();
     await tester.tap(start);
