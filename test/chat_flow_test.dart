@@ -212,7 +212,8 @@ void main() {
     final questions = await BirthPlanFlowService().loadQuestions();
     await reachPriorities(tester);
     expect(questions[5].id, 'prioridade_parto');
-    expect(tester.widget<TextField>(find.byType(TextField).first).enabled, isFalse);
+    // No modo de cards, o campo inutilizado some para liberar altura.
+    expect(find.byType(TextField), findsNothing);
     await tapChoice(tester, 'Concluir seleção');
     expect(await StorageService().loadAnswers(), hasLength(5));
     await tapChoice(tester, 'Escrever minha resposta');
@@ -221,15 +222,11 @@ void main() {
     final answers = await StorageService().loadAnswers();
     expect(answers.last.questionId, 'prioridade_parto');
     expect(answers.last.values, ['Minha prioridade escrita sintética']);
-    // O ListView.builder virtualiza mensagens antigas. Rolar para conferir
-    // que a resposta continua presente no histórico, não só no armazenamento.
-    await tester.scrollUntilVisible(
-      find.text('Minha prioridade escrita sintética'),
-      -180,
-      scrollable: find.byType(Scrollable).first,
-      maxScrolls: 30,
-    );
-    expect(find.text('Minha prioridade escrita sintética'), findsOneWidget);
+    // Com a interface em cards, a pergunta anterior sai de cena sem
+    // apagar a resposta. Nao exigir a bolha de historico do chat legado.
+    expect(find.text('Minha prioridade escrita sintética'), findsNothing);
+    expect((await StorageService().loadAnswers()).last.values,
+        ['Minha prioridade escrita sintética']);
   });
 
   testWidgets('blank input does not advance or persist an answer',

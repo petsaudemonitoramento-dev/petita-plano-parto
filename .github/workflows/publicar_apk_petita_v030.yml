@@ -1,0 +1,120 @@
+name: Publicar APK Petita com assinatura persistente
+on:
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency:
+  group: petita-android-release
+  cancel-in-progress: false
+jobs:
+  release:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.44.0'
+          channel: stable
+          cache: true
+      - name: Conferir dependencias e testes
+        run: |
+          flutter pub get --enforce-lockfile
+          flutter analyze --no-pub
+          flutter test --no-pub
+      - name: Preparar Android Petita
+        run: |
+          flutter create --platforms=android --project-name petita --org br.edu.ufcg.petsaude .
+          python3 tool/prepare_android_tts_manifest.py
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+          path=Path('android/app/src/main/AndroidManifest.xml')
+          value=path.read_text(encoding='utf8')
+          value,n=re.subn(r'android:label="[^"]+"','android:label="Petita"',value,count=1)
+          assert n==1
+          path.write_text(value,encoding='utf8')
+          PY
+      - name: Aplicar icone oficial da Petita
+        run: |
+          python3 -m pip install --quiet 'Pillow==11.3.0'
+          python3 - <<'PY'
+          from PIL import Image, ImageOps
+          from pathlib import Path
+          source = Image.open('assets/images/petita.png').convert('RGBA')
+          sizes = {'mdpi':48,'hdpi':72,'xhdpi':96,'xxhdpi':144,'xxxhdpi':192}
+          base = Path('android/app/src/main/res')
+          for density, size in sizes.items():
+              img = Image.new('RGBA',(size,size),(248,230,245,255))
+              art = ImageOps.contain(source,(int(size*.90),int(size*.90)),Image.Resampling.LANCZOS)
+              img.alpha_composite(art,((size-art.width)//2,(size-art.height)//2))
+              dst=base / f'mipmap-{density}' / 'ic_launcher.png'
+              dst.parent.mkdir(parents=True,exist_ok=True)
+              img.save(dst,'PNG',optimize=True)
+          print('Icones Petita gerados para 5 densidades Android.')
+          PY
+      - name: Configurar assinatura persistente
+        shell: bash
+        env:
+          SIGNING_B64: ${{ secrets.PETITA_ANDROID_SIGNING_KEY_B64 }}
+          PETITA_SIGNING_PASSWORD: ${{ secrets.PETITA_ANDROID_SIGNING_PASSWORD }}
+        run: |
+          set -euo pipefail
+          test -n "$SIGNING_B64" || { echo "::error::Falta PETITA_ANDROID_SIGNING_KEY_B64"; exit 1; }
+          test -n "$PETITA_SIGNING_PASSWORD" || { echo "::error::Falta PETITA_ANDROID_SIGNING_PASSWORD"; exit 1; }
+          printf '%s' "$SIGNING_B64" | base64 --decode > "$RUNNER_TEMP/petita-release.p12"
+          chmod 600 "$RUNNER_TEMP/petita-release.p12"
+          python3 - <<'PY'
+          from pathlib import Path
+          g=Path('android/app/build.gradle.kts')
+          s=g.read_text()
+          assert s.count('    buildTypes {')==1
+          s=s.replace('    buildTypes {', '''
+              signingConfigs {
+                  create("petitaRelease") {
+                      storeFile = file(System.getenv("PETITA_STORE_FILE"))
+                      storePassword = System.getenv("PETITA_SIGNING_PASSWORD")
+                      keyAlias = "petita"
+                      keyPassword = System.getenv("PETITA_SIGNING_PASSWORD")
+                  }
+              }
+              buildTypes {''',1)
+          old='signingConfig = signingConfigs.getByName("debug")'
+          assert s.count(old)==1
+          s=s.replace(old,'signingConfig = signingConfigs.getByName("petitaRelease")')
+          g.write_text(s)
+          PY
+      - name: Compilar APK ARM64 release
+        env:
+          PETITA_STORE_FILE: ${{ runner.temp }}/petita-release.p12
+          PETITA_SIGNING_PASSWORD: ${{ secrets.PETITA_ANDROID_SIGNING_PASSWORD }}
+        run: flutter build apk --release --split-per-abi --target-platform android-arm64 --no-pub
+      - name: Validar assinatura e hash
+        shell: bash
+        run: |
+          set -euo pipefail
+          APK=build/app/outputs/flutter-apk/app-arm64-v8a-release.apk
+          test -s "$APK"
+          TOOLS="$ANDROID_HOME/build-tools/$(ls -1 "$ANDROID_HOME/build-tools" | sort -V | tail -1)/apksigner"
+          "$TOOLS" verify --verbose --print-certs "$APK" > "$RUNNER_TEMP/certs.txt"
+          grep -q 'Verified' "$RUNNER_TEMP/certs.txt"
+          CERT=$(sed -n 's/^Signer #1 certificate SHA-256 digest: //p' "$RUNNER_TEMP/certs.txt" | tr -d '\r')
+          EXPECTED='dbb8712f12097070dcaf910a6319abf118bc6ba24d4157473f7375f05ef500c9'
+          test "${CERT,,}" = "$EXPECTED" || { echo "::error::Assinatura incorreta"; exit 1; }
+          cp "$APK" Petita-Android-v0.3.0-arm64.apk
+          sha256sum Petita-Android-v0.3.0-arm64.apk > SHA256SUMS.txt
+      - name: Publicar release no GitHub
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release create petita-v0.3.0-20261104 \
+            Petita-Android-v0.3.0-arm64.apk SHA256SUMS.txt \
+            --target "$GITHUB_SHA" \
+            --title "Petita 0.3.0 (Android ARM64)" \
+            --notes "Versao atualizada com cards responsivos, modo Consulta Pre-Natal offline, leitura de voz local e PDF otimizado. Versao experimental: utilizar somente dados ficticios ate homologacao clinica e de privacidade. Pode ser necessario instalar separadamente de APKs de testes antigos com assinatura diferente." \
+            --prerelease

@@ -1,0 +1,98 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#fcf9f6">
+  <meta name="description" content="Baixe a Petita para Android e aprenda a instalar o aplicativo com segurança.">
+  <title>Petita — Seu Plano de Parto, sua voz</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&family=Nunito:wght@700;800;900&display=swap" rel="stylesheet">
+  <style>
+    :root{--bg:#fcf9f6;--ink:#372c39;--muted:#68616b;--pink:#bd6586;--dark:#94516f;--pink-soft:#f7e3e9;--border:#eee1e7}
+    *{box-sizing:border-box}html{scroll-behavior:smooth}body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.6 'DM Sans',system-ui,sans-serif}
+    a{color:var(--dark)}a:focus-visible,summary:focus-visible{outline:3px solid #5f34ad;outline-offset:4px}h1,h2,h3{font-family:'Nunito',system-ui,sans-serif;line-height:1.16}
+    .container{width:min(1080px,calc(100% - 36px));margin:auto}
+    header{padding:22px 0;display:flex;align-items:center;justify-content:space-between;gap:12px}
+    .brand{font:900 1.5rem Nunito,sans-serif;text-decoration:none;color:var(--dark)}nav a{text-decoration:none;font-weight:800;font-size:.92rem;padding:12px}
+    .hero{display:grid;grid-template-columns:1.2fr .8fr;gap:30px;align-items:center;padding:42px 0}
+    .eyebrow{text-transform:uppercase;letter-spacing:.23em;font-size:.73rem;color:var(--dark);font-weight:800}
+    h1{font-size:clamp(2.6rem,6vw,5.15rem);letter-spacing:-.045em;margin:20px 0}h1 span{color:var(--pink)}
+    .intro{font-size:1.14rem;max-width:590px;color:var(--muted)}
+    .btn{display:inline-flex;align-items:center;justify-content:center;gap:9px;min-height:56px;padding:15px 24px;border-radius:16px;font-weight:800;text-decoration:none;text-align:center;transition:transform .15s ease}
+    .btn:hover{transform:translateY(-2px)}.btn.primary{background:var(--pink);color:white;box-shadow:0 8px 23px #bd658630}.btn.outline{border:2px solid var(--pink);background:white;color:var(--dark)}
+    .buttons{display:flex;gap:12px;flex-wrap:wrap;margin-top:26px}.small{font-size:.87rem;color:var(--muted)}
+    .art{height:350px;position:relative;display:grid;place-items:center}.halo{position:absolute;width:320px;height:320px;border-radius:48% 52% 42% 58%;background:radial-gradient(circle at 32% 20%,#fff,#f5dbe7 60%,#eac9d8)}
+    .art img{position:relative;max-width:95%;max-height:310px;object-fit:contain;filter:drop-shadow(0 18px 12px #60446633)}
+    .warning{border-left:5px solid var(--pink);background:#fff8fa;border-radius:0 14px 14px 0;padding:18px 21px}
+    section{padding:43px 0}section h2{font-size:clamp(1.65rem,4vw,2.55rem);margin:0 0 10px}.lead{color:var(--muted);max-width:760px;margin:0 0 20px}
+    .steps{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}.step{background:white;border:1px solid var(--border);border-radius:19px;padding:22px}
+    .number{display:grid;place-items:center;width:40px;height:40px;border-radius:100%;background:var(--pink-soft);font:900 1.2rem Nunito;color:var(--dark)}
+    .step h3{font-size:1.24rem;margin:15px 0 7px}.step p{margin:0;color:var(--muted)}
+    .help{background:linear-gradient(145deg,#fff,#fff4f8);border:1px solid var(--border);border-radius:20px;padding:25px;margin-top:23px}
+    .help h3{font-size:1.6rem;margin:0 0 10px}.help li{margin:10px 0}.help li::marker{color:var(--dark);font-weight:800}
+    .important{background:#fff;border-radius:14px;border:1px solid var(--border);padding:15px 19px;margin:18px 0}
+    details{background:#fff;border:1px solid var(--border);border-radius:14px;margin:10px 0;padding:0 16px}
+    summary{font-weight:800;cursor:pointer;padding:16px 5px}details p{margin-top:0}code{background:#f3e9ee;padding:2px 5px;border-radius:5px}
+    footer{border-top:1px solid var(--border);padding:25px 0 38px;color:var(--muted);font-size:.87rem}
+    @media(max-width:800px){.hero{grid-template-columns:1fr;gap:3px;padding-top:18px}.art{height:180px;grid-row:1}.halo{width:170px;height:170px}.art img{max-height:160px}h1{font-size:clamp(2.8rem,10vw,4.1rem)}.steps{grid-template-columns:1fr}.buttons{flex-direction:column}.btn{width:100%}section{padding:31px 0}.help{padding:18px}nav a{font-size:.82rem;padding:7px}}
+    @media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}.btn{transition:none}}
+  </style>
+</head>
+<body>
+  <header class="container">
+    <a class="brand" href="/" aria-label="Petita, página inicial">♥ Petita</a>
+    <nav aria-label="Navegação"><a href="#instalacao">Como instalar</a><a href="#ajuda">Ajuda</a></nav>
+  </header>
+  <main>
+    <section class="container hero">
+      <div>
+        <div class="eyebrow">Tecnologia para a saúde materna</div>
+        <h1>Sua voz merece <span>ser ouvida.</span></h1>
+        <p class="intro">Conheça a Petita, um aplicativo educativo para construir seu Plano de Parto e conversar sobre suas preferências com a equipe de saúde, mesmo sem internet após a instalação.</p>
+        <div class="buttons">
+          <a class="btn primary" href="/api/download" aria-label="Baixar o APK de teste da Petita para Android">⬇ Baixar Petita para Android</a>
+          <a class="btn outline" href="#instalacao">📱 Veja como instalar</a>
+        </div>
+        <p class="small">Arquivo APK para Android 7 ou superior · Versão experimental · O download pode ser grande; prefira Wi-Fi.</p>
+        <p class="small"><strong>Se aparecer um aviso de permissão no celular, siga o passo a passo abaixo.</strong></p>
+      </div>
+      <div class="art" aria-hidden="true"><div class="halo"></div>
+        <img src="https://raw.githubusercontent.com/petsaudemonitoramento-dev/petita-plano-parto/main/assets/images/petita.png" alt="">
+      </div>
+    </section>
+    <div class="container"><aside class="warning"><strong>Importante: versão exclusiva para testes com dados fictícios.</strong> Ainda não está homologada para uso assistencial nem para registrar informações reais de gestantes. O aplicativo não substitui orientação profissional ou atendimento de urgência.</aside></div>
+    <section class="container" id="instalacao">
+      <h2>Como instalar a Petita no celular</h2>
+      <p class="lead">No Android, geralmente são três passos. Se aparecer uma mensagem sobre aplicativo de origem desconhecida, veja as instruções logo abaixo.</p>
+      <div class="steps">
+        <article class="step"><span class="number">1</span><h3>Baixe o APK</h3><p>Toque no botão <strong>Baixar Petita</strong>. Se o Chrome pedir confirmação de download, verifique o endereço do site antes de aceitar.</p></article>
+        <article class="step"><span class="number">2</span><h3>Abra o arquivo</h3><p>Depois do download, toque na notificação ou abra <strong>Chrome → ⋮ → Downloads</strong>. Toque no arquivo da Petita, terminado em <code>.apk</code>.</p></article>
+        <article class="step"><span class="number">3</span><h3>Instale e abra</h3><p>Toque em <strong>Instalar</strong>. Se aparecer um aviso de segurança sobre o Chrome, siga as orientações abaixo antes de continuar.</p></article>
+      </div>
+      <div class="help">
+        <h3>“O smartphone não tem permissão para instalar apps desconhecidos dessa fonte”</h3>
+        <p>Esse é o aviso de segurança mostrado pelo Android quando o APK vem do navegador, e não da Play Store. Ele <strong>não significa necessariamente que o APK está com defeito</strong>.</p>
+        <ol>
+          <li>Na janela do aviso, toque em <strong>Configurações</strong>.</li>
+          <li>Na tela aberta, encontre <strong>Permitir desta fonte</strong> (ou nome semelhante) para o aplicativo <strong>Chrome</strong>.</li>
+          <li>Se você confia no download e reconhece esta página, habilite temporariamente essa permissão.</li>
+          <li>Volte à instalação e toque em <strong>Instalar</strong>. Se necessário, abra novamente o APK em <strong>Downloads</strong>.</li>
+          <li>Depois, você pode desativar essa permissão nas configurações do Android.</li>
+        </ol>
+        <div class="important"><strong>Não desative o Play Protect.</strong> Se aparecer um alerta de aplicativo perigoso, não force a instalação. Em celulares de trabalho ou gerenciados, a instalação pode permanecer bloqueada por política de segurança.</div>
+        <a class="btn outline" href="/api/download">⬇ Tentar baixar novamente</a>
+      </div>
+    </section>
+    <section class="container" id="ajuda">
+      <h2>Ajuda e dúvidas frequentes</h2>
+      <details><summary>Não encontrei o APK</summary><p>Abra o menu ⋮ do Chrome e escolha <strong>Downloads</strong>. Também pode procurar na pasta Downloads do aplicativo Arquivos.</p></details>
+      <details><summary>Aparece “App não instalado”</summary><p>Verifique o espaço livre, a versão do Android e se o arquivo terminou de baixar. Uma versão antiga da Petita assinada de outra forma também pode impedir a atualização. <strong>Não desinstale sem antes guardar seu Plano de Parto em PDF</strong>: o conteúdo local pode ser perdido.</p></details>
+      <details><summary>Preciso de internet para usar?</summary><p>Você precisa de internet para baixar o APK. Depois, a criação do Plano de Parto e a geração de PDF funcionam offline. Recursos de login ou contato online com a UBS, quando disponíveis, necessitam de conexão.</p></details>
+      <details><summary>Por que o Android pede essa permissão?</summary><p>O arquivo está sendo distribuído fora da Google Play. O Android protege o aparelho exigindo autorização para instalar aplicativos por fonte externa. A página de download não consegue desativar essa segurança.</p></details>
+    </section>
+  </main>
+  <footer><div class="container"><strong>Petita · Projeto PET Saúde / UFCG</strong><p>Material educativo e aplicativo experimental. Não instale APKs de origem desconhecida nem utilize esta versão com informações reais de pacientes.</p></div></footer>
+</body>
+</html>

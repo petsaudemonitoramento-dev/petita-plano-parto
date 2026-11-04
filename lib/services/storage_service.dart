@@ -10,6 +10,8 @@ import '../models/treatment_preferences.dart';
 
 class StorageService {
   static const _answersKey = 'birth_plan_answers';
+  static const _deferredConsultationKey = 'birth_plan_consultation_deferred_v1';
+  static const _consultationNotesKey = 'birth_plan_consultation_notes_v1';
   static const _treatmentKey = 'birth_plan_treatment_preferences_v1';
   static const _consentRecordKey = 'consent_record_v2';
   static const _legacyConsentKey = 'consent_accepted';
@@ -37,10 +39,41 @@ class StorageService {
     }
   }
 
+  Future<Set<String>> loadConsultationPending() async {
+    final prefs = await SharedPreferences.getInstance();
+    return (prefs.getStringList(_deferredConsultationKey) ?? <String>[]).toSet();
+  }
+
+  Future<void> deferQuestionForConsultation(String questionId) async {
+    final ids = await loadConsultationPending();
+    ids.add(questionId);
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setStringList(_deferredConsultationKey, ids.toList());
+  }
+
+  Future<void> resolveQuestionForConsultation(String questionId) async {
+    final ids = await loadConsultationPending();
+    ids.remove(questionId);
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setStringList(_deferredConsultationKey, ids.toList());
+  }
+
+  Future<String> loadConsultationNotes() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getString(_consultationNotesKey) ?? '';
+  }
+
+  Future<void> saveConsultationNotes(String notes) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_consultationNotesKey, notes.trim());
+  }
+
   Future<void> clearAnswers() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove(_answersKey);
     await prefs.remove(_treatmentKey);
+    await prefs.remove(_deferredConsultationKey);
+    await prefs.remove(_consultationNotesKey);
   }
 
   Future<TreatmentPreferences?> loadTreatmentPreferences() async {
@@ -99,6 +132,8 @@ class StorageService {
     await prefs.remove(_legacyConsentKey);
     await prefs.remove(_answersKey);
     await prefs.remove(_treatmentKey);
+    await prefs.remove(_deferredConsultationKey);
+    await prefs.remove(_consultationNotesKey);
     await prefs.remove(_profileKey);
     // Ação local; não remove informações anteriormente sincronizadas na nuvem.
   }

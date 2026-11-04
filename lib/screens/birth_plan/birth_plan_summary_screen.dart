@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:printing/printing.dart';
 import '../../config/app_theme.dart';
 import '../../models/birth_plan_answer.dart';
 import '../../models/birth_plan_question.dart';
@@ -24,6 +25,9 @@ class _BirthPlanSummaryScreenState extends State<BirthPlanSummaryScreen> {
   List<BirthPlanAnswer> _answers = [];
   TreatmentPreferences? _treatment;
   bool _loading = true;
+  bool _generatingPdf = false;
+  final _consultationNotesController = TextEditingController();
+  Set<String> _pendingForConsultation = <String>{};
 
   @override
   void initState() {
@@ -35,34 +39,163 @@ class _BirthPlanSummaryScreenState extends State<BirthPlanSummaryScreen> {
     final questions = await BirthPlanFlowService().loadQuestions();
     final answers = await _storage.loadAnswers();
     final treatment = await _storage.loadTreatmentPreferences();
+    final pending = await _storage.loadConsultationPending();
+    final notes = await _storage.loadConsultationNotes();
     if (mounted) {
       setState(() {
         _questions = questions;
         _answers = answers;
         _treatment = treatment;
+        _pendingForConsultation = pending;
+        _consultationNotesController.text = notes;
         _loading = false;
       });
     }
   }
 
   Future<void> _generatePdf(BirthPlanPdfFormat format) async {
-    if (_answers.isEmpty) return;
+    if (_answers.isEmpty || _generatingPdf) return;
+    setState(() => _generatingPdf = true);
+    // Deixe o indicador visivel antes da etapa intensiva de criacao do PDF.
+    await WidgetsBinding.instance.endOfFrame;
     try {
-      await PdfService().shareBirthPlanPdf(
+      final bytes = await PdfService().buildBirthPlanPdf(
         questions: _questions,
         answers: _answers,
         format: format,
         treatment: _treatment,
       );
+      if (!mounted) return;
+      final filename = format == BirthPlanPdfFormat.resumoVisual
+          ? 'plano_de_parto_resumo_pet_saude.pdf'
+          : 'plano_de_parto_declaracao_pet_saude.pdf';
+      await Printing.sharePdf(bytes: bytes, filename: filename);
     } on BirthPlanPdfTooLongException catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.message)));
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Não foi possível gerar/compartilhar o PDF: $e')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Não foi possível preparar o PDF. Suas respostas continuam salvas.')),
+      );
+    } finally {
+      if (mounted) setState(() => _generatingPdf = false);
     }
   }
  
+
+
+  @override
+  void dispose() {
+    _consultationNotesController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _answerDeferredQuestion(BirthPlanQuestion question) async {
+    final selected = <String>{};
+    final freeText = TextEditingController();
+    try {
+      final result = await showDialog<List<String>>(
+        context: context,
+        builder: (dialogContext) => StatefulBuilder(builder: (ctx, refresh) {
+          final typed = freeText.text.trim();
+          final canSave = typed.isNotEmpty || selected.isNotEmpty;
+          return AlertDialog(
+            title: const Text('Responder com a profissional'),
+            content: SizedBox(
+              width: 520,
+              child: SingleChildScrollView(child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Text(question.question, style: const TextStyle(fontWeight: FontWeight.bold)),
+                  const SizedBox(height: 12),
+                  ...question.options.map((option) => CheckboxListTile(
+                    title: Text(option),
+                    value: selected.contains(option),
+                    controlAffinity: ListTileControlAffinity.leading,
+                    onChanged: (value) => refresh(() {
+                      if (question.multiple) {
+                        if (value == true) { selected.add(option); } else { selected.remove(option); }
+                      } else {
+                        selected.clear();
+                        if (value == true) selected.add(option);
+                      }
+                    }),
+                  )),
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: freeText,
+                    maxLines: 3,
+                    maxLength: 500,
+                    onChanged: (_) => refresh(() {}),
+                    decoration: const InputDecoration(
+                      labelText: 'Minha resposta escrita (opcional)',
+                      hintText: 'Preencha durante ou depois da consulta',
+                    ),
+                  ),
+                ],
+              )),
+            ),
+            actions: [
+              TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancelar')),
+              FilledButton(
+                onPressed: canSave ? () => Navigator.pop(ctx, [
+                  ...selected,
+                  if (typed.isNotEmpty) typed,
+                ]) : null,
+                child: const Text('Salvar minha escolha'),
+              ),
+            ],
+          );
+        }),
+      );
+      if (result == null || result.isEmpty) return;
+      final updated = await _storage.loadAnswers();
+      updated.removeWhere((a) => a.questionId == question.id);
+      updated.add(BirthPlanAnswer(questionId: question.id, values: result));
+      await _storage.saveAnswers(updated);
+      await _storage.resolveQuestionForConsultation(question.id);
+      // Nao descartar observacoes digitadas antes de resolver uma pendencia.
+      await _storage.saveConsultationNotes(_consultationNotesController.text);
+      await _load();
+    } finally {
+      freeText.dispose();
+    }
+  }
+
+  Future<void> _saveConsultationNotes() async {
+    await _storage.saveConsultationNotes(_consultationNotesController.text);
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Dúvidas para a consulta salvas neste aparelho.')),
+    );
+  }
+
+  Future<void> _shareConsultationGuide() async {
+    if (_generatingPdf) return;
+    // Salva o que estiver digitado antes de montar o roteiro.
+    await _storage.saveConsultationNotes(_consultationNotesController.text);
+    if (!mounted) return;
+    setState(() => _generatingPdf = true);
+    await WidgetsBinding.instance.endOfFrame;
+    try {
+      final bytes = await PdfService().buildConsultationGuidePdf(
+        questions: _questions,
+        pendingQuestionIds: _pendingForConsultation,
+        notes: _consultationNotesController.text,
+      );
+      if (!mounted) return;
+      setState(() => _generatingPdf = false);
+      await Printing.sharePdf(bytes: bytes, filename: 'petita_assuntos_para_consulta.pdf');
+    } catch (e) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Não foi possível preparar o roteiro. Suas dúvidas permanecem salvas.')),
+      );
+    } finally {
+      if (mounted) setState(() => _generatingPdf = false);
+    }
+  }
 
   Future<void> _editTreatment() async {
     final choice = await showDialog<String>(
@@ -172,7 +305,7 @@ class _BirthPlanSummaryScreenState extends State<BirthPlanSummaryScreen> {
     ].join(' • ');
     return Scaffold(
       appBar: AppBar(title: const Text('Meu Plano de Parto')),
-      body: SafeArea(
+      body: Stack(children: [SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(20),
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
@@ -224,6 +357,58 @@ class _BirthPlanSummaryScreenState extends State<BirthPlanSummaryScreen> {
               const SizedBox(height: 8),
               Text(answerMap[q.id] ?? 'Não informado', style: const TextStyle(color: AppColors.textPrimary)),
             ]))),
+
+            SectionCard(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              const Text('Para conversar no pré-natal',
+                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.w900, color: AppColors.petDarkBlue)),
+              const SizedBox(height: 6),
+              const Text('Estas questões não foram respondidas e não serão registradas como preferências no Plano de Parto. Você pode retomá-las junto da profissional.'),
+              if (_pendingForConsultation.isEmpty)
+                const Padding(
+                  padding: EdgeInsets.only(top: 12),
+                  child: Text('Nenhuma pergunta foi deixada em aberto para consulta.'),
+                ),
+              ..._questions.where((q) => _pendingForConsultation.contains(q.id)).map((q) =>
+                Padding(
+                  padding: const EdgeInsets.only(top: 12),
+                  child: Card(
+                    child: Padding(
+                      padding: const EdgeInsets.all(12),
+                      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                        Text(q.section, style: const TextStyle(color: AppColors.primaryPink, fontWeight: FontWeight.bold)),
+                        const SizedBox(height: 6),
+                        Text(q.question, style: const TextStyle(fontWeight: FontWeight.w700)),
+                        const SizedBox(height: 8),
+                        OutlinedButton.icon(
+                          onPressed: () => _answerDeferredQuestion(q),
+                          icon: const Icon(Icons.edit_note),
+                          label: const Text('Responder com a profissional'),
+                        ),
+                      ]),
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 18),
+              const Text('Outras dúvidas que quero levar à consulta',
+                  style: TextStyle(fontWeight: FontWeight.bold)),
+              const SizedBox(height: 8),
+              TextField(
+                controller: _consultationNotesController,
+                maxLines: 4,
+                maxLength: 1500,
+                decoration: const InputDecoration(
+                  border: OutlineInputBorder(),
+                  hintText: 'Escreva aqui. Este texto ficará apenas no seu aparelho.',
+                ),
+              ),
+              const SizedBox(height: 6),
+              AppButton(label: 'Salvar minhas dúvidas', icon: Icons.save_outlined,
+                  onPressed: _saveConsultationNotes, outlined: true),
+              const SizedBox(height: 10),
+              AppButton(label: 'Gerar roteiro da próxima consulta', icon: Icons.picture_as_pdf_outlined,
+                  outlined: true, onPressed: _shareConsultationGuide),
+            ])),
             const SizedBox(height: 10),
             if (_answers.isNotEmpty)
               AppButton(label: 'Gerar PDF — declaração para assinatura', icon: Icons.picture_as_pdf, onPressed: () => _generatePdf(BirthPlanPdfFormat.declaracao)),
@@ -238,6 +423,25 @@ class _BirthPlanSummaryScreenState extends State<BirthPlanSummaryScreen> {
           ]),
         ),
       ),
+      if (_generatingPdf)
+        Positioned.fill(
+          child: AbsorbPointer(
+            child: Container(
+              color: Colors.white.withAlpha(235),
+              child: const Center(child: Column(mainAxisSize: MainAxisSize.min, children: [
+                CircularProgressIndicator(),
+                SizedBox(height: 20),
+                Text('Preparando seu Plano de Parto...',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(fontSize: 19, fontWeight: FontWeight.bold, color: AppColors.petDarkBlue)),
+                SizedBox(height: 8),
+                Text('Suas respostas estão salvas. Não precisa tocar novamente.',
+                    textAlign: TextAlign.center),
+              ])),
+            ),
+          ),
+        ),
+      ]),
     );
   }
 }

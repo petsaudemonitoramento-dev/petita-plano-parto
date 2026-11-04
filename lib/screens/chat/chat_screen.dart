@@ -1,5 +1,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
+import 'package:flutter_tts/flutter_tts.dart';
 import '../../config/app_routes.dart';
 import '../../config/app_theme.dart';
 import '../../models/birth_plan_answer.dart';
@@ -26,6 +28,8 @@ class ChatScreen extends StatefulWidget {
 class _ChatScreenState extends State<ChatScreen> {
   final _controller = TextEditingController();
   final _scrollController = ScrollController();
+  final _cardScrollController = ScrollController();
+  final _inputFocusNode = FocusNode();
   final _storage = StorageService();
   final _online = SupabaseService();
   late final ChatbotService _chatbot;
@@ -40,6 +44,11 @@ class _ChatScreenState extends State<ChatScreen> {
   bool _awaitingPronouns = false;
   bool _pronounCustomInput = false;
   bool _petitaSearching = false;
+  bool _showCardExplanation = false;
+  bool _writingModeSelected = false;
+  String? _cardFeedback;
+  final FlutterTts _tts = FlutterTts();
+  bool _readingVoice = false;
   int _typingDots = 1;
   Timer? _typingTimer;
   _QuestionDialogResult? _pendingUbsQuestion;
@@ -49,13 +58,22 @@ class _ChatScreenState extends State<ChatScreen> {
   void initState() {
     super.initState();
     _chatbot = ChatbotService(FaqSearchService());
+    _tts.setCompletionHandler(() {
+      if (mounted) setState(() => _readingVoice = false);
+    });
+    _tts.setErrorHandler((_) {
+      if (mounted) setState(() => _readingVoice = false);
+    });
     _init();
   }
 
   @override
   void dispose() {
     _typingTimer?.cancel();
+    _tts.stop();
     _controller.dispose();
+    _inputFocusNode.dispose();
+    _cardScrollController.dispose();
     _scrollController.dispose();
     super.dispose();
   }
@@ -201,13 +219,14 @@ class _ChatScreenState extends State<ChatScreen> {
     // respondida. Quem tocava em "Montar meu plano" via "Etapa 10 de 31"
     // sem saber que suas respostas antigas ainda estavam salvas no navegador.
     final saved = await _storage.loadAnswers();
+    final deferred = await _storage.loadConsultationPending();
     if (!mounted) return;
 
     var answers = saved;
     var restarting = false;
-    if (saved.isNotEmpty) {
+    if (saved.isNotEmpty || deferred.isNotEmpty) {
       final answeredIds = saved.map((answer) => answer.questionId).toSet();
-      final completed = _questions.every((q) => answeredIds.contains(q.id));
+      final completed = _questions.every((q) => answeredIds.contains(q.id) || deferred.contains(q.id));
       final choice = await showDialog<_PlanStartChoice>(
         context: context,
         builder: (dialogContext) => AlertDialog(
@@ -215,7 +234,7 @@ class _ChatScreenState extends State<ChatScreen> {
           content: Text(
             'Este dispositivo tem ${saved.length} resposta(s) armazenada(s). '
             'Você pode continuar de onde parou ou começar um novo plano.\n\n'
-            'Começar de novo apagará as respostas e os pronomes deste plano '
+            'Começar de novo apagará respostas, dúvidas reservadas para consulta e pronomes '
             'salvos neste dispositivo, mas não apagará seu perfil nem seu aceite.',
           ),
           actions: [
@@ -253,8 +272,13 @@ class _ChatScreenState extends State<ChatScreen> {
     if (!mounted) return;
     _answers = answers;
     final answeredIds = _answers.map((answer) => answer.questionId).toSet();
-    final next = _questions.indexWhere((question) => !answeredIds.contains(question.id));
-    _currentQuestion = next < 0 ? 0 : next;
+    final pending = await _storage.loadConsultationPending();
+    final next = _questions.indexWhere((question) => !answeredIds.contains(question.id) && !pending.contains(question.id));
+    if (next < 0) {
+      if (mounted) Navigator.pushNamed(context, AppRoutes.summary);
+      return;
+    }
+    _currentQuestion = next;
     _multiSelection.clear();
     _awaitingPronouns = false;
     _pronounCustomInput = false;
@@ -280,6 +304,13 @@ class _ChatScreenState extends State<ChatScreen> {
     _setPetitaSearching(false);
     final q = _questions[_currentQuestion];
     _multiSelection.clear();
+    _showCardExplanation = false;
+    _cardFeedback = null;
+    _writingModeSelected = false;
+    if (_readingVoice) {
+      try { await _tts.stop(); } catch (_) { /* Voice playback is optional. */ }
+      if (mounted) setState(() => _readingVoice = false);
+    }
     final options = q.multiple ? [...q.options, 'Concluir seleção'] : [...q.options];
     if (q.options.isNotEmpty) options.add('Escrever minha resposta');
     if (BirthPlanExplanations.forQuestion(q.id) != null) {
@@ -288,6 +319,7 @@ class _ChatScreenState extends State<ChatScreen> {
     final intro = _introForQuestion(q);
     setState(() {
       _textInputEnabled = q.options.isEmpty || q.id == 'nome_gestante' || q.id == 'observacoes_finais';
+      _writingModeSelected = _textInputEnabled;
       if (intro.isNotEmpty && (_currentQuestion == 0 || _questions[_currentQuestion - 1].section != q.section)) {
         _messages.add(ChatMessage(text: intro, isUser: false));
       }
@@ -297,7 +329,7 @@ class _ChatScreenState extends State<ChatScreen> {
         options: options,
       ));
     });
-    _scrollToBottom();
+    _resetCardScrollToTop();
   }
 
   String _introForQuestion(BirthPlanQuestion q) {
@@ -378,6 +410,7 @@ class _ChatScreenState extends State<ChatScreen> {
         }
       }
       await _storage.saveAnswers(_answers);
+      await _storage.resolveQuestionForConsultation(q.id);
       if (!mounted) return;
 
       _currentQuestion++;
@@ -612,6 +645,7 @@ class _ChatScreenState extends State<ChatScreen> {
         setState(() {
           _pronounCustomInput = true;
           _textInputEnabled = true;
+          _writingModeSelected = true;
           _messages.add(const ChatMessage(
             text: 'Escreva como prefere ser tratada ou tratado. Por exemplo: “Use apenas meu nome”.',
             isUser: false,
@@ -628,6 +662,7 @@ class _ChatScreenState extends State<ChatScreen> {
         (option == 'Outro' || option == 'Outra preferência' || option == 'Outra posição')) {
       setState(() {
         _textInputEnabled = true;
+          _writingModeSelected = true;
         _messages.add(const ChatMessage(
           text: 'Pode explicar sua outra preferência com suas próprias palavras. Só seguirei após o envio.',
           isUser: false,
@@ -637,14 +672,7 @@ class _ChatScreenState extends State<ChatScreen> {
       return;
     }
     if (option == 'Escrever minha resposta' && _currentQuestion >= 0) {
-      setState(() {
-        _textInputEnabled = true;
-        _messages.add(const ChatMessage(
-          text: 'Pode escrever sua resposta no campo abaixo. Só avançarei depois que você enviar.',
-          isUser: false,
-        ));
-      });
-      _scrollToBottom();
+      _enableWritingMode();
       return;
     }
     if (option == 'Quero entender melhor' && _currentQuestion >= 0) {
@@ -682,6 +710,7 @@ class _ChatScreenState extends State<ChatScreen> {
       if (current.allowOther && option == 'Sim, vou descrever') {
         setState(() {
           _textInputEnabled = true;
+          _writingModeSelected = true;
           _messages.add(ChatMessage(text: option, isUser: true));
           _messages.add(const ChatMessage(
             text: 'Digite sua resposta no campo de mensagem para registrar no plano.',
@@ -696,6 +725,7 @@ class _ChatScreenState extends State<ChatScreen> {
         if (!mounted) return;
         setState(() {
           _textInputEnabled = true;
+          _writingModeSelected = true;
           _messages.add(const ChatMessage(text: 'Outra UBS', isUser: true));
           _messages.add(const ChatMessage(
             text: 'Sem problema. Digite o nome da sua UBS de referência no campo de mensagem para registrar no plano.\n\nImportante: como ela não foi selecionada da lista oficial, ela aparecerá no PDF, mas as dúvidas não poderão ser respondidas pela Equipe UBS via chat até que uma UBS oficial seja vinculada ao seu perfil.',
@@ -710,13 +740,16 @@ class _ChatScreenState extends State<ChatScreen> {
     if (_currentQuestion >= 0 && _questions[_currentQuestion].multiple) {
       if (option == 'Concluir seleção') {
         if (_multiSelection.isEmpty) {
-          setState(() => _messages.add(ChatMessage(
+          setState(() {
+            _cardFeedback = 'Selecione pelo menos uma opção ou toque em “Escrever minha resposta”.';
+            _messages.add(ChatMessage(
                 text: 'Selecione pelo menos uma opção ou toque em “Escrever minha resposta”.',
                 isUser: false,
                 options: [..._questions[_currentQuestion].options, 'Concluir seleção', 'Escrever minha resposta',
                   if (BirthPlanExplanations.forQuestion(_questions[_currentQuestion].id) != null)
                     'Quero entender melhor'],
-              )));
+              ));
+          });
           _scrollToBottom();
           return;
         }
@@ -740,12 +773,356 @@ class _ChatScreenState extends State<ChatScreen> {
     _send(option);
   }
 
+
+  void _resetCardScrollToTop() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || !_cardScrollController.hasClients) return;
+      // Novo card sempre inicia do comeco; o deslocamento do card anterior
+      // nao deve ser herdado mesmo quando o anterior era muito longo.
+      _cardScrollController.jumpTo(0);
+    });
+  }
+
+  void _enableWritingMode() {
+    if (!mounted) return;
+    setState(() {
+      _textInputEnabled = true;
+      _writingModeSelected = true;
+      _cardFeedback = null;
+    });
+    // Fazer o toque produzir feedback imediato e abrir o teclado,
+    // inclusive se o campo ja estiver disponivel para a pergunta.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted && _textInputEnabled) _inputFocusNode.requestFocus();
+    });
+  }
+
   void _scrollToBottom() {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (_scrollController.hasClients) {
         _scrollController.animateTo(_scrollController.position.maxScrollExtent, duration: const Duration(milliseconds: 250), curve: Curves.easeOut);
       }
     });
+  }
+
+
+
+  Future<void> _toggleQuestionVoice() async {
+    if (_currentQuestion < 0 || _currentQuestion >= _questions.length) return;
+    if (_readingVoice) {
+      await _tts.stop();
+      if (mounted) setState(() => _readingVoice = false);
+      return;
+    }
+
+    // Nunca ativa voz em nuvem: apenas vozes locais ja instaladas no Android.
+    if (kIsWeb || defaultTargetPlatform != TargetPlatform.android) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+        content: Text('A leitura em voz alta será disponibilizada no aplicativo Android.'),
+      ));
+      return;
+    }
+
+    try {
+      final available = await _tts.getVoices;
+      final voices = available is List ? available.whereType<Map>().toList() : <Map>[];
+      Map? localVoice;
+      for (final voice in voices) {
+        final locale = voice['locale']?.toString().replaceAll('_', '-').toLowerCase();
+        final requiresNetwork = voice['network_required'];
+        if (locale == 'pt-br' &&
+            (requiresNetwork == false || requiresNetwork == 'false' || requiresNetwork == 0)) {
+          localVoice = voice;
+          break;
+        }
+      }
+      if (localVoice == null) {
+        if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+          content: Text('Este celular não disponibilizou uma voz local em português. Você pode continuar usando a Petita normalmente.'),
+        ));
+        return;
+      }
+      await _tts.setVoice({
+        'name': localVoice['name'].toString(),
+        'locale': localVoice['locale'].toString(),
+      });
+      await _tts.setSpeechRate(0.46);
+      final q = _questions[_currentQuestion];
+      final text = [
+        q.question,
+        if (q.options.isNotEmpty) 'Alternativas: ${q.options.join('. ')}.',
+        if (_showCardExplanation)
+          BirthPlanExplanations.forQuestion(q.id) ?? '',
+      ].join(' ');
+      setState(() => _readingVoice = true);
+      await _tts.speak(text);
+    } catch (_) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+        content: Text('Não foi possível ler a pergunta neste aparelho. O preenchimento em texto continua disponível.'),
+      ));
+      if (mounted) setState(() => _readingVoice = false);
+    }
+  }
+
+  bool get _canDeferCurrentQuestion {
+    if (_currentQuestion < 0 || _currentQuestion >= _questions.length) return false;
+    const administrative = {'nome_gestante', 'ubs_referencia', 'dpp', 'semanas_gestacao'};
+    return !administrative.contains(_questions[_currentQuestion].id);
+  }
+
+  Future<void> _deferCurrentQuestion() async {
+    if (_answering || !_canDeferCurrentQuestion) return;
+    _answering = true;
+    try {
+      final q = _questions[_currentQuestion];
+      await _storage.deferQuestionForConsultation(q.id);
+      if (!mounted) return;
+      setState(() {
+        _messages.add(ChatMessage(
+          text: 'Vou conversar sobre esta pergunta na próxima consulta.',
+          isUser: true,
+        ));
+        _currentQuestion++;
+        _multiSelection.clear();
+        _textInputEnabled = false;
+      });
+      if (_currentQuestion >= _questions.length) {
+        setState(() {
+          _messages.add(const ChatMessage(
+            text: 'Seu roteiro está pronto. As perguntas deixadas para a próxima consulta estão em Meu Plano de Parto; não foram registradas como escolhas.',
+            isUser: false,
+            options: ['Ver meu plano'],
+          ));
+          _currentQuestion = -1;
+          _textInputEnabled = true;
+        });
+      } else {
+        await _showCurrentQuestion();
+      }
+    } finally {
+      _answering = false;
+    }
+  }
+
+
+
+  // Um unico painel centralizado, com margens que diminuem nos celulares
+  // estreitos. O conteudo cresce verticalmente e rola: nunca e comprimido
+  // a uma altura fixa nem cortado quando o tamanho da fonte aumenta.
+  Widget _buildAdaptivePanel({required Widget child}) {
+    return LayoutBuilder(builder: (context, constraints) {
+      final width = constraints.maxWidth;
+      final compact = width < 360;
+      final lowHeight = MediaQuery.sizeOf(context).height < 700;
+      final outer = compact ? 8.0 : width < 430 ? 12.0 : 20.0;
+      final inner = compact ? 12.0 : width < 430 ? 16.0 : 24.0;
+      return SingleChildScrollView(
+        key: const Key('petita_cards_scroll'),
+        controller: _cardScrollController,
+        keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+        padding: EdgeInsets.fromLTRB(
+          outer, lowHeight ? 8 : 16, outer, 20,
+        ),
+        child: Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 660),
+            child: Material(
+              color: Colors.white,
+              elevation: 1.5,
+              borderRadius: BorderRadius.circular(compact ? 18 : 24),
+              child: Container(
+                width: double.infinity,
+                padding: EdgeInsets.all(inner),
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(compact ? 18 : 24),
+                  border: Border.all(color: const Color(0xFFEDE3F8)),
+                ),
+                child: child,
+              ),
+            ),
+          ),
+        ),
+      );
+    });
+  }
+
+  Widget _buildPronounsCard() {
+    const options = [
+      'Ela/dela',
+      'Ele/dele',
+      'Elu/delu',
+      'Prefiro que usem meu nome',
+      'Quero escrever outra forma',
+      'Prefiro não informar',
+    ];
+    return _buildAdaptivePanel(
+      child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+        const Text('COMO PREFERE SER TRATADA?', style: TextStyle(
+          fontWeight: FontWeight.bold, color: AppColors.primaryPink,
+        )),
+        const SizedBox(height: 10),
+        const Text('Antes de continuar, como prefere que a Petita e a equipe se refiram a você?',
+            style: TextStyle(fontSize: 19, height: 1.3, fontWeight: FontWeight.bold)),
+        const SizedBox(height: 10),
+        const Text('Essa escolha é opcional e não muda seus cuidados de saúde.'),
+        const SizedBox(height: 16),
+        ...options.map((o) => Padding(
+          padding: const EdgeInsets.only(bottom: 9),
+          child: _ChoicePill(
+            label: o,
+            icon: _optionIcon(o),
+            onTap: () => _handleOption(o),
+          ),
+        )),
+        if (_pronounCustomInput)
+          const Padding(
+            padding: EdgeInsets.only(top: 6),
+            child: Text('Escreva sua preferência no campo abaixo e toque em enviar.'),
+          ),
+      ]),
+    );
+  }
+
+  Widget _buildQuestionCard() {
+    final q = _questions[_currentQuestion];
+    final options = <String>[
+      ...q.options,
+      if (q.multiple) 'Concluir seleção',
+      if (q.options.isNotEmpty) 'Escrever minha resposta',
+    ];
+    final explanation = BirthPlanExplanations.forQuestion(q.id);
+    final compact = MediaQuery.sizeOf(context).width < 360;
+    return _buildAdaptivePanel(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Text(q.section.toUpperCase(),
+              style: const TextStyle(
+                color: AppColors.primaryPink,
+                fontWeight: FontWeight.w800,
+                letterSpacing: 0.5,
+              )),
+          const SizedBox(height: 9),
+          Text(q.question,
+              style: TextStyle(
+                fontSize: compact ? 19 : 21,
+                height: 1.3,
+                fontWeight: FontWeight.w800,
+                color: AppColors.petDarkBlue,
+              )),
+          const SizedBox(height: 14),
+          OutlinedButton.icon(
+            key: const Key('petita_voice_button'),
+            onPressed: _toggleQuestionVoice,
+            style: OutlinedButton.styleFrom(
+              minimumSize: const Size(0, 48),
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+            ),
+            icon: Icon(_readingVoice ? Icons.stop_circle_outlined : Icons.volume_up_outlined),
+            label: Text(
+              _readingVoice ? 'Parar leitura' : 'Ouvir pergunta e alternativas',
+              textAlign: TextAlign.center,
+              softWrap: true,
+            ),
+          ),
+          const SizedBox(height: 16),
+          ...options.map((option) {
+            final isSelected = (q.multiple && _multiSelection.contains(option)) ||
+                (option == 'Escrever minha resposta' && _writingModeSelected);
+            return Padding(
+              padding: const EdgeInsets.only(bottom: 9),
+              child: _ChoicePill(
+                label: option,
+                icon: isSelected && option == 'Escrever minha resposta'
+                    ? Icons.check_circle_rounded
+                    : (option == 'Concluir seleção'
+                        ? Icons.check_circle_outline : _optionIcon(option)),
+                selected: isSelected,
+                primary: option == 'Concluir seleção',
+                help: false,
+                onTap: () => _handleOption(option),
+              ),
+            );
+          }),
+          if (_cardFeedback != null)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 12),
+              child: Text(_cardFeedback!, style: const TextStyle(
+                  color: AppColors.petOrange, fontWeight: FontWeight.bold)),
+            ),
+          if (_writingModeSelected)
+            Semantics(
+              liveRegion: true,
+              child: Container(
+                key: const Key('petita_writing_confirmation'),
+                margin: const EdgeInsets.only(bottom: 12),
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 11),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF3EBFF),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: AppColors.primaryPink.withAlpha(95)),
+                ),
+                child: const Row(
+                  children: [
+                    Icon(Icons.check_circle, color: AppColors.primaryPink, size: 20),
+                    SizedBox(width: 9),
+                    Expanded(
+                      child: Text(
+                        'Modo escrita ativado. Digite abaixo e toque em enviar.',
+                        style: TextStyle(
+                          color: AppColors.petDarkBlue,
+                          fontSize: 13,
+                          height: 1.3,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          if (explanation != null) ...[
+            TextButton.icon(
+              onPressed: () => setState(
+                  () => _showCardExplanation = !_showCardExplanation),
+              icon: const Icon(Icons.lightbulb_outline),
+              label: Text(
+                _showCardExplanation ? 'Ocultar explicação' : 'Quero entender melhor',
+                textAlign: TextAlign.center,
+              ),
+            ),
+            if (_showCardExplanation)
+              Semantics(
+                liveRegion: true,
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                  child: Text(explanation,
+                      style: const TextStyle(height: 1.4)),
+                ),
+              ),
+          ],
+          if (_canDeferCurrentQuestion) ...[
+            const Divider(height: 24),
+            OutlinedButton.icon(
+              onPressed: _deferCurrentQuestion,
+              style: OutlinedButton.styleFrom(
+                minimumSize: const Size(0, 52),
+                padding: const EdgeInsets.symmetric(
+                    horizontal: 10, vertical: 12),
+              ),
+              icon: const Icon(Icons.bookmark_add_outlined),
+              label: const Text('Conversar sobre isto na próxima consulta',
+                  textAlign: TextAlign.center),
+            ),
+            const SizedBox(height: 8),
+            const Text(
+              'Esta pergunta ficará em aberto e poderá ser respondida depois, com a profissional.',
+              style: TextStyle(fontSize: 12.5, color: AppColors.textPrimary),
+            ),
+          ],
+        ],
+      ),
+    );
   }
 
   @override
@@ -765,7 +1142,11 @@ class _ChatScreenState extends State<ChatScreen> {
               totalSteps: _visibleTotalSteps,
             ),
             Expanded(
-              child: ListView.builder(
+              child: _awaitingPronouns
+                  ? _buildPronounsCard()
+                  : _currentQuestion >= 0
+                      ? _buildQuestionCard()
+                      : ListView.builder(
                 controller: _scrollController,
                 padding: const EdgeInsets.fromLTRB(14, 14, 14, 14),
                 itemCount: _messages.length + (_petitaSearching ? 1 : 0),
@@ -803,11 +1184,17 @@ class _ChatScreenState extends State<ChatScreen> {
                 },
               ),
             ),
-            _ChatInput(
-              controller: _controller,
-              enabled: _textInputEnabled,
-              onSend: () => _send(),
-            ),
+            // Nos cards de alternativas, nao ocupar a parte inferior
+            // da tela com um campo desabilitado e avisos repetidos.
+            // O campo reaparece automaticamente quando a usuaria escolhe
+            // escrever uma resposta ou retorna ao chat.
+            if (_textInputEnabled || (!_awaitingPronouns && _currentQuestion < 0))
+              _ChatInput(
+                controller: _controller,
+                focusNode: _inputFocusNode,
+                enabled: _textInputEnabled,
+                onSend: () => _send(),
+              ),
           ],
         ),
       ),
@@ -846,42 +1233,107 @@ class _ChatHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final size = MediaQuery.sizeOf(context);
+    final narrow = size.width < 370;
+    final short = size.height < 700;
+    final keyboardVisible = MediaQuery.viewInsetsOf(context).bottom > 0;
     return Container(
-      padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
-      decoration: BoxDecoration(
-        gradient: const LinearGradient(colors: [Color(0xFF6332AB), Color(0xFFAB53D8), Color(0xFFE56BAC)]),
-        boxShadow: [BoxShadow(color: Colors.black.withAlpha((255 * 0.04).round()), blurRadius: 12, offset: const Offset(0, 5))],
+      padding: EdgeInsets.fromLTRB(
+        narrow ? 8 : 16,
+        short ? 6 : 12,
+        narrow ? 8 : 16,
+        short ? 8 : 16,
       ),
-      child: Column(children: [
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          colors: [Color(0xFF6332AB), Color(0xFFAB53D8), Color(0xFFE56BAC)],
+        ),
+        boxShadow: [
+          BoxShadow(color: Colors.black.withAlpha(10),
+              blurRadius: 12, offset: const Offset(0, 5)),
+        ],
+      ),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
         Row(children: [
-          InkWell(
-            onTap: () => Navigator.pop(context),
-            borderRadius: BorderRadius.circular(18),
-            child: const Padding(padding: EdgeInsets.all(8), child: Icon(Icons.arrow_back, color: Colors.white)),
+          IconButton(
+            tooltip: 'Voltar',
+            visualDensity: VisualDensity.compact,
+            onPressed: () => Navigator.pop(context),
+            icon: const Icon(Icons.arrow_back, color: Colors.white),
           ),
-          Container(padding: const EdgeInsets.all(3), decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16), boxShadow: [BoxShadow(color: AppColors.primaryPink.withAlpha((255 * 0.14).round()), blurRadius: 12)]), child: CircleAvatar(radius: 19, backgroundColor: AppColors.softPink, child: ClipOval(child: Image.asset('assets/images/petita.png', fit: BoxFit.cover)))),
-          const SizedBox(width: 10),
-          const Expanded(
-            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text('Petita', style: TextStyle(fontWeight: FontWeight.w900, color: Colors.white, fontSize: 19)),
-              Text('Com você em cada escolha 💗', style: TextStyle(color: Colors.white, fontSize: 12)),
-            ]),
+          Container(
+            padding: const EdgeInsets.all(3),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(14),
+            ),
+            child: CircleAvatar(
+              radius: narrow ? 16 : 19,
+              backgroundColor: AppColors.softPink,
+              child: ClipOval(child: Image.asset(
+                  'assets/images/petita.png', fit: BoxFit.cover)),
+            ),
           ),
-          IconButton(onPressed: () => Navigator.pushNamed(context, AppRoutes.profile), icon: const Icon(Icons.person_outline, color: Colors.white)),
+          const SizedBox(width: 9),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text('Petita',
+                    style: TextStyle(
+                        fontWeight: FontWeight.w900,
+                        color: Colors.white, fontSize: 19)),
+                if (!short && !narrow)
+                  const Text('Com você em cada escolha 💗',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(color: Colors.white, fontSize: 12)),
+              ],
+            ),
+          ),
+          IconButton(
+            tooltip: 'Meu perfil',
+            visualDensity: VisualDensity.compact,
+            onPressed: () => Navigator.pushNamed(context, AppRoutes.profile),
+            icon: const Icon(Icons.person_outline, color: Colors.white),
+          ),
         ]),
-        if (inPlanFlow) ...[
-          const SizedBox(height: 10),
-          Row(children: [
-            Flexible(child: Text(currentSection, style: const TextStyle(fontWeight: FontWeight.w800, color: Colors.white), overflow: TextOverflow.ellipsis)),
-            const Spacer(),
-            Text('Etapa $currentStep de $totalSteps', style: const TextStyle(fontSize: 12, color: Colors.white, fontWeight: FontWeight.w800)),
-          ]),
-          const SizedBox(height: 8),
+        if (inPlanFlow && !keyboardVisible) ...[
+          SizedBox(height: short ? 5 : 10),
+          if (narrow)
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(currentSection, maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                        fontWeight: FontWeight.w800, color: Colors.white)),
+                Text('Etapa $currentStep de $totalSteps',
+                    style: const TextStyle(
+                        fontSize: 12, color: Colors.white,
+                        fontWeight: FontWeight.w800)),
+              ],
+            )
+          else
+            Row(children: [
+              Expanded(
+                child: Text(currentSection, maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                        fontWeight: FontWeight.w800, color: Colors.white)),
+              ),
+              const SizedBox(width: 10),
+              Text('Etapa $currentStep de $totalSteps',
+                  style: const TextStyle(
+                      fontSize: 12, color: Colors.white,
+                      fontWeight: FontWeight.w800)),
+            ]),
+          SizedBox(height: short ? 5 : 8),
           ClipRRect(
             borderRadius: BorderRadius.circular(999),
             child: LinearProgressIndicator(
               value: progress,
-              minHeight: 8,
+              minHeight: short ? 5 : 8,
               backgroundColor: Colors.white24,
               valueColor: const AlwaysStoppedAnimation<Color>(Colors.white),
             ),
@@ -1003,16 +1455,23 @@ class _ChoicePill extends StatelessWidget {
           border: Border.all(color: help ? const Color(0xFFE6A34E) : AppColors.primaryPink.withAlpha((255 * 0.7).round())),
           boxShadow: [BoxShadow(color: Colors.black.withAlpha((255 * 0.025).round()), blurRadius: 6, offset: const Offset(0, 3))],
         ),
-        constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width - 36),
-        child: Row(mainAxisSize: MainAxisSize.max, children: [
-          Icon(icon, size: 20, color: filled ? Colors.white : (help ? const Color(0xFF8B5D1D) : AppColors.primaryPink)),
-          const SizedBox(width: 7),
-          Flexible(
+        constraints: const BoxConstraints(minHeight: 54),
+        child: Row(children: [
+          Icon(icon, size: 20,
+              color: filled ? Colors.white
+                  : (help ? const Color(0xFF8B5D1D) : AppColors.primaryPink)),
+          const SizedBox(width: 10),
+          Expanded(
             child: Text(
               label,
               softWrap: true,
-              overflow: TextOverflow.visible,
-              style: TextStyle(fontSize: 15, color: filled ? Colors.white : (help ? const Color(0xFF8B5D1D) : AppColors.petDarkBlue), fontWeight: FontWeight.w700),
+              style: TextStyle(
+                fontSize: 15,
+                height: 1.3,
+                color: filled ? Colors.white
+                    : (help ? const Color(0xFF8B5D1D) : AppColors.petDarkBlue),
+                fontWeight: FontWeight.w700,
+              ),
             ),
           ),
         ]),
@@ -1022,52 +1481,64 @@ class _ChoicePill extends StatelessWidget {
 }
 
 class _ChatInput extends StatelessWidget {
-  const _ChatInput({required this.controller, required this.enabled, required this.onSend});
+  const _ChatInput({required this.controller, required this.focusNode, required this.enabled, required this.onSend});
   final TextEditingController controller;
+  final FocusNode focusNode;
   final bool enabled;
   final VoidCallback onSend;
 
   @override
   Widget build(BuildContext context) {
+    final keyboardVisible = MediaQuery.viewInsetsOf(context).bottom > 0;
+    final short = MediaQuery.sizeOf(context).height < 700;
     return SafeArea(
       top: false,
       child: Container(
-        padding: const EdgeInsets.fromLTRB(14, 8, 14, 10),
+        padding: EdgeInsets.fromLTRB(
+            12, 8, 12, keyboardVisible ? 5 : 8),
         color: AppColors.background,
         child: Column(mainAxisSize: MainAxisSize.min, children: [
           Row(children: [
             Expanded(
               child: TextField(
                 controller: controller,
+                focusNode: focusNode,
                 enabled: enabled,
                 minLines: 1,
-                maxLines: 4,
+                maxLines: 3,
+                textInputAction: TextInputAction.send,
                 decoration: InputDecoration(
-                  hintText: enabled ? 'Digite sua mensagem...' : 'Escolha uma opção ou toque em “Escrever minha resposta”',
+                  hintText: enabled
+                      ? 'Digite sua resposta...'
+                      : 'Escolha uma alternativa acima',
+                  isDense: true,
+                  contentPadding: const EdgeInsets.symmetric(
+                      horizontal: 12, vertical: 12),
                 ),
                 onSubmitted: (_) => onSend(),
               ),
             ),
             const SizedBox(width: 8),
-            FloatingActionButton.small(
+            IconButton.filled(
+              tooltip: 'Enviar resposta',
               onPressed: enabled ? onSend : null,
-              backgroundColor: enabled ? AppColors.primaryPink : Colors.grey,
-              foregroundColor: Colors.white,
-              child: const Icon(Icons.send),
+              style: IconButton.styleFrom(
+                backgroundColor: enabled ? AppColors.primaryPink : Colors.grey,
+                foregroundColor: Colors.white,
+                minimumSize: const Size(48, 48),
+              ),
+              icon: const Icon(Icons.send),
             ),
           ]),
-          const SizedBox(height: 6),
-          const Text(
-            'A Petita pode cometer erros. Confirme informações importantes com a equipe de saúde.',
-            textAlign: TextAlign.center,
-            style: TextStyle(fontSize: 10.5, color: Color(0xFF777777), height: 1.2),
-          ),
-          const SizedBox(height: 4),
-          const Text(
-            'Desenvolvedor: Lucca Araújo',
-            textAlign: TextAlign.center,
-            style: TextStyle(fontSize: 10, color: Color(0xFF777777)),
-          ),
+          if (!keyboardVisible && !short) ...[
+            const SizedBox(height: 5),
+            const Text(
+              'Confirme informações de saúde com a equipe da UBS.',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                  fontSize: 11, color: Color(0xFF777777), height: 1.2),
+            ),
+          ],
         ]),
       ),
     );
