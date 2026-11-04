@@ -17,6 +17,7 @@ Projeto: Flutter Android/Web, plano de parto e orientação educativa; dados sob
 - Nenhum CI verde prova LGPD/segurança remota/homologação clínica. Distinguir **confirmado / suspeito / não testado**.
 
 ## Anti-travamento obrigatório
+- Use preferencialmente o executor versionado: bash tool/run_bounded_audit.sh NOME SEGUNDOS comando argumentos. Ele mata testes pendurados, limita saída e guarda log em /tmp (não commitar logs). Ex.: bash tool/run_bounded_audit.sh tests 480 flutter test --no-pub.
 - Cada comando externo potencialmente lento deve ter limite de execução (timeout -k 15s SEGUNDOS comando, quando disponível). Ex.: dependências 300 s; teste focado 120–180 s; suíte 480 s; build 900 s. Reduza ainda mais quando não houver progresso.
 - **Um teste pendurado nunca pode monopolizar a tarefa.** Interromper, coletar trecho útil do log e classificar como TIMEOUT/BLOQUEADO. Retentar **uma vez somente** se houver correção concreta e limitada; depois continuar a próxima prioridade.
 - Nunca usar loops de polling infinitos, sleep longo, espera sem deadline, download sem limites, nem ficar repetindo o mesmo comando com o mesmo erro. Não esconder testes falhos nem remover cobertura só para gerar verde.
