@@ -1,5 +1,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
+import 'package:flutter_tts/flutter_tts.dart';
 import '../../config/app_routes.dart';
 import '../../config/app_theme.dart';
 import '../../models/birth_plan_answer.dart';
@@ -41,6 +43,8 @@ class _ChatScreenState extends State<ChatScreen> {
   bool _pronounCustomInput = false;
   bool _petitaSearching = false;
   bool _showCardExplanation = false;
+  final FlutterTts _tts = FlutterTts();
+  bool _readingVoice = false;
   int _typingDots = 1;
   Timer? _typingTimer;
   _QuestionDialogResult? _pendingUbsQuestion;
@@ -50,12 +54,19 @@ class _ChatScreenState extends State<ChatScreen> {
   void initState() {
     super.initState();
     _chatbot = ChatbotService(FaqSearchService());
+    _tts.setCompletionHandler(() {
+      if (mounted) setState(() => _readingVoice = false);
+    });
+    _tts.setErrorHandler((_) {
+      if (mounted) setState(() => _readingVoice = false);
+    });
     _init();
   }
 
   @override
   void dispose() {
     _typingTimer?.cancel();
+    _tts.stop();
     _controller.dispose();
     _scrollController.dispose();
     super.dispose();
@@ -288,6 +299,8 @@ class _ChatScreenState extends State<ChatScreen> {
     final q = _questions[_currentQuestion];
     _multiSelection.clear();
     _showCardExplanation = false;
+    await _tts.stop();
+    if (mounted) setState(() => _readingVoice = false);
     final options = q.multiple ? [...q.options, 'Concluir seleção'] : [...q.options];
     if (q.options.isNotEmpty) options.add('Escrever minha resposta');
     if (BirthPlanExplanations.forQuestion(q.id) != null) {
@@ -758,6 +771,64 @@ class _ChatScreenState extends State<ChatScreen> {
   }
 
 
+
+  Future<void> _toggleQuestionVoice() async {
+    if (_currentQuestion < 0 || _currentQuestion >= _questions.length) return;
+    if (_readingVoice) {
+      await _tts.stop();
+      if (mounted) setState(() => _readingVoice = false);
+      return;
+    }
+
+    // Nunca ativa voz em nuvem: apenas vozes locais ja instaladas no Android.
+    if (kIsWeb || defaultTargetPlatform != TargetPlatform.android) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+        content: Text('A leitura em voz alta será disponibilizada no aplicativo Android.'),
+      ));
+      return;
+    }
+
+    try {
+      final available = await _tts.getVoices;
+      final voices = available is List ? available.whereType<Map>().toList() : <Map>[];
+      Map? localVoice;
+      for (final voice in voices) {
+        final locale = voice['locale']?.toString().replaceAll('_', '-').toLowerCase();
+        final requiresNetwork = voice['network_required'];
+        if (locale == 'pt-br' &&
+            (requiresNetwork == false || requiresNetwork == 'false' || requiresNetwork == 0)) {
+          localVoice = voice;
+          break;
+        }
+      }
+      if (localVoice == null) {
+        if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+          content: Text('Este celular não disponibilizou uma voz local em português. Você pode continuar usando a Petita normalmente.'),
+        ));
+        return;
+      }
+      await _tts.setVoice({
+        'name': localVoice['name'].toString(),
+        'locale': localVoice['locale'].toString(),
+      });
+      await _tts.setSpeechRate(0.46);
+      final q = _questions[_currentQuestion];
+      final text = [
+        q.question,
+        if (q.options.isNotEmpty) 'Alternativas: ${q.options.join('. ')}.',
+        if (_showCardExplanation)
+          BirthPlanExplanations.forQuestion(q.id) ?? '',
+      ].join(' ');
+      setState(() => _readingVoice = true);
+      await _tts.speak(text);
+    } catch (_) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+        content: Text('Não foi possível ler a pergunta neste aparelho. O preenchimento em texto continua disponível.'),
+      ));
+      if (mounted) setState(() => _readingVoice = false);
+    }
+  }
+
   bool get _canDeferCurrentQuestion {
     if (_currentQuestion < 0 || _currentQuestion >= _questions.length) return false;
     const administrative = {'nome_gestante', 'ubs_referencia', 'dpp', 'semanas_gestacao'};
@@ -825,6 +896,12 @@ class _ChatScreenState extends State<ChatScreen> {
               const SizedBox(height: 10),
               Text(q.question,
                   style: const TextStyle(fontSize: 21, height: 1.35, fontWeight: FontWeight.w800, color: AppColors.petDarkBlue)),
+              const SizedBox(height: 12),
+              OutlinedButton.icon(
+                onPressed: _toggleQuestionVoice,
+                icon: Icon(_readingVoice ? Icons.stop_circle_outlined : Icons.volume_up_outlined),
+                label: Text(_readingVoice ? 'Parar leitura' : 'Ouvir pergunta e alternativas'),
+              ),
               const SizedBox(height: 18),
               ...options.map((option) {
                 final isSelected = q.multiple && _multiSelection.contains(option);
