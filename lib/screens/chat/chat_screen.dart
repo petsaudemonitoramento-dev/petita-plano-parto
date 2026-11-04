@@ -301,8 +301,10 @@ class _ChatScreenState extends State<ChatScreen> {
     _multiSelection.clear();
     _showCardExplanation = false;
     _cardFeedback = null;
-    await _tts.stop();
-    if (mounted) setState(() => _readingVoice = false);
+    if (_readingVoice) {
+      try { await _tts.stop(); } catch (_) { /* Voice playback is optional. */ }
+      if (mounted) setState(() => _readingVoice = false);
+    }
     final options = q.multiple ? [...q.options, 'Concluir seleção'] : [...q.options];
     if (q.options.isNotEmpty) options.add('Escrever minha resposta');
     if (BirthPlanExplanations.forQuestion(q.id) != null) {
