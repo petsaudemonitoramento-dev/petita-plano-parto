@@ -212,7 +212,8 @@ void main() {
     final questions = await BirthPlanFlowService().loadQuestions();
     await reachPriorities(tester);
     expect(questions[5].id, 'prioridade_parto');
-    expect(tester.widget<TextField>(find.byType(TextField).first).enabled, isFalse);
+    // No modo de cards, o campo inutilizado some para liberar altura.
+    expect(find.byType(TextField), findsNothing);
     await tapChoice(tester, 'Concluir seleção');
     expect(await StorageService().loadAnswers(), hasLength(5));
     await tapChoice(tester, 'Escrever minha resposta');
