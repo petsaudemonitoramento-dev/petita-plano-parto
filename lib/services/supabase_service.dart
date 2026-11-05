@@ -101,7 +101,14 @@ class SupabaseService {
 
   SupabaseClient get _client => Supabase.instance.client;
 
-  User? get currentUser => _client.auth.currentUser;
+  User? get currentUser {
+    try {
+      return _client.auth.currentUser;
+    } catch (_) {
+      // The offline core also runs when the optional backend was not initialized.
+      return null;
+    }
+  }
   bool get isLoggedIn => currentUser != null;
 
   Future<OnlineStatus> checkConnection() async {

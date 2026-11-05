@@ -1,0 +1,139 @@
+name: Android interno — APK e configuração release
+
+on:
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  android-build:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+          cache: gradle
+      - uses: android-actions/setup-android@v3
+        with:
+          packages: platform-tools
+          log-accepted-android-sdk-licenses: false
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.44.0'
+          channel: stable
+          cache: true
+      - name: Preparar SDK Android fixado
+        run: sdkmanager 'platforms;android-36' 'build-tools;36.0.0' 'ndk;28.2.13676358'
+      - name: Instalar dependências estritamente
+        run: |
+          flutter pub get --enforce-lockfile
+          git diff --exit-code -- pubspec.yaml pubspec.lock
+      - name: Preparar ferramentas de validação PDF
+        run: sudo apt-get update -qq && sudo apt-get install -y poppler-utils
+      - name: Testar detector de credenciais sem falsos positivos
+        run: python3 -m unittest discover -s tools -p test_android_secret_scanner.py -v
+      - name: Analisar código
+        run: flutter analyze --no-pub
+      - name: Testar funções offline e inicialização sem backend
+        run: flutter test --no-pub
+      - name: Confirmar estrutura Android e bytes dos assets canônicos
+        run: python3 tools/inspect_android_artifacts.py --source-only
+      - name: Compilar APK debug interno sem backend
+        run: flutter build apk --debug --no-pub --dart-define=PETITA_INTERNAL_TEST=true
+      # Independent gate: a safe debug APK remains downloadable even if the
+      # separate unsigned release configuration needs further investigation.
+      - name: Inspecionar APK debug antes de disponibilizar
+        env:
+          PETITA_PR_HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: python3 tools/inspect_android_artifacts.py --debug-only
+      - name: Guardar APK debug aprovado para testes internos
+        uses: actions/upload-artifact@v4
+        with:
+          name: petita-apk-debug-verificado-${{ github.run_id }}
+          retention-days: 7
+          if-no-files-found: error
+          path: build/app/outputs/flutter-apk/app-debug.apk
+      - name: Validar compilação release sem assinatura de distribuição
+        run: |
+          # Flutter 3.44 must regenerate registrants excluding dev-only plugins.
+          # --no-pub would reuse the debug integration_test registration here.
+          flutter build apk --release --dart-define=PETITA_INTERNAL_TEST=true
+          git diff --exit-code -- pubspec.yaml pubspec.lock
+      - name: Inspecionar APKs, permissões, assinatura e proveniência
+        env:
+          PETITA_PR_HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: python3 tools/inspect_android_artifacts.py
+      - name: Guardar diagnósticos de manifest mesmo em falha de inspeção
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: petita-android-manifest-diagnostics-${{ github.run_id }}
+          retention-days: 7
+          if-no-files-found: warn
+          path: |
+            build/android-evidence/*-manifest.xml
+            build/android-evidence/manifest-component-diagnostics.json
+      - name: Guardar exclusivamente artefatos de testes fictícios
+        uses: actions/upload-artifact@v4
+        with:
+          name: petita-android-internal-${{ github.run_id }}
+          retention-days: 7
+          if-no-files-found: error
+          path: |
+            build/app/outputs/flutter-apk/app-debug.apk
+            build/app/outputs/flutter-apk/app-release.apk
+            build/android-evidence/
+
+  android-emulator:
+    needs: android-build
+    runs-on: ubuntu-24.04
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+          cache: gradle
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.44.0'
+          channel: stable
+          cache: true
+      - name: Instalar dependências estritamente
+        run: flutter pub get --enforce-lockfile
+      - name: Permitir aceleração KVM no runner efêmero
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+      - name: Exercitar offline com dados sintéticos em Android 35
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 35
+          arch: x86_64
+          target: google_apis
+          profile: pixel_2
+          disable-animations: true
+          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
+          script: |
+            adb shell svc wifi disable
+            adb shell svc data disable
+            adb shell settings put global airplane_mode_on 1
+            flutter drive --driver=test_driver/integration_test.dart --target=integration_test/offline_android_test.dart --dart-define=PETITA_INTERNAL_TEST=true -d emulator-5554
+      - name: Guardar evidências de emulador, sem dados reais
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: petita-android-emulator-${{ github.run_id }}
+          retention-days: 7
+          if-no-files-found: warn
+          path: |
+            build/android-evidence/
+            build/integration_response_data.json
