@@ -1,0 +1,22 @@
+name: Testar fundação Neon isolada
+
+on:
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  postgres-authorization:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Preservar bytes do questionário canônico
+        run: python3 tools/check_frozen_questionnaire.py
+      - name: Validar sintaxe do runner Python
+        run: python3 -m py_compile tools/test_neon_foundation.py tools/check_frozen_questionnaire.py
+      - name: Aplicar migração e testar autorização em PostgreSQL descartável
+        run: python3 tools/test_neon_foundation.py
