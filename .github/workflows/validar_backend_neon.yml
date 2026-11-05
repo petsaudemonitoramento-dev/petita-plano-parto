@@ -1,0 +1,27 @@
+name: Validar API Petita Neon (sem deploy)
+on:
+  pull_request:
+    paths:
+      - 'backend/**'
+      - 'migrations/neon/**'
+      - '.github/workflows/validar_backend_neon.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  validar:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Testar politicas de acesso sem banco nem segredos
+        working-directory: backend
+        run: npm test
+      - name: Verificar sintaxe das rotas sem publicar endpoints
+        working-directory: backend
+        run: npm run check
+      - name: Validar dependencias do backend isolado
+        working-directory: backend
+        run: npm install --ignore-scripts --no-audit --no-fund

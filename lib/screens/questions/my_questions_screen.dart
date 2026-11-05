@@ -56,7 +56,7 @@ class _MyQuestionsScreenState extends State<MyQuestionsScreen> {
                 child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                   const Text('Respostas da Equipe UBS', style: TextStyle(fontSize: 21, fontWeight: FontWeight.w900, color: AppColors.petDarkBlue)),
                   const SizedBox(height: 8),
-                  const Text('Aqui você acompanha as dúvidas encaminhadas de forma anônima e lê as respostas enviadas pela sua UBS.'),
+                  const Text('Aqui você acompanha suas dúvidas encaminhadas à própria UBS e lê eventuais respostas. O canal não substitui atendimento presencial e não há garantia ou prazo de resposta.'),
                   const SizedBox(height: 10),
                   AppButton(label: 'Atualizar', icon: Icons.refresh, outlined: true, onPressed: _load),
                 ]),
@@ -87,7 +87,8 @@ class _MyQuestionsScreenState extends State<MyQuestionsScreen> {
 
   Widget _questionCard(PatientQuestionHistory question) {
     final answered = question.isAnswered;
-    final color = answered ? Colors.green : AppColors.petOrange;
+    final closed = question.status == 'encerrada_sem_resposta' || question.status == 'closed_without_response';
+    final color = answered ? Colors.green : closed ? AppColors.textPrimary : AppColors.petOrange;
     return Card(
       elevation: 0,
       margin: const EdgeInsets.only(bottom: 12),
@@ -99,9 +100,9 @@ class _MyQuestionsScreenState extends State<MyQuestionsScreen> {
           padding: const EdgeInsets.all(14),
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             Row(children: [
-              Icon(answered ? Icons.mark_chat_read_outlined : Icons.schedule_outlined, color: color),
+              Icon(answered ? Icons.mark_chat_read_outlined : closed ? Icons.cancel_outlined : Icons.schedule_outlined, color: color),
               const SizedBox(width: 8),
-              Expanded(child: Text(answered ? 'Resposta disponível' : 'Enviada para a UBS', style: TextStyle(fontWeight: FontWeight.w900, color: color))),
+              Expanded(child: Text(answered ? 'Resposta disponível' : closed ? 'Encerrada sem resposta' : 'Enviada para a UBS', style: TextStyle(fontWeight: FontWeight.w900, color: color))),
               Text(question.publicCode, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700)),
             ]),
             const SizedBox(height: 8),
@@ -127,11 +128,11 @@ class _MyQuestionsScreenState extends State<MyQuestionsScreen> {
               const SizedBox(height: 6),
               Text(question.questionText),
               const Divider(height: 28),
-              Text(question.isAnswered ? 'Resposta da Equipe UBS' : 'Aguardando resposta da Equipe UBS', style: const TextStyle(fontWeight: FontWeight.w900, color: AppColors.primaryPink)),
+              Text(question.isAnswered ? 'Resposta da Equipe UBS' : question.status == 'encerrada_sem_resposta' || question.status == 'closed_without_response' ? 'Encerrada sem resposta' : 'Sem resposta registrada', style: const TextStyle(fontWeight: FontWeight.w900, color: AppColors.primaryPink)),
               const SizedBox(height: 6),
               Text(question.isAnswered
                   ? question.answerText!
-                  : 'A resposta não é imediata e depende da disponibilidade da UBS.'),
+                  : 'Não há garantia ou prazo de resposta por este canal. Para dúvida urgente, procure atendimento presencial na sua UBS ou em serviço de urgência, conforme a situação.'),
               if (question.answeredAt != null) ...[
                 const SizedBox(height: 12),
                 Text('Respondida em ${_formatDate(question.answeredAt!)}', style: const TextStyle(fontSize: 12)),
