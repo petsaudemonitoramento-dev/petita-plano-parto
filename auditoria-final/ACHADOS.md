@@ -98,3 +98,6 @@ CONTIDO NO FONTE: RAG externo desligado por padrão. Reativação exige token va
 
 ## Atualização B — SEC-04
 P1 ABERTO, com plano detalhado e bloqueio em SEC04_PLANO_CIFRAGEM.md. Migração/backup/Keystore/Web e upgrade com assinatura histórica não homologados. Não houve substituição destrutiva nem alegação de cifragem implementada. Impede GO assistencial; documentação de registro pode explicitar esse limite.
+
+## B2 — gargalo medido de PDF
+CORRIGIDO: decodificação repetida de logo4520x4500 para exibição pequena. Cache proporcional600px: warm mediana1789→155,5ms; PDF716915→396162bytes;14 testes PDF aprovados(11s). Métricas Cloud debug, não de telefone. Sem alteração de assets originais/conteúdo clínico. Ver METRICAS_2026-11-06.md.

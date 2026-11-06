@@ -152,3 +152,7 @@ Comentário postado em #21: [link/ID ou "sem permissão"]
 ## B1 — SEC-04 avaliado / bloqueio explícito
 - Plano técnico detalhado em SEC04_PLANO_CIFRAGEM.md: envelope autenticado, chave Keystore, staging/journal/verificação, fallback/downgrade controlados, Web separado, backup/upgrade e testes de crash.
 - Não é seguro introduzir migração de chaves sem homologar upgrade/restauração. Nenhum dado antigo apagado, nenhuma cifragem improvisada. SEC-04 permanece P1 aberto.
+
+## B2 — métricas e PDF
+- FAQ: mediana902→602ms em cinco repetições com HTTP sintético900ms. PDF: baseline/patch sequenciais, warm mediana1789→155,5ms; tamanho716915→396162bytes, cold2103→1981ms. METRICAS_2026-11-06.md contém limites e comandos.
+- Patch do PDF só reduz proporcionalmente logos em cache de memória para600px, preservando originais e texto. image4.9.1 já transitiva, agora direta. 14 testes de regressão PDF passaram em11s; bootstrap/navegação nativa não otimizados sem métricas.
