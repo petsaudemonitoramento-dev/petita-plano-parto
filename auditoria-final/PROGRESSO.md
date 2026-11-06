@@ -86,3 +86,16 @@ Comentário postado em #21: [link/ID ou "sem permissão"]
 - Testes: 22 aprovados (4s); hashes originais. Bloqueios resolvidos: socket por permissão; git pelo uso da API.
 - Primeira tarefa: criar tool/test_edge_security.mjs para executar handlers reais com Deno.serve/env, createClient e fetch simulados; testar chave pública sem sessão, papéis paciente/equipe/admin inativo e efeitos privilegiados. Não acessar produção.
 
+## 2026-11-06 UTC — A1a concluído: fronteira Edge / P0 mínimo
+- SEC-01 comprovado: admin inativo recebia 200/202 e acionava service-role em remoção/processamento. Dois testes de autorização falharam antes (<1s); patch mínimo exige active===true. Depois: edge-after, 24 testes aprovados, 1s, deadline 60s.
+- SEC-02/03 comprovados no handler, sem alegação sobre implantação: chave pública sem identidade aciona provedor; diagnóstico interno volta ao caller. Caracterizações reproduzíveis, correções remetidas à Janela B.
+- SDK Deno não instalado: Node 24.19.0 executa handlers TS reais com stripTypeScriptTypes/VM, sem rede e sem secrets reais. Runner filho bloqueado; única retentativa justificada --test-isolation=none funciona.
+- Documentação Supabase consultada pelo search_docs: API keys e Securing Edge Functions confirmam distinção chave pública/identidade. Changelog via curl bloqueado no proxy (<1s), sem repetição. Nenhuma assinatura/API de produto foi migrada.
+- Próximo: armazenamento adversarial e fronteira Flutter/UBS. Código remoto/RLS continua não verificado; nenhum deploy.
+
+## HANDOFF atual — A1a (substitui A0)
+- Checkpoint anterior remoto: 7b0c3dcd785391ce3f5f6b488fbc92d07893a74e. Commit deste marco: fix(security): recusar administradores inativos nos handlers de documentos.
+- Comandos/resultados: storage baseline 22/22 (4s); edge antes 2 falhas esperadas (<1s); edge depois 24/24 (1s). Logs em /tmp, fora do Git. SEC-01 corrigido na branch, SEC-02/03 abertos.
+- Limite: nenhuma política implantada, autenticação JWT real ou isolamento remoto entre UBS foi exercitado. Sem produção, merge ou publicação.
+- Primeira tarefa exata: criar test/security_storage_audit_test.dart e executar com wrapper 180s e permissão de rede do sandbox; verificar dados UBS legados após revogação, escrita recusada, concorrência de dúvidas para consulta e persistência legível.
+
