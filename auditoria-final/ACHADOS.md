@@ -1,6 +1,6 @@
 # Achados técnicos — auditoria final Petita
 
-**Estado:** sem vulnerabilidades confirmadas por esta preparação. As notas abaixo são hipóteses de trabalho, a serem testadas pelo Codex.
+**Estado em 2026-11-06 / A0:** 22 testes existentes de storage/recuperação/consentimento aprovados (4s, wrapper 180s). Hipóteses de backend ainda em investigação. Nenhum resultado de mock comprova configuração implantada.
 
 ## Severidade e evidência
 - **P0:** exposição de dados/credenciais, acesso indevido, privilégio indevido, quebra de isolamento entre UBS, perda irrecuperável de dados, orientação clínica perigosa.

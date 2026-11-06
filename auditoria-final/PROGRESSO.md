@@ -1,6 +1,6 @@
 # Progresso auditável — Petita / Codex
 
-**Status global:** EM ANDAMENTO (diagnóstico inicial relatado pelo Codex; sem testes novos executados; checkpoint persistido via GitHub deste chat em 2026-11-05).
+**Status global:** JANELA A EM ANDAMENTO — retomada Cloud em 2026-11-06, A0 confirmado e 22 testes focalizados aprovados. Histórico anterior abaixo; resultados novos ao final.
 **Data da preparação:** 2026-11-04.
 **Repositório:** `petsaudemonitoramento-dev/petita-plano-parto`.
 **Branch inicial:** `audit/codex-final-petita-20261104` (isolada de `main`).
@@ -58,7 +58,7 @@ Comentário postado em #21: [link/ID ou "sem permissão"]
 - **Próxima ação exata:** confirmar baseline e hash do questionário, consultar matriz, executar teste sintético de maior impacto (autorização/isolamento UBS ou acesso RAG) com timeout, e registrar resultado em `ACHADOS.md`.
 - **Segunda janela:** só deve começar depois de classificar riscos com evidência; a análise estática não autoriza declarar GO ou vulnerabilidades P0 definitivas.
 
-## HANDOFF obrigatório — atualizado em 2026-11-05
+## HANDOFF anterior — atualizado em 2026-11-05 (histórico)
 
 - **Janela:** A (inspeção estática parcialmente relatada; testes ainda pendentes).
 - **Último commit feito pelo Codex nesta rodada:** NÃO CONFIRMADO; `git fetch` e escrita de conector falharam conforme relato.
@@ -69,3 +69,20 @@ Comentário postado em #21: [link/ID ou "sem permissão"]
 - **Riscos P0/P1 confirmados:** nenhum confirmado; hipóteses INSP-01/02/03/04 exigem provas.
 - **Primeira ação exata:** conferir commit HEAD/branch e hash canônico, ler `MATRIZ_CONVERGENCIA_2026-11-05.md`, então executar o primeiro teste sintético focalizado com prazo (`tool/run_bounded_audit.sh`) ou usar GitHub Actions sem publicação. Não repetir a comparação das quatro PRs salvo mudança na base.
 - **Bloqueio:** proxy no git fetch e conector na sessão anterior; usar checkout disponível, API GitHub ou análise estática, com uma tentativa justificada por bloqueio.
+
+## 2026-11-06 UTC — A0 concluído / A1–A2 em investigação
+- HANDOFF e matriz persistidos foram lidos, sem repetir comparação das PRs.
+- HEAD remoto inicial confirmado pela API: fed565e7062b03ba70345ee5fe8570c9b6ec1564; árvore d9b6b02535037c76dd4532ab9bfa096086f97637. Compare por SHA comprova somente documentação e wrapper além de main 5ec0a70. Código Cloud equivale à base auditada.
+- Flutter 3.44.0 / Dart 3.12.0: wrapper sdk, status 0, 1s.
+- SHA-256 inicial confirmado: 9dbc0ceebb6b507df1c5d15a812ddbb689fe2935e4ba8c8e9637f8de0d4678dd; 31 perguntas sem alterações.
+- Comando: bash tool/run_bounded_audit.sh storage-baseline 180 flutter test --no-pub test/storage_service_test.dart test/storage_recovery_test.dart test/consent_gate_test.dart. Bloqueado em 3s pelo sandbox (socket loopback errno 1), nenhum teste executado.
+- Única retentativa justificada: mesmo comando com permissão adicional de rede do sandbox, label storage-baseline-retry, status 0, 4s, **22 testes aprovados**. Fixtures SharedPreferences; nenhuma chamada produtiva.
+- git fetch limitado a 30s falhou em menos de 1s por proxy:8080; sem retentativa. API GitHub usada para leitura e commits remotos, sem push na main.
+- Próximos marcos: teste dinâmico dos handlers Edge com SDK/fetch falsos; testes adversariais locais e fronteira Flutter/UBS. Serviços e políticas implantadas continuam NÃO VERIFICADOS.
+
+## HANDOFF atual — A0
+- Último commit remoto anterior ao marco: fed565e7062b03ba70345ee5fe8570c9b6ec1564; checkpoint A0 identificável pelo commit docs(audit): confirmar baseline Cloud e 22 testes offline.
+- Local: branch de auditoria sobre main com documentos espelhados; não fazer push desse histórico divergente. Commits publicados pela API sobre HEAD remoto com lease.
+- Testes: 22 aprovados (4s); hashes originais. Bloqueios resolvidos: socket por permissão; git pelo uso da API.
+- Primeira tarefa: criar tool/test_edge_security.mjs para executar handlers reais com Deno.serve/env, createClient e fetch simulados; testar chave pública sem sessão, papéis paciente/equipe/admin inativo e efeitos privilegiados. Não acessar produção.
+
