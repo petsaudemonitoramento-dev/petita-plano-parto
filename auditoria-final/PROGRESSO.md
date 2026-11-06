@@ -124,3 +124,9 @@ Comentário postado em #21: [link/ID ou "sem permissão"]
 - Se git falhar: não retentar sem causa nova; API GitHub já funcionou para commits 7b0c3dc/61c07fd e comentários #21 IDs 6673524855/6674964673. Não alterar produção para preencher a lacuna SEC-09.
 - Acompanhamento A1–A4 publicado em #21, comentário 6675453775. Estado local antes deste HANDOFF: commit 103c730, sem mudanças pendentes de código; o ajuste deste arquivo será commitado separadamente. Histórico local difere do remoto por espelhamento inicial, não enviar com push.
 
+
+## Janela B — B0 / SEC-05 (2026-11-06)
+- Retomada exata e90bca6; fetch com permissão adicional de rede funcionou em <1s. Checkout alinhado ao histórico remoto; branch local anterior preservada em audit/local-janela-a-checkpoint. Hash inicial 9dbc0cee…4678dd, inalterado.
+- SEC-05: três contratos negativos falharam antes (sec05-before, 3s); depois 3 aprovados (sec05-after, 2s). Escritas/remoções verificam bool e recarga do backend; falha recarrega o estado anterior e lança erro seguro. Isso não prova fsync/sobrevivência a perda de energia.
+- UI não avança pergunta/confirmacão quando persistência falha; conserva texto digitado e mostra tentativa novamente. Notas, perfil, consentimento, preferências e exclusão usam tratamento explícito. Analyzer focal sem apontamentos (11s).
+- Próximo: SEC-06/07 para serialização das operações e eliminação de resíduo legado, depois disponibilidade FAQ/RAG. Regressão final invalidada pelo patch de storage será executada no gate B3.

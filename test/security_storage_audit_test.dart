@@ -1,17 +1,27 @@
 // Characterization of open findings, not proof of safe persistence.
 import 'dart:convert';
+import 'package:flutter/material.dart';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:plano_parto_pet_saude/models/birth_plan_answer.dart';
 import 'package:plano_parto_pet_saude/models/ubs_question.dart';
 import 'package:plano_parto_pet_saude/services/storage_service.dart';
+import 'package:plano_parto_pet_saude/screens/birth_plan/birth_plan_summary_screen.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:shared_preferences_platform_interface/shared_preferences_platform_interface.dart';
 
-class RejectingWrites extends InMemorySharedPreferencesStore {
-  RejectingWrites() : super.empty();
+class ControlledWrites extends InMemorySharedPreferencesStore {
+  ControlledWrites() : super.empty();
+  bool reject = false;
+  bool throwError = false;
   @override
-  Future<bool> setValue(String type, String key, Object value) async => false;
+  Future<bool> setValue(String type, String key, Object value) async {
+    if (reject) {
+      if (throwError) throw StateError('fixture write failure');
+      return false;
+    }
+    return super.setValue(type, key, value);
+  }
 }
 
 void main() {
@@ -44,23 +54,34 @@ void main() {
     // No current screen calls this legacy API; assess existing installs separately.
   });
 
-  test('[finding] rejected answer write reports success but disappears after reload', () async {
-    await SharedPreferences.getInstance();
-    SharedPreferencesStorePlatform.instance = RejectingWrites();
-    await StorageService().saveAnswers([
-      BirthPlanAnswer(questionId: 'fixture-question', values: ['SYNTHETIC-ANSWER']),
-    ]); // Completes normally despite underlying false result.
-    expect(await StorageService().loadAnswers(), hasLength(1)); // cache masks failure
-    await (await SharedPreferences.getInstance()).reload();
-    expect(await StorageService().loadAnswers(), isEmpty);
-  });
+  for (final throwsError in [false, true]) {
+    test('refused answer write preserves previous answers and reports failure ($throwsError)', () async {
+      final store = ControlledWrites();
+      SharedPreferencesStorePlatform.instance = store;
+      await StorageService().saveAnswers([
+        BirthPlanAnswer(questionId: 'old', values: ['PREVIOUS']),
+      ]);
+      store.reject = true;
+      store.throwError = throwsError;
+      await expectLater(StorageService().saveAnswers([
+        BirthPlanAnswer(questionId: 'new', values: ['NEW']),
+      ]), throwsA(isA<StateError>()));
+      expect((await StorageService().loadAnswers()).single.questionId, 'old');
+      await (await SharedPreferences.getInstance()).reload();
+      expect((await StorageService().loadAnswers()).single.values, ['PREVIOUS']);
+    });
+  }
 
-  test('[finding] rejected note write completes but is not durable', () async {
-    await SharedPreferences.getInstance();
-    SharedPreferencesStorePlatform.instance = RejectingWrites();
-    await StorageService().saveConsultationNotes('SYNTHETIC-NOTE');
+  test('refused note write retains durable previous note and reports failure', () async {
+    final store = ControlledWrites();
+    SharedPreferencesStorePlatform.instance = store;
+    await StorageService().saveConsultationNotes('PREVIOUS');
+    store.reject = true;
+    await expectLater(StorageService().saveConsultationNotes('NEW'),
+        throwsA(isA<StateError>()));
+    expect(await StorageService().loadConsultationNotes(), 'PREVIOUS');
     await (await SharedPreferences.getInstance()).reload();
-    expect(await StorageService().loadConsultationNotes(), isEmpty);
+    expect(await StorageService().loadConsultationNotes(), 'PREVIOUS');
   });
 
   test('[finding] overlapping deferrals lose one pending question', () async {
@@ -72,5 +93,28 @@ void main() {
     final pending = await storage.loadConsultationPending();
     expect(pending, hasLength(1));
     expect(pending.difference({'fixture-a', 'fixture-b'}), isEmpty);
+  });
+
+  testWidgets('notes UI keeps typed text and shows failure instead of saved confirmation', (tester) async {
+    tester.view.physicalSize = const Size(1000, 2200);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    final store = ControlledWrites();
+    SharedPreferencesStorePlatform.instance = store;
+    await StorageService().saveConsultationNotes('PREVIOUS');
+    await tester.pumpWidget(const MaterialApp(home: BirthPlanSummaryScreen()));
+    await tester.pumpAndSettle();
+    final field = find.byType(TextField).first;
+    await tester.enterText(field, 'NEW-UNSAVED');
+    store.reject = true;
+    final save = find.text('Salvar minhas dúvidas');
+    await tester.ensureVisible(save);
+    await tester.tap(save);
+    await tester.pumpAndSettle();
+    expect(find.text('Dúvidas para a consulta salvas neste aparelho.'), findsNothing);
+    expect(find.textContaining('Não foi possível confirmar a alteração'), findsOneWidget);
+    expect(tester.widget<TextField>(field).controller!.text, 'NEW-UNSAVED');
+    expect(await StorageService().loadConsultationNotes(), 'PREVIOUS');
   });
 }

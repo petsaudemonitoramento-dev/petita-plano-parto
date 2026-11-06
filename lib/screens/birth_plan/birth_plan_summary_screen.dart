@@ -1,3 +1,4 @@
+import '../../widgets/local_persistence_feedback.dart';
 import 'package:flutter/material.dart';
 import 'package:printing/printing.dart';
 import '../../config/app_theme.dart';
@@ -154,10 +155,10 @@ class _BirthPlanSummaryScreenState extends State<BirthPlanSummaryScreen> {
       final updated = await _storage.loadAnswers();
       updated.removeWhere((a) => a.questionId == question.id);
       updated.add(BirthPlanAnswer(questionId: question.id, values: result));
-      await _storage.saveAnswers(updated);
-      await _storage.resolveQuestionForConsultation(question.id);
+      if (!await confirmLocalChange(context, () => _storage.saveAnswers(updated))) return;
+      if (!await confirmLocalChange(context, () => _storage.resolveQuestionForConsultation(question.id))) return;
       // Nao descartar observacoes digitadas antes de resolver uma pendencia.
-      await _storage.saveConsultationNotes(_consultationNotesController.text);
+      if (!await confirmLocalChange(context, () => _storage.saveConsultationNotes(_consultationNotesController.text))) return;
       await _load();
     } finally {
       freeText.dispose();
@@ -165,7 +166,7 @@ class _BirthPlanSummaryScreenState extends State<BirthPlanSummaryScreen> {
   }
 
   Future<void> _saveConsultationNotes() async {
-    await _storage.saveConsultationNotes(_consultationNotesController.text);
+    if (!await confirmLocalChange(context, () => _storage.saveConsultationNotes(_consultationNotesController.text))) return;
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(content: Text('Dúvidas para a consulta salvas neste aparelho.')),
@@ -175,7 +176,7 @@ class _BirthPlanSummaryScreenState extends State<BirthPlanSummaryScreen> {
   Future<void> _shareConsultationGuide() async {
     if (_generatingPdf) return;
     // Salva o que estiver digitado antes de montar o roteiro.
-    await _storage.saveConsultationNotes(_consultationNotesController.text);
+    if (!await confirmLocalChange(context, () => _storage.saveConsultationNotes(_consultationNotesController.text))) return;
     if (!mounted) return;
     setState(() => _generatingPdf = true);
     await WidgetsBinding.instance.endOfFrame;
@@ -242,18 +243,18 @@ class _BirthPlanSummaryScreenState extends State<BirthPlanSummaryScreen> {
         field.dispose();
       }
     }
-    await _storage.saveTreatmentPreferences(
+    if (!await confirmLocalChange(context, () => _storage.saveTreatmentPreferences(
       TreatmentPreferences(pronouns: selection),
-    );
+    ))) return;
     await _load();
   }
 
   Future<void> _setIncludeInPdf(bool value) async {
     final preference = _treatment;
     if (preference == null || !preference.hasPronouns) return;
-    await _storage.saveTreatmentPreferences(
+    if (!await confirmLocalChange(context, () => _storage.saveTreatmentPreferences(
       preference.copyWith(includeInPdf: value),
-    );
+    ))) return;
     await _load();
   }
 
@@ -419,7 +420,7 @@ class _BirthPlanSummaryScreenState extends State<BirthPlanSummaryScreen> {
             if (_answers.isNotEmpty)
               AppButton(label: 'Sincronizar plano online', icon: Icons.cloud_upload_outlined, outlined: true, onPressed: _syncOnline),
             const SizedBox(height: 10),
-            AppButton(label: 'Limpar plano local', outlined: true, icon: Icons.delete_outline, onPressed: () async { await _storage.clearAnswers(); await _load(); }),
+            AppButton(label: 'Limpar plano local', outlined: true, icon: Icons.delete_outline, onPressed: () async { if (!await confirmLocalChange(context, () => _storage.clearAnswers())) return; await _load(); }),
           ]),
         ),
       ),

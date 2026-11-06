@@ -79,3 +79,6 @@ Evidência completa de fluxos de abuso, dados/retenção, comandos, limites e 61
 4. Um CI verde não prova segurança de backend real. Separar inspeção estática de teste com permissão controlada.
 5. Não classificar como P0 por ansiedade: demonstrar cenário plausível de dano e as condições necessárias.
 6. Registrar quando um risco não pode ser testado na nuvem ou sem Android real: `NÃO VERIFICADO` + teste manual sugerido.
+
+## Atualização B — SEC-05
+CORRIGIDO na branch: setString/setStringList/remove têm retorno e estado recarregado verificados. Erros normalizados sem payload; cache rejeitado não se apresenta como salvo. UI mantém edição e não mostra sucesso/avanço. Testes negativos de resposta e notas: 3 falhas antes (3s), 3 aprovados depois (2s), prazo180s. Persistência sujeita às garantias do plugin/SO, sem alegação de fsync. Serialização será tratada em SEC-06; remoções de múltiplas chaves não são transações atômicas.
