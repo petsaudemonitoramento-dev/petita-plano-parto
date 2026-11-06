@@ -24,6 +24,39 @@
 ## Escopo dos testes de handlers
 Node executa TypeScript real com remoção de tipos via stripTypeScriptTypes e VM; apenas import do SDK, Deno.env/serve, fetch e storage são mocks. Nenhum request sai da VM. Node test runner em subprocesso foi bloqueado pelo sandbox; única retentativa em processo (--test-isolation=none) resolveu. Um ajuste do assert de erro acomodou prefixo Error: entre realms; não foi retentativa de erro do produto. Parsing/embedding de arquivos, gateway JWT e RLS do banco não estão simulados como prova de segurança.
 
+### SEC-04 — P1: dados de saúde sem cifragem na camada do app
+- CONFIRMADO: StorageService:23–25,66–68,141–143 escreve JSON/texto legível no SharedPreferences. Teste security_storage_audit: resposta/notas sintéticas recuperadas diretamente pelas chaves. Exige acesso ao storage do dispositivo para explorar; não provada leitura por outro app, backup ou ausência de criptografia de disco.
+- ABERTO para B: modelo de ameaças, storage cifrado com migração compatível, proteção de chaves/backup e recuperação. Não apagar dados existentes nem chamar cifragem do SO de cifragem do app.
+
+### SEC-05 — P1: gravação rejeitada é reportada como sucesso
+- CONFIRMADO: StorageService:23–25,66–68 ignora retorno bool de setString. RejectingWrites devolve false: saveAnswers/saveConsultationNotes completam normalmente; resposta fica no cache, mas reload mostra perda. Dois testes adversariais reproduzem; não houve falha real de disco nem dados reais.
+- ABERTO para B, alta prioridade offline: checar retorno/falhas em escritas e remoções, propagar erro tratável ao usuário; preservar estado anterior e evitar falsa confirmação no cache. Testes negativos deverão esperar erro e conservação de dados após reload. Não basta lançar sem tratar UI/caches.
+
+### SEC-06 — P2: corrida entre marcações para consulta
+- CONFIRMADO no serviço, StorageService:47–58: Future.wait de defer(a)/defer(b) resulta em apenas um ID. Teste usa duas operações concorrentes, sem scheduler artificial. Impacto: perde pendência de consulta, não cria resposta falsa.
+- ABERTO para B: serializar read/modify/write, incluindo remoção e clear. Concorrência real por gesto/rota não reproduzida; não afirmar perda de resposta clínica no fluxo normal.
+
+### SEC-07 — P2: revogação preserva dúvidas UBS do storage legado
+- CONFIRMADO, StorageService:129–138 versus164–175: fixture grava UbsQuestion, revoga ciência e recarrega; texto permanece em ubs_questions. API não tem uso nas telas atuais segundo rg; pode importar para instalações anteriores, cuja existência/conteúdo não foram inspecionados.
+- ABERTO para B: limpar a chave legada na revogação sem apagar dados institucionais/documentos. Testar somente chaves pertinentes. Texto atual da UI promete perfil/plano; não alegar descumprimento de exclusão remota nem vazamento atual.
+
+### SEC-08 — P1: resposta local da FAQ aguarda HTTP parado
+- CONFIRMADO em FaqSearchService:19–23,67–71: há resposta bundled, mas search espera _searchOnlineCurated sem prazo antes de entregá-la. Mock HTTP pendente por 80ms impede resultado; completar resposta vazia libera resposta local. Não se mediu timeout do sistema/provedor nem desempenho em aparelho.
+- ABERTO para B: preservar prioridade clínica/curadoria com orçamento de rede e fallback local; reproduzir falha antes e prazo após. Teste existe em security_auth_boundary_test. Não trocar conteúdo ou remover curadoria sem avaliar contrato.
+
+### SEC-09 — UNKNOWN: isolamento UBS e autorização do backend implantado
+- NÃO VERIFICADO: SupabaseService:259–267 usa select * em team_questions_anonymous; servidor deve filtrar e projetar dados. Mock devolvendo A+B chega como A+B. Isso só comprova fronteira do cliente, não falha real de RLS.
+- Definição da visão e corpos de submit/respond não encontrados nos SQL de main; patches não constituem snapshot completo implantado. Sem fixtures de banco autoritativas não simular policies inventadas. Plano de testes negativos em SEGURANCA_JANELA_A_2026-11-06.md.
+- Testes de áreas Flutter: perfil local adulterado admin/ubs_team não desbloqueou UI sem sessão; histórico sem sessão recusado antes de HTTP. Esses resultados não validam JWT/RLS reais, IDOR ou privilégios em produção.
+
+## Ranking para a próxima janela
+1. SEC-01: patch P0 condicional na branch, sem deploy; ainda requer homologação isolada. Não declarar proteção da implantação.
+2. SEC-05, SEC-02/03 e SEC-08: P1 reproduzidos e testes prontos. SEC-04: P1 que exige desenho de migração seguro, não troca abrupta.
+3. SEC-06/07: P2 limitados ao serviço/legado, patches pequenos possíveis sem reconstrução.
+4. SEC-09: gate indispensável para dados reais; resultado desconhecido não pode virar GO por CI verde.
+
+Evidência completa de fluxos de abuso, dados/retenção, comandos, limites e 61 verificações em SEGURANCA_JANELA_A_2026-11-06.md. Hash do questionário inicial/final idêntico. Builds, suíte completa e benchmark ficam para B.
+
 ## Severidade e evidência
 - **P0:** exposição de dados/credenciais, acesso indevido, privilégio indevido, quebra de isolamento entre UBS, perda irrecuperável de dados, orientação clínica perigosa.
 - **P1:** falha funcional importante, regressão offline, PDF inválido ou lento em nível impeditivo, upgrade com perda de dados.

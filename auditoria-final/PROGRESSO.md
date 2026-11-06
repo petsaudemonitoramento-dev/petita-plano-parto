@@ -1,6 +1,6 @@
 # Progresso auditável — Petita / Codex
 
-**Status global:** JANELA A EM ANDAMENTO — retomada Cloud em 2026-11-06, A0 confirmado e 22 testes focalizados aprovados. Histórico anterior abaixo; resultados novos ao final.
+**Status global:** JANELA A — diagnóstico dirigido concluído em 2026-11-06; 61 verificações focalizadas, patch mínimo SEC-01 e ranking para B. Isolamento remoto NÃO VERIFICADO. HANDOFF mais recente ao final; seções anteriores são histórico.
 **Data da preparação:** 2026-11-04.
 **Repositório:** `petsaudemonitoramento-dev/petita-plano-parto`.
 **Branch inicial:** `audit/codex-final-petita-20261104` (isolada de `main`).
@@ -80,7 +80,7 @@ Comentário postado em #21: [link/ID ou "sem permissão"]
 - git fetch limitado a 30s falhou em menos de 1s por proxy:8080; sem retentativa. API GitHub usada para leitura e commits remotos, sem push na main.
 - Próximos marcos: teste dinâmico dos handlers Edge com SDK/fetch falsos; testes adversariais locais e fronteira Flutter/UBS. Serviços e políticas implantadas continuam NÃO VERIFICADOS.
 
-## HANDOFF atual — A0
+## HANDOFF A0 — histórico
 - Último commit remoto anterior ao marco: fed565e7062b03ba70345ee5fe8570c9b6ec1564; checkpoint A0 identificável pelo commit docs(audit): confirmar baseline Cloud e 22 testes offline.
 - Local: branch de auditoria sobre main com documentos espelhados; não fazer push desse histórico divergente. Commits publicados pela API sobre HEAD remoto com lease.
 - Testes: 22 aprovados (4s); hashes originais. Bloqueios resolvidos: socket por permissão; git pelo uso da API.
@@ -93,9 +93,33 @@ Comentário postado em #21: [link/ID ou "sem permissão"]
 - Documentação Supabase consultada pelo search_docs: API keys e Securing Edge Functions confirmam distinção chave pública/identidade. Changelog via curl bloqueado no proxy (<1s), sem repetição. Nenhuma assinatura/API de produto foi migrada.
 - Próximo: armazenamento adversarial e fronteira Flutter/UBS. Código remoto/RLS continua não verificado; nenhum deploy.
 
-## HANDOFF atual — A1a (substitui A0)
+## HANDOFF A1a — histórico
 - Checkpoint anterior remoto: 7b0c3dcd785391ce3f5f6b488fbc92d07893a74e. Commit deste marco: fix(security): recusar administradores inativos nos handlers de documentos.
 - Comandos/resultados: storage baseline 22/22 (4s); edge antes 2 falhas esperadas (<1s); edge depois 24/24 (1s). Logs em /tmp, fora do Git. SEC-01 corrigido na branch, SEC-02/03 abertos.
 - Limite: nenhuma política implantada, autenticação JWT real ou isolamento remoto entre UBS foi exercitado. Sem produção, merge ou publicação.
 - Primeira tarefa exata: criar test/security_storage_audit_test.dart e executar com wrapper 180s e permissão de rede do sandbox; verificar dados UBS legados após revogação, escrita recusada, concorrência de dúvidas para consulta e persistência legível.
+
+## 2026-11-06 UTC — A1/A2/A3 concluídos no escopo dirigido
+- Segurança: 24 testes Node de handlers; SEC-01 corrigido na branch; SEC-02/03 abertos. Checkpoint remoto 61c07fdc67d938c385c2e5249b14361265bb7896; comentário #21 ID 6674964673.
+- Privacidade/storage: 5 caracterizações aprovadas em 3s, wrapper 180s. SEC-04 legibilidade, SEC-05 falsa durabilidade, SEC-06 corrida de pendências, SEC-07 resíduo legado. Dados e retenção mapeados em SEGURANCA_JANELA_A_2026-11-06.md.
+- Fronteira de auth: 5 testes aprovados em 5s, wrapper 180s. Perfil local adulterado sem sessão não abre admin/UBS; histórico exige sessão; fila depende do servidor (SEC-09 não verificado). SEC-08 comprovado: FAQ bundled espera HTTP parado.
+- Única retentativa do arquivo auth-boundary (inicial 7s, 2 falhas de fixture): rootBundle.clear para cache da fake-zone e HTTP response.request explícito corrigiram o harness. Não foram falhas de produto escondidas nem remoção de testes.
+- Consulta/FAQ offline existentes: 5 aprovados em 5s, wrapper 180s; adiar não inventa resposta. Sem repetir 22 testes já válidos de storage/consentimento.
+- Analyzer dos dois testes novos: inicial 12s detectou anonKey obsoleto no fixture; corrigido para publishableKey; única retentativa 10s sem apontamentos (prazo120s).
+- Total distinto: **37 Flutter + 24 Node = 61**. Caracterizações verdes comprovam riscos ainda abertos. Não confundir com regressão completa ou homologação real.
+- Hash final do questionário: 9dbc0ceebb6b507df1c5d15a812ddbb689fe2935e4ba8c8e9637f8de0d4678dd (inalterado). Sem mudanças em assets, textos clínicos, termos, PDFs ou telas de produto.
+
+## 2026-11-06 UTC — A4 / transição planejada para B
+- Ranking e plano reproduzível em ACHADOS.md e SEGURANCA_JANELA_A_2026-11-06.md; sem repetição das quatro PRs. Não emitir PARECER_FINAL antes de B.
+- Gate remoto: não há prova de RLS, ACLs da visão, JWT, isolamento A/B, revogação concorrente nem vínculo real. Catálogo/migrations sanitizados de homologação necessários para teste fiel; não reconstruir SQL ausente para alegar segurança.
+- Fora desta Janela A dirigida: segredo histórico/assinatura, parser/upload completo, PDF/TTS/acessibilidade nativa, dependências/licenças, suíte/builds e benchmarks. Não estão aprovados por estes testes; incluir no gate B.
+
+## HANDOFF atual — iniciar B sem retrabalho
+- Branch remota: audit/codex-final-petita-20261104. Último checkpoint de código publicado antes deste relatório: 61c07fdc67d938c385c2e5249b14361265bb7896 (patch SEC-01). Este marco é o commit test(audit): comprovar riscos locais e fronteiras de autorizacao; consultar HEAD remoto para SHA final.
+- Local: histórico separado sobre main porque proxy bloqueia fetch. Não fazer push local. Conteúdos publicados via árvore/commit GitHub com expected_sha, preservando o histórico remoto.
+- Testes e duração: tabela completa no relatório; 61 verificações distintas. Logs só em /tmp. Nenhuma instalação nova, produção, merge, deploy, APK/site ou dados reais.
+- P0 condicional SEC-01 corrigido no fonte, mas não implantado/homologado. P1 SEC-02/03/04/05/08 abertos; P2 SEC-06/07; SEC-09 não verificado. Usar assistencialmente continua sem evidência suficiente.
+- **Primeira tarefa exata de B:** conferir HEAD/working tree e ler ACHADOS SEC-05. Converter as duas caracterizações de escrita rejeitada em testes de contrato (erro explícito + preservação após reload), executar `bash tool/run_bounded_audit.sh storage-before 180 flutter test --no-pub test/security_storage_audit_test.dart`, aplicar patch mínimo de persistência e UX de erro e testar novamente. No Cloud, usar permissão adicional de rede do sandbox para socket local. Não repetir matriz/22 testes baseline enquanto não forem invalidados por patch.
+- Depois: SEC-08 (orçamento de rede/fallback local), SEC-03 (erro público genérico) e política/quotas SEC-02; desenhar migração SEC-04 sem perda. Atualizar caracterizações para contratos de segurança quando corrigir, em commits pequenos. Regressão completa/builds/performance medida e parecer ficam em B.
+- Se git falhar: não retentar sem causa nova; API GitHub já funcionou para commits 7b0c3dc/61c07fd e comentários #21 IDs 6673524855/6674964673. Não alterar produção para preencher a lacuna SEC-09.
 
