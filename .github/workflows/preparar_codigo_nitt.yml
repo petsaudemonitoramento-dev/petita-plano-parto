@@ -1,0 +1,93 @@
+name: Preparar fonte Petita para NITT (sem publicar e sem hash)
+on:
+  push:
+    branches:
+      - registro/nitt-petita-fonte-20261106
+    paths:
+      - .github/workflows/preparar_codigo_nitt.yml
+      - tool/preparar_codigo_nitt.py
+      - registro-nitt/**
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: preparar-fonte-nitt-petita
+  cancel-in-progress: true
+
+jobs:
+  preparar-fonte:
+    runs-on: ubuntu-latest
+    timeout-minutes: 18
+    steps:
+      - name: Preparar scripts de documentacao
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          ref: registro/nitt-petita-fonte-20261106
+          path: preparacao
+          persist-credentials: false
+
+      - name: Buscar EXATAMENTE o codigo auditado 0.3.0 build 21
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          ref: d34f4a33e8e9e098ec87730a08feff28218661da
+          path: fonte
+          persist-credentials: false
+
+      - name: Buscar inventario da auditoria concluida
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          ref: 7ee397372d4e9d65d6d6e1dda583903af74cd539
+          path: auditoria
+          persist-credentials: false
+
+      - name: Instalar biblioteca para PDF
+        run: |
+          python3 -m pip install --disable-pip-version-check --quiet reportlab==4.2.5 pypdf==5.4.0
+
+      - name: Montar PDF e ZIP de codigo-fonte
+        run: |
+          python3 preparacao/tool/preparar_codigo_nitt.py \
+            --fonte fonte \
+            --inventario auditoria/auditoria-final/INVENTARIO_TECNICO.json \
+            --nota preparacao/registro-nitt/NOTA_TECNICA_PARA_REVISAO.md \
+            --saida entrega_nitt
+
+      - name: Validar documentos de saida, sem gerar hash
+        run: |
+          python3 - <<'PY'
+          import json
+          import zipfile
+          from pathlib import Path
+          from pypdf import PdfReader
+          pasta = Path("entrega_nitt")
+          pdf = pasta / "Petita_CodigoFonte_NITT_v0.3.0_build21.pdf"
+          zipname = pasta / "Petita_FonteEditavel_NITT_v0.3.0_build21.zip"
+          assert pdf.is_file() and pdf.stat().st_size > 150_000
+          assert zipname.is_file() and zipname.stat().st_size > 50_000
+          leitor = PdfReader(str(pdf))
+          assert len(leitor.pages) >= 15, "PDF com poucas paginas"
+          capa = leitor.pages[0].extract_text() or ""
+          assert "Petita" in capa and "0.3.0" in capa
+          lista = (pasta / "LISTA_DE_ARQUIVOS_NITT.txt").read_text(encoding="utf-8")
+          assert "lib/main.dart" in lista and "supabase/functions/ask-petita-rag/index.ts" in lista
+          with zipfile.ZipFile(zipname) as arq:
+              nomes = arq.namelist()
+              assert all(".temp" not in p and not p.endswith((".png", ".ttf", ".pem", ".p12")) for p in nomes)
+              assert any(p.endswith("lib/main.dart") for p in nomes)
+              assert any(p.endswith("NOTA_TECNICA_PARA_REVISAO.md") for p in nomes)
+              assert arq.testzip() is None
+          dependencias = json.loads((pasta / "DEPENDENCIAS_E_LICENCAS.json").read_text(encoding="utf-8"))
+          assert dependencias["total_pacotes"] >= 80
+          print("Validacao concluida: PDF com", len(leitor.pages), "paginas; ZIP e inventario coerentes.")
+          print("Sem hash, deploy, release, migração de banco ou distribuicao de APK.")
+          PY
+
+      - name: Disponibilizar arquivos para revisao privada no GitHub Actions
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: PETITA-NITT-fonte-0.3.0-build21-para-revisao
+          path: entrega_nitt/
+          retention-days: 14
+          if-no-files-found: error
