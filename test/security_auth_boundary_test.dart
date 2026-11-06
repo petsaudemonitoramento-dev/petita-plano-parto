@@ -86,15 +86,14 @@ void main() {
     // This is intentionally a malicious/misconfigured fake server, not a finding of live leakage.
   });
 
-  test('[finding] bundled FAQ answer waits for stalled curated HTTP', () async {
+  test('bundled FAQ returns within network budget when curated HTTP stalls', () async {
     final stalled = Completer<http.Response>();
     respond = (_) => stalled.future;
-    final service = FaqSearchService();
+    final service = FaqSearchService(onlineBudget: const Duration(milliseconds: 20));
     final items = await service.loadFaq();
     final result = service.search(items.first.question);
     try {
-      await expectLater(result.timeout(const Duration(milliseconds: 80)),
-          throwsA(isA<TimeoutException>()));
+      expect(await result.timeout(const Duration(milliseconds: 200)), isNotNull);
       expect(requests.single.url.path, '/rest/v1/knowledge_base');
     } finally {
       stalled.complete(http.Response('[]', 200, request: requests.single));

@@ -135,3 +135,7 @@ Comentário postado em #21: [link/ID ou "sem permissão"]
 - SEC-06/07: 2 contratos falharam antes (3s). Mutações compartilham fila por processo, inclusive clear/revogação e instâncias distintas; falha não contamina a fila. Revogação remove também ubs_questions, sem apagar catálogo/documentos.
 - Teste UI SEC-05 passou (9s), mantendo edição e negando confirmação falsa. Próximo: FAQ com orçamento de rede e RAG com negação por padrão/erros públicos seguros.
 - SEC-06/07 validação: primeira suíte atingiu TIMEOUT180s no widget por Future estática de outra zona de teste. Correção concreta: liberar cauda da fila quando ociosa antes de concluir ao chamador. Única retentativa sec0607-retry: 7 testes aprovados em4s, incluindo erro/recarga, concorrência, revogação e UI.
+
+## B1 — SEC-08
+- Contrato de retorno da FAQ com HTTP parado falhou antes por timeout200ms; depois passou (sec08-after,4s, limite180s) com orçamento20ms no teste. Produção usa orçamento600ms para cada busca online; resposta local e prioridade de curadoria preservadas. HTTP subjacente não é cancelado por Future.timeout.
+- Próximo: SEC-03 e contenção de consumo RAG; benchmarks e regressão no gate final.
