@@ -15,12 +15,22 @@ class LocalPersistenceException extends StateError {
 }
 
 class StorageService {
-  static Future<void> _pendingMutation = Future<void>.value();
+  static Future<void>? _pendingMutation;
 
   // One queue across service instances, including reset/revocation operations.
   Future<void> _serialize(Future<void> Function() action) {
-    final result = _pendingMutation.then((_) => action());
-    _pendingMutation = result.then<void>((_) {}, onError: (Object _, StackTrace __) {});
+    late final Future<void> tail;
+    void release() {
+      if (identical(_pendingMutation, tail)) _pendingMutation = null;
+    }
+    final result = (_pendingMutation ?? Future<void>.value()).then((_) => action()).then<void>(
+      (_) => release(), onError: (Object error, StackTrace stack) {
+        release();
+        Error.throwWithStackTrace(error, stack);
+      },
+    );
+    tail = result.then<void>((_) {}, onError: (Object _, StackTrace __) {});
+    _pendingMutation = tail;
     return result;
   }
 

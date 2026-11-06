@@ -85,3 +85,4 @@ CORRIGIDO na branch: setString/setStringList/remove têm retorno e estado recarr
 
 ## Atualização B — SEC-06/07
 CORRIGIDOS na branch: operações locais serializadas, inclusive limpeza/revogação, e chave UBS legada removida na revogação. Dois testes falharam antes (3s); suíte dirigida de storage validará o conjunto após patch. A fila é por processo/isolate; não é lock entre múltiplos isolates ou abas Web. Exclusão de múltiplas chaves continua não atômica; erro impede confirmação falsa de conclusão.
+SEC-06/07 confirmado depois: 7 testes aprovados em4s na única retentativa após liberar a fila ociosa. Primeiro comando atingiu TIMEOUT180s; não foi contado como aprovado. Usar esta correção com cc855f2.
