@@ -95,3 +95,6 @@ CORRIGIDO: catch do RAG retorna503 com erro público fixo; diagnóstico de prove
 
 ## Atualização B — SEC-02
 CONTIDO NO FONTE: RAG externo desligado por padrão. Reativação exige token validado, perfil ativo e quota persistente obrigatória, falhando fechado na ausência/erro. Não há RPC de quota entregue/implantada; não declarar serviço operacional nem quota homologada. Oito testes falharam antes;31 Node aprovados depois (<1s), com regressão SEC-01/03. Contrato e bloqueio em RAG_REATIVACAO.md. Serviço remoto continua NÃO VERIFICADO.
+
+## Atualização B — SEC-04
+P1 ABERTO, com plano detalhado e bloqueio em SEC04_PLANO_CIFRAGEM.md. Migração/backup/Keystore/Web e upgrade com assinatura histórica não homologados. Não houve substituição destrutiva nem alegação de cifragem implementada. Impede GO assistencial; documentação de registro pode explicitar esse limite.

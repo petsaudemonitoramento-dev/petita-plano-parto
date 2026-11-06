@@ -148,3 +148,7 @@ Comentário postado em #21: [link/ID ou "sem permissão"]
 - RAG desativado por padrão; eventual opt-in exige sessão getUser, perfil ativo e RPC de quota persistente que falha fechado. RPC ausente/malformada/erro não aciona provedor. Não foi criada/aplicada quota em banco; reativação bloqueada conforme RAG_REATIVACAO.md.
 - Oito contratos negativos de SEC-02 falharam antes; depois31 testes Node aprovados (<1s), incluindo regressão de SEC-01 e SEC-03. Fetch externo8s por chamada. APIs verificadas em docs Supabase; changelog recuperado, nenhuma migração de SDK.
 - Próximo: SEC-04 plano de migração não destrutivo, métricas e gates finais Cloud/Actions.
+
+## B1 — SEC-04 avaliado / bloqueio explícito
+- Plano técnico detalhado em SEC04_PLANO_CIFRAGEM.md: envelope autenticado, chave Keystore, staging/journal/verificação, fallback/downgrade controlados, Web separado, backup/upgrade e testes de crash.
+- Não é seguro introduzir migração de chaves sem homologar upgrade/restauração. Nenhum dado antigo apagado, nenhuma cifragem improvisada. SEC-04 permanece P1 aberto.
