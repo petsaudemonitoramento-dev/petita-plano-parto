@@ -139,3 +139,7 @@ Comentário postado em #21: [link/ID ou "sem permissão"]
 ## B1 — SEC-08
 - Contrato de retorno da FAQ com HTTP parado falhou antes por timeout200ms; depois passou (sec08-after,4s, limite180s) com orçamento20ms no teste. Produção usa orçamento600ms para cada busca online; resposta local e prioridade de curadoria preservadas. HTTP subjacente não é cancelado por Future.timeout.
 - Próximo: SEC-03 e contenção de consumo RAG; benchmarks e regressão no gate final.
+
+## B1 — SEC-03
+- Teste negativo do erro público falhou antes (status200 e diagnóstico); passou depois (<1s ambos, wrapper60s). RAG retorna503 com texto fixo sem mensagens internas/payload.
+- Próximo SEC-02: serviço desativado por padrão, sessão/perfil ativo e quota persistente obrigatórios para eventual reativação. Sem criar autenticação improvisada nem alterar produção.

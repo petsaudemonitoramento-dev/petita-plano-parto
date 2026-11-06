@@ -57,8 +57,8 @@ Deno.serve(async (req) => {
       sources,
       similarity: topSimilarity,
     })
-  } catch (error) {
-    return json({ found: false, answer: '', sources: [], error: safeMessage(error) }, 200)
+  } catch (_) {
+    return json({ found: false, answer: '', sources: [], error: 'Consulta indisponível no momento.' }, 503)
   }
 })
 
@@ -156,10 +156,6 @@ function mustEnv(name: string): string {
   const value = Deno.env.get(name)
   if (!value) throw new Error(`Segredo ${name} não configurado.`)
   return value
-}
-
-function safeMessage(error: unknown): string {
-  return error instanceof Error ? error.message : String(error)
 }
 
 function json(body: unknown, status = 200) {

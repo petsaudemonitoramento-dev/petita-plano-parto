@@ -99,10 +99,11 @@ test('RAG length guard prevents provider work on oversized question', async () =
   assert.equal(f.effects.provider.length, 0);
 });
 
-test('[P1 characterization] RAG exposes an internal provider exception to caller', async () => {
+test('RAG returns generic public error without provider diagnostics', async () => {
   const f = await fixture('ask-petita-rag', { providerError: true });
   const response = await f.dispatch({ question: 'Duvida sintetica' }, { apikey: 'fixture-public' });
-  assert.match((await response.json()).error, /fixture-internal-diagnostic/);
+  assert.equal(response.status, 503);
+  assert.doesNotMatch(JSON.stringify(await response.json()), /fixture-internal-diagnostic/);
 });
 
 for (const name of ['delete-support-document', 'process-support-document']) {

@@ -89,3 +89,6 @@ SEC-06/07 confirmado depois: 7 testes aprovados em4s na única retentativa após
 
 ## Atualização B — SEC-08
 CORRIGIDO: espera da busca curada e do RAG limitada por orçamento600ms cada. FAQ local não espera indefinidamente. Antes: contrato200ms falha; depois orçamento20ms no fixture passa (4s de comando). Future.timeout limita espera, não cancela requisição em andamento. Sem mudança de textos/curadoria; serviço remoto continua não homologado.
+
+## Atualização B — SEC-03
+CORRIGIDO: catch do RAG retorna503 com erro público fixo; diagnóstico de provedor não sai no JSON. Um contrato falha antes/passou depois, <1s, limite60s. Falha de geração ainda utiliza fallback documental existente; revisão clínica não inferida.
