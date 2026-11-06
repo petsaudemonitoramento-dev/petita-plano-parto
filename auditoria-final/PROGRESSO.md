@@ -143,3 +143,8 @@ Comentário postado em #21: [link/ID ou "sem permissão"]
 ## B1 — SEC-03
 - Teste negativo do erro público falhou antes (status200 e diagnóstico); passou depois (<1s ambos, wrapper60s). RAG retorna503 com texto fixo sem mensagens internas/payload.
 - Próximo SEC-02: serviço desativado por padrão, sessão/perfil ativo e quota persistente obrigatórios para eventual reativação. Sem criar autenticação improvisada nem alterar produção.
+
+## B1 — SEC-02 / regressão SEC-01
+- RAG desativado por padrão; eventual opt-in exige sessão getUser, perfil ativo e RPC de quota persistente que falha fechado. RPC ausente/malformada/erro não aciona provedor. Não foi criada/aplicada quota em banco; reativação bloqueada conforme RAG_REATIVACAO.md.
+- Oito contratos negativos de SEC-02 falharam antes; depois31 testes Node aprovados (<1s), incluindo regressão de SEC-01 e SEC-03. Fetch externo8s por chamada. APIs verificadas em docs Supabase; changelog recuperado, nenhuma migração de SDK.
+- Próximo: SEC-04 plano de migração não destrutivo, métricas e gates finais Cloud/Actions.

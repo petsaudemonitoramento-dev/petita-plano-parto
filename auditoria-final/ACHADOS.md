@@ -92,3 +92,6 @@ CORRIGIDO: espera da busca curada e do RAG limitada por orçamento600ms cada. FA
 
 ## Atualização B — SEC-03
 CORRIGIDO: catch do RAG retorna503 com erro público fixo; diagnóstico de provedor não sai no JSON. Um contrato falha antes/passou depois, <1s, limite60s. Falha de geração ainda utiliza fallback documental existente; revisão clínica não inferida.
+
+## Atualização B — SEC-02
+CONTIDO NO FONTE: RAG externo desligado por padrão. Reativação exige token validado, perfil ativo e quota persistente obrigatória, falhando fechado na ausência/erro. Não há RPC de quota entregue/implantada; não declarar serviço operacional nem quota homologada. Oito testes falharam antes;31 Node aprovados depois (<1s), com regressão SEC-01/03. Contrato e bloqueio em RAG_REATIVACAO.md. Serviço remoto continua NÃO VERIFICADO.
