@@ -214,8 +214,8 @@
       "version": "0.0.0",
       "scope": "direct main",
       "source": "sdk",
-      "license_sha256": null,
-      "license_status": "present in SDK"
+      "license_sha256": "a598db94b6290ffbe10b5ecf911057b6a943351c727fdda9e5f2891d68700a20",
+      "license_status": "Flutter SDK LICENSE reference verified; review component notices"
     },
     {
       "name": "flutter_markdown",
@@ -238,8 +238,8 @@
       "version": "0.0.0",
       "scope": "direct dev",
       "source": "sdk",
-      "license_sha256": null,
-      "license_status": "present in SDK"
+      "license_sha256": "a598db94b6290ffbe10b5ecf911057b6a943351c727fdda9e5f2891d68700a20",
+      "license_status": "Flutter SDK LICENSE reference verified; review component notices"
     },
     {
       "name": "flutter_tts",
@@ -254,8 +254,8 @@
       "version": "0.0.0",
       "scope": "transitive",
       "source": "sdk",
-      "license_sha256": null,
-      "license_status": "present in SDK"
+      "license_sha256": "a598db94b6290ffbe10b5ecf911057b6a943351c727fdda9e5f2891d68700a20",
+      "license_status": "Flutter SDK LICENSE reference verified; review component notices"
     },
     {
       "name": "functions_client",
@@ -606,8 +606,8 @@
       "version": "0.0.0",
       "scope": "transitive",
       "source": "sdk",
-      "license_sha256": null,
-      "license_status": "present in SDK"
+      "license_sha256": "a598db94b6290ffbe10b5ecf911057b6a943351c727fdda9e5f2891d68700a20",
+      "license_status": "Flutter SDK LICENSE reference verified; review component notices"
     },
     {
       "name": "source_span",
@@ -829,6 +829,7 @@
   "notes": [
     "Inventário técnico, não atesta compatibilidade jurídica/licenças de marcas.",
     "Nenhum secret de assinatura lido. Assets institucionais exigem titularidade/autorização humana.",
-    "Arquivo exato para NITT só após freeze aprovado; nenhum hash de pacote definitivo nesta auditoria."
+    "Arquivo exato para NITT só após freeze aprovado; nenhum hash de pacote definitivo nesta auditoria.",
+    "SDK license reference: Flutter root LICENSE; component notices still require human review."
   ]
 }

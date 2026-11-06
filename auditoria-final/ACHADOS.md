@@ -1,6 +1,21 @@
 # Achados técnicos — auditoria final Petita
 
-**Estado em 2026-11-06 / A0:** 22 testes existentes de storage/recuperação/consentimento aprovados (4s, wrapper 180s). Hipóteses de backend ainda em investigação. Nenhum resultado de mock comprova configuração implantada.
+**Estado final da Janela B (2026-11-06):** fonte candidato d34f4a3,104 Flutter/31 Node aprovados, Web aprovado; Android debug aprovado no Actions (build274s). Evidências anteriores abaixo são histórico.
+
+| ID | Estado final no fonte | Limite |
+|---|---|---|
+| SEC-01 | Corrigido/regressão preservada | Sem deploy; sessão/DB reais não homologados |
+| SEC-02 | Contido, RAG desligado por padrão | RPC persistente de quota não entregue/aplicada; reativação bloqueada |
+| SEC-03 | Corrigido | Erro público genérico |
+| SEC-04 | P1 ABERTO | Cifragem/migração segura pendente, plano detalhado |
+| SEC-05 | Corrigido no escopo testado | Confirmação/reload, sem garantia fsync |
+| SEC-06 | Corrigido por processo | Múltiplos isolates/abas não cobertos |
+| SEC-07 | Corrigido | Remove legado; exclusão multi-chave não atômica |
+| SEC-08 | Corrigido | Prazo de espera; HTTP subjacente não cancelado |
+| SEC-09 | NÃO VERIFICADO | JWT/RLS/UBS reais bloqueiam GO assistencial |
+| INSP-05 | P2 corrigido | Versão0.3.0/build21 alinhada |
+
+Decisão por finalidade e gates completos em PARECER_FINAL.md.
 
 ## Achados comprovados na retomada (2026-11-06)
 

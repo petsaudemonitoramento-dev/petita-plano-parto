@@ -1,6 +1,6 @@
 # Progresso auditável — Petita / Codex
 
-**Status global:** JANELA A — diagnóstico dirigido concluído em 2026-11-06; 61 verificações focalizadas, patch mínimo SEC-01 e ranking para B. Isolamento remoto NÃO VERIFICADO. HANDOFF mais recente ao final; seções anteriores são histórico.
+**Status global:** JANELA B — correções demonstradas; candidato d34f4a3;104 Flutter/31 Node e Web aprovados; Android debug aprovado (build274s, job5min31s). Parecer/HANDOFF final ao fim.
 **Data da preparação:** 2026-11-04.
 **Repositório:** `petsaudemonitoramento-dev/petita-plano-parto`.
 **Branch inicial:** `audit/codex-final-petita-20261104` (isolada de `main`).
@@ -114,7 +114,7 @@ Comentário postado em #21: [link/ID ou "sem permissão"]
 - Gate remoto: não há prova de RLS, ACLs da visão, JWT, isolamento A/B, revogação concorrente nem vínculo real. Catálogo/migrations sanitizados de homologação necessários para teste fiel; não reconstruir SQL ausente para alegar segurança.
 - Fora desta Janela A dirigida: segredo histórico/assinatura, parser/upload completo, PDF/TTS/acessibilidade nativa, dependências/licenças, suíte/builds e benchmarks. Não estão aprovados por estes testes; incluir no gate B.
 
-## HANDOFF atual — iniciar B sem retrabalho
+## HANDOFF de A — histórico (retomada já realizada)
 - Branch remota: audit/codex-final-petita-20261104. **Último commit de código, testes e diagnóstico: 476cada438754d302afd52dc94f04bad76a38d01**. Patch SEC-01: 61c07fdc67d938c385c2e5249b14361265bb7896. O commit seguinte atualiza somente este HANDOFF, sem invalidar testes.
 - Local: histórico separado sobre main porque proxy bloqueia fetch. Não fazer push local. Conteúdos publicados via árvore/commit GitHub com expected_sha, preservando o histórico remoto.
 - Testes e duração: tabela completa no relatório; 61 verificações distintas. Logs só em /tmp. Nenhuma instalação nova, produção, merge, deploy, APK/site ou dados reais.
@@ -163,3 +163,26 @@ Comentário postado em #21: [link/ID ou "sem permissão"]
 - Concorrência CI cancela versões substituídas; execuções antigas sem grupo foram canceladas para evitar gasto duplicado. Nenhum workflow de release/produção disparado.
 - CI intermediário4a08756/9691f86 falhou no analyzer: benchmark em tool/ usava API visibleForTesting. Movido para test/benchmarks/ (sem suprimir aviso); analyze local depois sem apontamentos12s. Única correção/retentativa do gate para esse erro, fonte de produto não afetado pelo aviso.
 - Inspeção visual do PDF sintético confirmou logos legíveis e revelou INSP-05: AppInfo/rodapé0.2.0-beta/build20 divergiam de pubspec. Corrigidos para0.3.0/build21 e estado online não homologado. Nenhum texto clínico/termo alterado.
+
+
+## B3/B4 — consolidando parecer e pacote
+- Candidato de código/testes: d34f4a33e8e9e098ec87730a08feff28218661da. Regressão final104/104 em63s; analyzer16s sem apontamentos; Web release final60s;31 Node em1s. Gate Actions42157900727 aprovado2m18s com esses fluxos/hash. Android42157900741 APROVADO: build274s (limite900s), job5min31s, scaffold/TTS/analyzer/artefato verificados; sem publicação.
+- Pacote de revisão Cloud: Petita_codigo_candidato_d34f4a3.zip,2390645bytes, SHA256147bca9b923dfcbb082ca34c1b317e4f77ffea3e6ec07d3f9d85cc3ec17aac39.106 arquivos; scanner limitado sem padrões de credencial privilegiada. Não é hash de submissão INPI. Manifesto e100 dependências/licenças em JSON.
+- Revisão visual sintética do PDF otimizado: logos legíveis. Corrigido rodapé de versão, sem alterar textos clínicos/31 perguntas/termos/assets. Métrica controlada e smoke final distinguidos no relatório.
+- Parecer preparado: GO COM RESSALVAS para documentação representativa; NO-GO para assistência/dados reais/distribuição. SEC-04 P1 aberto; SEC-09 não verificado; RAG quota/reativação bloqueados; assinatura/upgrade/clínica/jurídico pendentes.
+
+## HANDOFF final B — recuperável
+- Branch audit/codex-final-petita-20261104. Último commit de código candidato: d34f4a33e8e9e098ec87730a08feff28218661da. Commit seguinte contém só parecer/evidências; não invalida gates do código. Último checkpoint anterior e90bca6 foi retomado, sem recomeçar A.
+- Testes/durações: final-regression104 em63s (prazo480s); Node31 em1s (60s); analyzer16s (180s); Web60s (900s). PDF14 em11s; storage7 em4s após única retentativa por TIMEOUT180s. Detalhes/comandos nos relatórios. Logs só em /tmp.
+- Working tree: apenas relatórios/inventários em finalização; nenhum patch de produto pendente. Candidate ZIP fora do repo, /workspace/petita-evidencias. Nenhum banco/conta produtiva/dado real/merge/deploy/publicação/submissão.
+- Primeira tarefa exata da próxima retomada: `git status --short --branch`, ler PARECER_FINAL.md e este bloco, conferir HEAD remoto. Se só documentos mudaram, não repetir A, matriz, benchmarks ou gates já válidos.
+- Prioridades futuras: homologar SEC-04 com staging/journal/Keystore/restore/upgrade; obter catálogo/migrations sanitizados de homologação para SEC-09 e fixtures A/B sem owner/BYPASSRLS; implementar/testar quota persistente antes de pensar em RAG. Não usar produção para preencher lacunas.
+- Rollback do fonte por PR/revert revisado, preservando SEC-01 e dados legados; não trocar certificados/recomendar desinstalação. Nenhum congelamento definitivo/tag/envio institucional sem revisão/autorização.
+
+
+## B4 — entrega final registrada
+- PARECER_FINAL.md concluído. Android Actions42157900741 aprovado: build274s/job5min31s. Flutter/Web/Node Actions42157900727 aprovado2min18s. Ambos no candidato d34f4a33e8e9e098ec87730a08feff28218661da.
+- Decisões: GO COM RESSALVAS para documentação representativa do software; NO-GO assistencial/dados reais/distribuição. SEC-04 eSEC-09 seguem abertos/não verificados; quota/RAG sem reativação. Assinatura/upgrade/aparelho e revisão humana pendentes.
+- Parecer, ACHADOS, plano de cifragem, contrato RAG, métricas, inventários e pacote candidato revisáveis. Os106 arquivos do ZIP correspondem ao fonte candidato; documentação posterior não altera o ZIP. Hash/tamanho conferidos independentemente no Cloud.
+- Commit de encerramento altera somente relatórios/inventários, com [skip ci] explícito para não repetir gates válidos por documentos. Não há supressão de falhas nem cobertura retirada; usar os links dos dois runs aprovados. Nenhum patch de produto pendente ao encerrar.
+- Último código: d34f4a3; último relatório: commit docs(audit): concluir parecer e handoff final da Janela B. SHA desse relatório consta no histórico/Issue#21/PR#24. Retomada: conferir HEAD e este HANDOFF; começar pelos bloqueios SEC-04/09 em homologação isolada, sem repetir A.
