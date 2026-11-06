@@ -1,6 +1,6 @@
 # Progresso auditável — Petita / Codex
 
-**Status global:** PREPARADO — Codex NÃO iniciado por este registro.
+**Status global:** EM ANDAMENTO (diagnóstico inicial relatado pelo Codex; sem testes novos executados; checkpoint persistido via GitHub deste chat em 2026-11-05).
 **Data da preparação:** 2026-11-04.
 **Repositório:** `petsaudemonitoramento-dev/petita-plano-parto`.
 **Branch inicial:** `audit/codex-final-petita-20261104` (isolada de `main`).
@@ -11,8 +11,8 @@
 
 | Marco | Estado | Última evidência | Próxima ação |
 |---|---|---|---|
-| A0 — baseline/ambiente | PENDENTE | Repositório inspecionado na preparação; Codex ainda não executou comandos | Executar verificação e registrar SHA do baseline |
-| A1 — segurança/ameaças | PENDENTE | Possíveis prioridades identificadas, sem verificação | Revisar auth, RLS, isolamento UBS, endpoints, admin e segredos |
+| A0 — baseline/ambiente | PARCIAL (relato Codex) | Main `5ec0a70`, versão `0.3.0+21`, matriz de PRs em `MATRIZ_CONVERGENCIA_2026-11-05.md`; hash original alegado, sem log novo | Reconfirmar HEAD/hash/comandos no próximo ambiente utilizável |
+| A1 — segurança/ameaças | INICIADO — inspeção estática | Supabase inicializa; RAG por chave publicável; storage SharedPreferences; Neon Auth e isolamento remoto sem teste | Reproduzir hipóteses em fixture sintética, classificar severidades com evidência |
 | A2 — dados/privacidade | PENDENTE | SharedPreferences identificado no código | Mapear dados sensíveis, retenção, consentimento e exclusão |
 | A3 — testes adversariais | PENDENTE | Suite Flutter existente, novos testes ainda não executados pelo Codex | Rodar testes e criar fixtures de UBS distintas |
 | A4 — relatório riscos | PENDENTE | Documento inicial de riscos em `ACHADOS.md` | Classificar P0/P1/P2 somente após provas |
@@ -44,12 +44,28 @@ Possível bloqueio/manual:
 Comentário postado em #21: [link/ID ou "sem permissão"]
 ```
 
-## HANDOFF obrigatório — manter este bloco atualizado
-- Janela atual: ainda não iniciada.
-- Último commit da auditoria: a preencher ao iniciar Codex.
-- Último marco concluído: nenhum.
-- Working tree e commits pendentes: a verificar.
-- Evidência de testes: ainda não executados pelo Codex.
-- Riscos P0/P1 confirmados: nenhum confirmado nesta preparação.
-- Pendências: diagnóstico, correção, build e avaliação manual.
-- **Primeira ação na retomada:** abrir `AGENTS.md` + `auditoria-final/PLANO_MESTRE.md`, verificar git SHA e iniciar A0.
+## Checkpoint recebido em 2026-11-05 — relato do Codex e persistência externa
+
+**Origem:** resumo fornecido pelo usuário de uma execução Codex Cloud. O Codex informou que o proxy bloqueou `git fetch` e que a gravação por conector foi interrompida. **Não há commit comprovadamente feito pelo Codex nesta execução.** Esta nota e a matriz foram salvas depois pela integração GitHub deste chat.
+
+- Main comparada: `5ec0a70`, versão `0.3.0+21` (precisa reconfirmação antes de alterações).
+- Matriz salva em `auditoria-final/MATRIZ_CONVERGENCIA_2026-11-05.md`.
+- PRs #15/#17: aproveitar fundação e operações SQL em ordem de dependência, sem merge automático. PR #16: adaptar Android à main com voz e versão atuais. PR #19: reaproveitar contratos HTTP/JWT selecionados, rejeitando unificação ingênua dos dois esquemas Neon.
+- Possíveis riscos para investigação: inicialização Supabase, RAG baseado em chave publicável, persistência de dados sensíveis em SharedPreferences. Neon Auth/Google integrado ao Flutter, isolamento de UBS e autorização remota **NÃO COMPROVADOS**.
+- **Testes/builds novos:** não executados pelo Codex conforme relato; hash do questionário alegadamente corresponde ao original, mas sem log novo anexado.
+- **Funcionalidades, banco ou produção:** inalterados nesta execução; nenhum merge/deploy/registro.
+- **Bloqueio Codex:** proxy em `git fetch` e conector de escrita interrompido. No reinício, não gastar a janela insistindo indefinidamente: ler este commit pela interface/API do GitHub; documentar bloqueio e seguir análise de código ou testes com `tool/run_bounded_audit.sh`.
+- **Próxima ação exata:** confirmar baseline e hash do questionário, consultar matriz, executar teste sintético de maior impacto (autorização/isolamento UBS ou acesso RAG) com timeout, e registrar resultado em `ACHADOS.md`.
+- **Segunda janela:** só deve começar depois de classificar riscos com evidência; a análise estática não autoriza declarar GO ou vulnerabilidades P0 definitivas.
+
+## HANDOFF obrigatório — atualizado em 2026-11-05
+
+- **Janela:** A (inspeção estática parcialmente relatada; testes ainda pendentes).
+- **Último commit feito pelo Codex nesta rodada:** NÃO CONFIRMADO; `git fetch` e escrita de conector falharam conforme relato.
+- **Checkpoint GitHub deste chat:** arquivo `MATRIZ_CONVERGENCIA_2026-11-05.md` adicionado na branch de auditoria; as instruções do agente continuam na PR #24.
+- **Último marco concluído pelo Codex:** nenhum marco totalmente comprovado; mapa de convergência relatado e persistido posteriormente; A0 parcial e A1 iniciada.
+- **Working tree no Cloud:** desconhecida; não presumir mudanças locais persistentes.
+- **Testes/builds da rodada:** nenhum executado conforme relato. Testes de PRs antigas não equivalem à validação da main atual.
+- **Riscos P0/P1 confirmados:** nenhum confirmado; hipóteses INSP-01/02/03/04 exigem provas.
+- **Primeira ação exata:** conferir commit HEAD/branch e hash canônico, ler `MATRIZ_CONVERGENCIA_2026-11-05.md`, então executar o primeiro teste sintético focalizado com prazo (`tool/run_bounded_audit.sh`) ou usar GitHub Actions sem publicação. Não repetir a comparação das quatro PRs salvo mudança na base.
+- **Bloqueio:** proxy no git fetch e conector na sessão anterior; usar checkout disponível, API GitHub ou análise estática, com uma tentativa justificada por bloqueio.
