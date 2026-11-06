@@ -101,3 +101,6 @@ P1 ABERTO, com plano detalhado e bloqueio em SEC04_PLANO_CIFRAGEM.md. Migração
 
 ## B2 — gargalo medido de PDF
 CORRIGIDO: decodificação repetida de logo4520x4500 para exibição pequena. Cache proporcional600px: warm mediana1789→155,5ms; PDF716915→396162bytes;14 testes PDF aprovados(11s). Métricas Cloud debug, não de telefone. Sem alteração de assets originais/conteúdo clínico. Ver METRICAS_2026-11-06.md.
+
+## INSP-05 — P2 confirmado e corrigido
+AppInfo e README exibiam0.2.0-beta/build20 enquanto pubspec define0.3.0+21. Visível no rodapé do PDF sintético. Metadados agora0.3.0/build21/novembro2026 e sem alegação de RAG/UBS homologados. Não houve mudança clínica. CI final valida o fonte com benchmark no diretório de testes apropriado.
