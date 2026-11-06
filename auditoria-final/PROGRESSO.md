@@ -130,3 +130,7 @@ Comentário postado em #21: [link/ID ou "sem permissão"]
 - SEC-05: três contratos negativos falharam antes (sec05-before, 3s); depois 3 aprovados (sec05-after, 2s). Escritas/remoções verificam bool e recarga do backend; falha recarrega o estado anterior e lança erro seguro. Isso não prova fsync/sobrevivência a perda de energia.
 - UI não avança pergunta/confirmacão quando persistência falha; conserva texto digitado e mostra tentativa novamente. Notas, perfil, consentimento, preferências e exclusão usam tratamento explícito. Analyzer focal sem apontamentos (11s).
 - Próximo: SEC-06/07 para serialização das operações e eliminação de resíduo legado, depois disponibilidade FAQ/RAG. Regressão final invalidada pelo patch de storage será executada no gate B3.
+
+## B1 — SEC-06/07
+- SEC-06/07: 2 contratos falharam antes (3s). Mutações compartilham fila por processo, inclusive clear/revogação e instâncias distintas; falha não contamina a fila. Revogação remove também ubs_questions, sem apagar catálogo/documentos.
+- Teste UI SEC-05 passou (9s), mantendo edição e negando confirmação falsa. Próximo: FAQ com orçamento de rede e RAG com negação por padrão/erros públicos seguros.

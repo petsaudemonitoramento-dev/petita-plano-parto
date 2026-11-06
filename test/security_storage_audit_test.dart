@@ -41,7 +41,7 @@ void main() {
     expect(prefs.getString('birth_plan_consultation_notes_v1'), 'SYNTHETIC-NOTE');
   });
 
-  test('[finding] revocation leaves synthetic legacy UBS question on device', () async {
+  test('revocation removes synthetic legacy UBS question from device', () async {
     final storage = StorageService();
     await storage.saveUbsQuestion(UbsQuestion(
       id: 'fixture-q-a', anonymousUserId: 'fixture-patient-a',
@@ -50,7 +50,7 @@ void main() {
     ));
     await storage.revokeConsentAndClearPatientData();
     await (await SharedPreferences.getInstance()).reload();
-    expect((await StorageService().loadUbsQuestions()).single.question, 'SYNTHETIC-QUESTION');
+    expect(await StorageService().loadUbsQuestions(), isEmpty);
     // No current screen calls this legacy API; assess existing installs separately.
   });
 
@@ -84,14 +84,14 @@ void main() {
     expect(await StorageService().loadConsultationNotes(), 'PREVIOUS');
   });
 
-  test('[finding] overlapping deferrals lose one pending question', () async {
+  test('overlapping deferrals preserve both pending questions', () async {
     final storage = StorageService();
     await Future.wait([
       storage.deferQuestionForConsultation('fixture-a'),
       storage.deferQuestionForConsultation('fixture-b'),
     ]);
     final pending = await storage.loadConsultationPending();
-    expect(pending, hasLength(1));
+    expect(pending, hasLength(2));
     expect(pending.difference({'fixture-a', 'fixture-b'}), isEmpty);
   });
 

@@ -15,6 +15,15 @@ class LocalPersistenceException extends StateError {
 }
 
 class StorageService {
+  static Future<void> _pendingMutation = Future<void>.value();
+
+  // One queue across service instances, including reset/revocation operations.
+  Future<void> _serialize(Future<void> Function() action) {
+    final result = _pendingMutation.then((_) => action());
+    _pendingMutation = result.then<void>((_) {}, onError: (Object _, StackTrace __) {});
+    return result;
+  }
+
   static const _answersKey = 'birth_plan_answers';
   static const _deferredConsultationKey = 'birth_plan_consultation_deferred_v1';
   static const _consultationNotesKey = 'birth_plan_consultation_notes_v1';
@@ -50,10 +59,10 @@ class StorageService {
   Future<void> _remove(SharedPreferences prefs, String key) =>
       _confirm(prefs, () => prefs.remove(key), () => !prefs.containsKey(key));
 
-  Future<void> saveAnswers(List<BirthPlanAnswer> answers) async {
+  Future<void> saveAnswers(List<BirthPlanAnswer> answers) => _serialize(() async {
     final prefs = await SharedPreferences.getInstance();
     await _putString(prefs, _answersKey, jsonEncode(answers.map((a) => a.toJson()).toList()));
-  }
+  });
 
   Future<List<BirthPlanAnswer>> loadAnswers() async {
     final prefs = await SharedPreferences.getInstance();
@@ -74,37 +83,37 @@ class StorageService {
     return (prefs.getStringList(_deferredConsultationKey) ?? <String>[]).toSet();
   }
 
-  Future<void> deferQuestionForConsultation(String questionId) async {
+  Future<void> deferQuestionForConsultation(String questionId) => _serialize(() async {
     final ids = await loadConsultationPending();
     ids.add(questionId);
     final prefs = await SharedPreferences.getInstance();
     await _putList(prefs, _deferredConsultationKey, ids.toList());
-  }
+  });
 
-  Future<void> resolveQuestionForConsultation(String questionId) async {
+  Future<void> resolveQuestionForConsultation(String questionId) => _serialize(() async {
     final ids = await loadConsultationPending();
     ids.remove(questionId);
     final prefs = await SharedPreferences.getInstance();
     await _putList(prefs, _deferredConsultationKey, ids.toList());
-  }
+  });
 
   Future<String> loadConsultationNotes() async {
     final prefs = await SharedPreferences.getInstance();
     return prefs.getString(_consultationNotesKey) ?? '';
   }
 
-  Future<void> saveConsultationNotes(String notes) async {
+  Future<void> saveConsultationNotes(String notes) => _serialize(() async {
     final prefs = await SharedPreferences.getInstance();
     await _putString(prefs, _consultationNotesKey, notes.trim());
-  }
+  });
 
-  Future<void> clearAnswers() async {
+  Future<void> clearAnswers() => _serialize(() async {
     final prefs = await SharedPreferences.getInstance();
     await _remove(prefs, _answersKey);
     await _remove(prefs, _treatmentKey);
     await _remove(prefs, _deferredConsultationKey);
     await _remove(prefs, _consultationNotesKey);
-  }
+  });
 
   Future<TreatmentPreferences?> loadTreatmentPreferences() async {
     final prefs = await SharedPreferences.getInstance();
@@ -117,15 +126,15 @@ class StorageService {
     }
   }
 
-  Future<void> saveTreatmentPreferences(TreatmentPreferences value) async {
+  Future<void> saveTreatmentPreferences(TreatmentPreferences value) => _serialize(() async {
     final prefs = await SharedPreferences.getInstance();
     await _putString(prefs, _treatmentKey, jsonEncode(value.toJson()));
-  }
+  });
 
-  Future<void> clearTreatmentPreferences() async {
+  Future<void> clearTreatmentPreferences() => _serialize(() async {
     final prefs = await SharedPreferences.getInstance();
     await _remove(prefs, _treatmentKey);
-  }
+  });
 
   Future<bool> hasConsent() async {
     final prefs = await SharedPreferences.getInstance();
@@ -139,7 +148,7 @@ class StorageService {
     }
   }
 
-  Future<void> saveConsentAcknowledgements() async {
+  Future<void> saveConsentAcknowledgements() => _serialize(() async {
     final prefs = await SharedPreferences.getInstance();
     final record = ConsentRecord(
       acceptedTerms: true,
@@ -152,9 +161,9 @@ class StorageService {
     );
     await _putString(prefs, _consentRecordKey, jsonEncode(record.toJson()));
     await _remove(prefs, _legacyConsentKey);
-  }
+  });
 
-  Future<void> revokeConsentAndClearPatientData() async {
+  Future<void> revokeConsentAndClearPatientData() => _serialize(() async {
     final prefs = await SharedPreferences.getInstance();
     await _remove(prefs, _consentRecordKey);
     await _remove(prefs, _legacyConsentKey);
@@ -163,13 +172,14 @@ class StorageService {
     await _remove(prefs, _deferredConsultationKey);
     await _remove(prefs, _consultationNotesKey);
     await _remove(prefs, _profileKey);
+    await _remove(prefs, _ubsQuestionsKey);
     // Ação local; não remove informações anteriormente sincronizadas na nuvem.
-  }
+  });
 
-  Future<void> saveProfile(UserProfile profile) async {
+  Future<void> saveProfile(UserProfile profile) => _serialize(() async {
     final prefs = await SharedPreferences.getInstance();
     await _putString(prefs, _profileKey, jsonEncode(profile.toJson()));
-  }
+  });
 
   Future<UserProfile?> loadProfile() async {
     final prefs = await SharedPreferences.getInstance();
@@ -184,16 +194,16 @@ class StorageService {
     }
   }
 
-  Future<void> clearProfile() async {
+  Future<void> clearProfile() => _serialize(() async {
     final prefs = await SharedPreferences.getInstance();
     await _remove(prefs, _profileKey);
-  }
+  });
 
-  Future<void> saveUbsQuestion(UbsQuestion question) async {
+  Future<void> saveUbsQuestion(UbsQuestion question) => _serialize(() async {
     final items = await loadUbsQuestions();
     items.add(question);
     await _saveUbsQuestions(items);
-  }
+  });
 
   Future<List<UbsQuestion>> loadUbsQuestions() async {
     final prefs = await SharedPreferences.getInstance();
@@ -203,14 +213,14 @@ class StorageService {
     return data.map((item) => UbsQuestion.fromJson(item as Map<String, dynamic>)).toList();
   }
 
-  Future<void> answerUbsQuestion(String id, String answer) async {
+  Future<void> answerUbsQuestion(String id, String answer) => _serialize(() async {
     final items = await loadUbsQuestions();
     final updated = items.map((q) {
       if (q.id == id) return q.copyWith(answer: answer, answeredAt: DateTime.now());
       return q;
     }).toList();
     await _saveUbsQuestions(updated);
-  }
+  });
 
   Future<void> _saveUbsQuestions(List<UbsQuestion> items) async {
     final prefs = await SharedPreferences.getInstance();
@@ -225,12 +235,12 @@ class StorageService {
     return data.map((item) => UbsUnit.fromJson(item as Map<String, dynamic>)).toList();
   }
 
-  Future<void> addCustomUbsUnit(UbsUnit unit) async {
+  Future<void> addCustomUbsUnit(UbsUnit unit) => _serialize(() async {
     final items = await loadCustomUbsUnits();
     items.add(unit);
     final prefs = await SharedPreferences.getInstance();
     await _putString(prefs, _customUbsKey, jsonEncode(items.map((e) => e.toJson()).toList()));
-  }
+  });
 
   Future<List<KnowledgeDocument>> loadKnowledgeDocuments() async {
     final prefs = await SharedPreferences.getInstance();
@@ -240,10 +250,10 @@ class StorageService {
     return data.map((item) => KnowledgeDocument.fromJson(item as Map<String, dynamic>)).toList();
   }
 
-  Future<void> addKnowledgeDocument(KnowledgeDocument document) async {
+  Future<void> addKnowledgeDocument(KnowledgeDocument document) => _serialize(() async {
     final items = await loadKnowledgeDocuments();
     items.add(document);
     final prefs = await SharedPreferences.getInstance();
     await _putString(prefs, _documentsKey, jsonEncode(items.map((e) => e.toJson()).toList()));
-  }
+  });
 }

@@ -82,3 +82,6 @@ Evidência completa de fluxos de abuso, dados/retenção, comandos, limites e 61
 
 ## Atualização B — SEC-05
 CORRIGIDO na branch: setString/setStringList/remove têm retorno e estado recarregado verificados. Erros normalizados sem payload; cache rejeitado não se apresenta como salvo. UI mantém edição e não mostra sucesso/avanço. Testes negativos de resposta e notas: 3 falhas antes (3s), 3 aprovados depois (2s), prazo180s. Persistência sujeita às garantias do plugin/SO, sem alegação de fsync. Serialização será tratada em SEC-06; remoções de múltiplas chaves não são transações atômicas.
+
+## Atualização B — SEC-06/07
+CORRIGIDOS na branch: operações locais serializadas, inclusive limpeza/revogação, e chave UBS legada removida na revogação. Dois testes falharam antes (3s); suíte dirigida de storage validará o conjunto após patch. A fila é por processo/isolate; não é lock entre múltiplos isolates ou abas Web. Exclusão de múltiplas chaves continua não atômica; erro impede confirmação falsa de conclusão.
