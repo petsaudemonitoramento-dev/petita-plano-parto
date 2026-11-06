@@ -5,6 +5,8 @@ import '../models/faq_item.dart';
 import 'supabase_service.dart';
 
 class FaqSearchService {
+  FaqSearchService({this.onlineBudget = const Duration(milliseconds: 600)});
+  final Duration onlineBudget;
   final SupabaseService _online = SupabaseService();
   List<FaqItem>? _cache;
 
@@ -18,11 +20,13 @@ class FaqSearchService {
 
   Future<FaqItem?> search(String input, {String? category}) async {
     final local = await _searchLocal(input);
-    final onlineCurated = await _searchOnlineCurated(input);
+    final onlineCurated = await _searchOnlineCurated(input)
+        .timeout(onlineBudget, onTimeout: () => null);
     final curated = _better(local, onlineCurated);
     if (curated != null) return curated;
 
-    final rag = await _online.askPetitaRag(question: input, category: category);
+    final rag = await _online.askPetitaRag(question: input, category: category)
+        .timeout(onlineBudget, onTimeout: () => null);
     if (rag != null && rag.found && rag.answer.trim().isNotEmpty) {
       return FaqItem(
         id: 'rag_${DateTime.now().microsecondsSinceEpoch}',

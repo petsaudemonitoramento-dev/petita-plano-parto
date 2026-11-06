@@ -1,3 +1,4 @@
+import '../../widgets/local_persistence_feedback.dart';
 import 'package:flutter/material.dart';
 import '../../config/app_info.dart';
 import '../../config/app_routes.dart';
@@ -36,7 +37,7 @@ class _HomeScreenState extends State<HomeScreen> {
       ),
     );
     if (confirmed != true) return;
-    await StorageService().revokeConsentAndClearPatientData();
+    if (!await confirmLocalChange(context, () => StorageService().revokeConsentAndClearPatientData())) return;
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(content: Text('Aceite retirado e dados locais do plano e perfil apagados.')),

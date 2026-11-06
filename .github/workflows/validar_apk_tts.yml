@@ -8,12 +8,16 @@ on:
       - 'pubspec.lock'
       - 'tool/prepare_android_tts_manifest.py'
       - '.github/workflows/validar_apk_tts.yml'
+concurrency:
+  group: audit-android-${{ github.ref }}
+  cancel-in-progress: true
+
 permissions:
   contents: read
 jobs:
   apk-debug:
     runs-on: ubuntu-latest
-    timeout-minutes: 35
+    timeout-minutes: 25
     steps:
       - uses: actions/checkout@v4
       - uses: subosito/flutter-action@v2
@@ -22,9 +26,9 @@ jobs:
           channel: stable
           cache: true
       - name: Resolver dependencias travadas
-        run: flutter pub get --enforce-lockfile
+        run: bash tool/run_bounded_audit.sh deps 300 flutter pub get --enforce-lockfile
       - name: Preparar estrutura Android sem sobrescrever app
-        run: flutter create --platforms=android --project-name plano_parto_pet_saude .
+        run: bash tool/run_bounded_audit.sh scaffold 180 flutter create --platforms=android --project-name plano_parto_pet_saude .
       - name: Remover exemplos padrao gerados pelo flutter create
         run: |
           rm -f test/widget_test.dart
@@ -34,9 +38,9 @@ jobs:
       - name: Permitir descoberta local do servico de voz
         run: python3 tool/prepare_android_tts_manifest.py
       - name: Verificar sintaxe e analisar app
-        run: flutter analyze --no-pub
+        run: bash tool/run_bounded_audit.sh analyze 180 flutter analyze --no-pub
       - name: Compilar APK debug de teste (nao assinado para producao)
-        run: flutter build apk --debug --no-pub
+        run: bash tool/run_bounded_audit.sh android 900 flutter build apk --debug --no-pub
       - name: Verificar artefato e manifesto
         run: |
           test -s build/app/outputs/flutter-apk/app-debug.apk
