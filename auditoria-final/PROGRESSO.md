@@ -156,3 +156,8 @@ Comentário postado em #21: [link/ID ou "sem permissão"]
 ## B2 — métricas e PDF
 - FAQ: mediana902→602ms em cinco repetições com HTTP sintético900ms. PDF: baseline/patch sequenciais, warm mediana1789→155,5ms; tamanho716915→396162bytes, cold2103→1981ms. METRICAS_2026-11-06.md contém limites e comandos.
 - Patch do PDF só reduz proporcionalmente logos em cache de memória para600px, preservando originais e texto. image4.9.1 já transitiva, agora direta. 14 testes de regressão PDF passaram em11s; bootstrap/navegação nativa não otimizados sem métricas.
+
+## B3 — gates Cloud / CI
+- deps-final --enforce-lockfile aprovado(1s); analyze-final sem apontamentos(16s); tests-final102/102 em84s, wrapper480s. Web release aprovado60s, wrapper900s. Após otimização PDF,14 testes afetados aprovados11s; gate CI final irá validar a revisão de PDF/dependência.
+- Android SDK ausente no Cloud. Usar workflow existente de APK/TTS (sem artifacts/publicação), agora wrapper900s, deps300s/analyze180s/job25min. Flutter/Web também com wrapper480/900s e Node31, hash/31 perguntas byte a byte.
+- Concorrência CI cancela versões substituídas; execuções antigas sem grupo foram canceladas para evitar gasto duplicado. Nenhum workflow de release/produção disparado.

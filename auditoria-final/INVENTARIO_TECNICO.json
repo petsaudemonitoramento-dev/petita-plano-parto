@@ -1,0 +1,834 @@
+{
+  "version": "0.3.0+21",
+  "questionnaire_sha256": "9dbc0ceebb6b507df1c5d15a812ddbb689fe2935e4ba8c8e9637f8de0d4678dd",
+  "lockfile_sha256": "0f18d7d9ea25d11623389e7a178d5efbbc6e45d7d8ce4d7d8908521b75ce65bb",
+  "tracked_files_at_inventory": 164,
+  "extensions": {
+    ".dart": 62,
+    ".html": 3,
+    ".js": 4,
+    ".json": 8,
+    ".lock": 1,
+    ".md": 23,
+    ".mjs": 1,
+    ".pdf": 6,
+    ".png": 19,
+    ".py": 1,
+    ".sh": 2,
+    ".sql": 4,
+    ".toml": 1,
+    ".ts": 3,
+    ".ttf": 2,
+    ".txt": 8,
+    ".yaml": 1,
+    ".yml": 7,
+    "[sem extensão]": 8
+  },
+  "packages": [
+    {
+      "name": "app_links",
+      "version": "7.2.0",
+      "scope": "transitive",
+      "source": "hosted",
+      "license_sha256": "1eb85fc97224598dad1852b5d6483bbcf0aa8608790dcc657a5a2a761ae9c8c6",
+      "license_status": "cached license inspected by hash"
+    },
+    {
+      "name": "app_links_linux",
+      "version": "1.0.3",
+      "scope": "transitive",
+      "source": "hosted",
+      "license_sha256": "1eb85fc97224598dad1852b5d6483bbcf0aa8608790dcc657a5a2a761ae9c8c6",
+      "license_status": "cached license inspected by hash"
+    },
+    {
+      "name": "app_links_platform_interface",
+      "version": "2.0.3",
+      "scope": "transitive",
+      "source": "hosted",
+      "license_sha256": "1eb85fc97224598dad1852b5d6483bbcf0aa8608790dcc657a5a2a761ae9c8c6",
+      "license_status": "cached license inspected by hash"
+    },
+    {
+      "name": "app_links_web",
+      "version": "1.0.4",
+      "scope": "transitive",
+      "source": "hosted",
+      "license_sha256": "1eb85fc97224598dad1852b5d6483bbcf0aa8608790dcc657a5a2a761ae9c8c6",
+      "license_status": "cached license inspected by hash"
+    },
+    {
+      "name": "archive",
+      "version": "4.0.9",
+      "scope": "transitive",
+      "source": "hosted",
+      "license_sha256": "32f97d332eae7453ec4079858e6f1d74be85beeb6d3881068b47d02a379cccea",
+      "license_status": "cached license inspected by hash"
+    },
+    {
+      "name": "args",
+      "version": "2.7.0",
+      "scope": "transitive",
+      "source": "hosted",
+      "license_sha256": "dfb09c74e29386cd3e2719f32d4995d59526179753931d31840757c77fbf2791",
+      "license_status": "cached license inspected by hash"
+    },
+    {
+      "name": "async",
+      "version": "2.13.1",
+      "scope": "transitive",
+      "source": "hosted",
+      "license_sha256": "ff15faa32a2e638107b7789592b14426162a75ba620044ee2340a20ec6ce5e73",
+      "license_status": "cached license inspected by hash"
+    },
+    {
+      "name": "barcode",
+      "version": "2.2.9",
+      "scope": "transitive",
+      "source": "hosted",
+      "license_sha256": "cc4d4de0920b0d3912203b5d9aa76728ac4a11087f55da9ea00576db7d1e34e2",
+      "license_status": "cached license inspected by hash"
+    },
+    {
+      "name": "bidi",
+      "version": "2.0.13",
+      "scope": "transitive",
+      "source": "hosted",
+      "license_sha256": "55a7db11d87de5d70e7de04e41abec1d25f4f7dc12d67261ed747403a2280d3e",
+      "license_status": "cached license inspected by hash"
+    },
+    {
+      "name": "boolean_selector",
+      "version": "2.1.2",
+      "scope": "transitive",
+      "source": "hosted",
+      "license_sha256": "b71519245009a3b8f126196a5408ec031e216e8e0d985085958c6543f82a8a2a",
+      "license_status": "cached license inspected by hash"
+    },
+    {
+      "name": "characters",
+      "version": "1.4.1",
+      "scope": "transitive",
+      "source": "hosted",
+      "license_sha256": "0371d1da6a57fb791db29d29b95333429205f51f3cb2eb3a0c12d91838a38744",
+      "license_status": "cached license inspected by hash"
+    },
+    {
+      "name": "clock",
+      "version": "1.1.2",
+      "scope": "transitive",
+      "source": "hosted",
+      "license_sha256": "58d1e17ffe5109a7ae296caafcadfdbe6a7d176f0bc4ab01e12a689b0499d8bd",
+      "license_status": "cached license inspected by hash"
+    },
+    {
+      "name": "collection",
+      "version": "1.19.1",
+      "scope": "transitive",
+      "source": "hosted",
+      "license_sha256": "ff15faa32a2e638107b7789592b14426162a75ba620044ee2340a20ec6ce5e73",
+      "license_status": "cached license inspected by hash"
+    },
+    {
+      "name": "convert",
+      "version": "3.1.2",
+      "scope": "transitive",
+      "source": "hosted",
+      "license_sha256": "ad6a71997da90924b2cfb1fb47ec46537f70faf469efe016168794ae45ed6888",
+      "license_status": "cached license inspected by hash"
+    },
+    {
+      "name": "cross_file",
+      "version": "0.3.5+5",
+      "scope": "transitive",
+      "source": "hosted",
+      "license_sha256": "420f7739f169097f0aad1242045169cd643c8f1d94e62866fad265ae4c369b7d",
+      "license_status": "cached license inspected by hash"
+    },
+    {
+      "name": "crypto",
+      "version": "3.0.7",
+      "scope": "transitive",
+      "source": "hosted",
+      "license_sha256": "ad6a71997da90924b2cfb1fb47ec46537f70faf469efe016168794ae45ed6888",
+      "license_status": "cached license inspected by hash"
+    },
+    {
+      "name": "cupertino_icons",
+      "version": "1.0.9",
+      "scope": "direct main",
+      "source": "hosted",
+      "license_sha256": "310d6ab6483280280c9db122bded0a63c09558bc5743720f61dbcbb494db370a",
+      "license_status": "cached license inspected by hash"
+    },
+    {
+      "name": "dart_jsonwebtoken",
+      "version": "3.4.1",
+      "scope": "transitive",
+      "source": "hosted",
+      "license_sha256": "8643d70d5330e43faf15f7278352c24070eea08f5829e05b912a021f822f32f4",
+      "license_status": "cached license inspected by hash"
+    },
+    {
+      "name": "dbus",
+      "version": "0.7.15",
+      "scope": "transitive",
+      "source": "hosted",
+      "license_sha256": "1f256ecad192880510e84ad60474eab7589218784b9a50bc7ceee34c2b91f1d5",
+      "license_status": "cached license inspected by hash"
+    },
+    {
+      "name": "fake_async",
+      "version": "1.3.3",
+      "scope": "transitive",
+      "source": "hosted",
+      "license_sha256": "58d1e17ffe5109a7ae296caafcadfdbe6a7d176f0bc4ab01e12a689b0499d8bd",
+      "license_status": "cached license inspected by hash"
+    },
+    {
+      "name": "ffi",
+      "version": "2.2.0",
+      "scope": "transitive",
+      "source": "hosted",
+      "license_sha256": "0371d1da6a57fb791db29d29b95333429205f51f3cb2eb3a0c12d91838a38744",
+      "license_status": "cached license inspected by hash"
+    },
+    {
+      "name": "file",
+      "version": "7.0.1",
+      "scope": "transitive",
+      "source": "hosted",
+      "license_sha256": "f6df86b1412172537273e8e80ee2fb8a66aa7307ce0b39ea5ddab47ca41b8c49",
+      "license_status": "cached license inspected by hash"
+    },
+    {
+      "name": "file_picker",
+      "version": "10.3.10",
+      "scope": "direct main",
+      "source": "hosted",
+      "license_sha256": "6278994817bd65fa32404e53c3a62a09d824d3f9a71f7fadcaca3e4f02641d66",
+      "license_status": "cached license inspected by hash"
+    },
+    {
+      "name": "flutter",
+      "version": "0.0.0",
+      "scope": "direct main",
+      "source": "sdk",
+      "license_sha256": null,
+      "license_status": "present in SDK"
+    },
+    {
+      "name": "flutter_markdown",
+      "version": "0.7.7+1",
+      "scope": "direct main",
+      "source": "hosted",
+      "license_sha256": "89519eca6f7b9529b35bdddd623a58c3af06a88c458dbd6531ddb4675acf75a9",
+      "license_status": "cached license inspected by hash"
+    },
+    {
+      "name": "flutter_plugin_android_lifecycle",
+      "version": "2.0.35",
+      "scope": "transitive",
+      "source": "hosted",
+      "license_sha256": "420f7739f169097f0aad1242045169cd643c8f1d94e62866fad265ae4c369b7d",
+      "license_status": "cached license inspected by hash"
+    },
+    {
+      "name": "flutter_test",
+      "version": "0.0.0",
+      "scope": "direct dev",
+      "source": "sdk",
+      "license_sha256": null,
+      "license_status": "present in SDK"
+    },
+    {
+      "name": "flutter_tts",
+      "version": "4.2.5",
+      "scope": "direct main",
+      "source": "hosted",
+      "license_sha256": "3c9e7afed8c30af40f8501faaaecd996922ac0847446e6084720297fad361622",
+      "license_status": "cached license inspected by hash"
+    },
+    {
+      "name": "flutter_web_plugins",
+      "version": "0.0.0",
+      "scope": "transitive",
+      "source": "sdk",
+      "license_sha256": null,
+      "license_status": "present in SDK"
+    },
+    {
+      "name": "functions_client",
+      "version": "2.6.4",
+      "scope": "transitive",
+      "source": "hosted",
+      "license_sha256": "334dd6820e2eaeab2064e7c59001b810566728a28a41a7c1dbf69bbee17d0936",
+      "license_status": "cached license inspected by hash"
+    },
+    {
+      "name": "gotrue",
+      "version": "2.26.0",
+      "scope": "transitive",
+      "source": "hosted",
+      "license_sha256": "334dd6820e2eaeab2064e7c59001b810566728a28a41a7c1dbf69bbee17d0936",
+      "license_status": "cached license inspected by hash"
+    },
+    {
+      "name": "gtk",
+      "version": "2.2.0",
+      "scope": "transitive",
+      "source": "hosted",
+      "license_sha256": "1f256ecad192880510e84ad60474eab7589218784b9a50bc7ceee34c2b91f1d5",
+      "license_status": "cached license inspected by hash"
+    },
+    {
+      "name": "http",
+      "version": "1.6.0",
+      "scope": "transitive",
+      "source": "hosted",
+      "license_sha256": "3c32b53167c7dae9190c38dab5dd9fe1789c53623ebc7d1babcb29914c5b3f16",
+      "license_status": "cached license inspected by hash"
+    },
+    {
+      "name": "http_parser",
+      "version": "4.1.2",
+      "scope": "transitive",
+      "source": "hosted",
+      "license_sha256": "3c32b53167c7dae9190c38dab5dd9fe1789c53623ebc7d1babcb29914c5b3f16",
+      "license_status": "cached license inspected by hash"
+    },
+    {
+      "name": "image",
+      "version": "4.9.1",
+      "scope": "direct main",
+      "source": "hosted",
+      "license_sha256": "f3c17da84e0780e1c334325c73098257c32221d62498ed55ef3c1361904925aa",
+      "license_status": "cached license inspected by hash"
+    },
+    {
+      "name": "json_annotation",
+      "version": "4.12.0",
+      "scope": "transitive",
+      "source": "hosted",
+      "license_sha256": "143839f62c9b7f88143ea9f688361c27050888acde7696b34e04414bd254fafc",
+      "license_status": "cached license inspected by hash"
+    },
+    {
+      "name": "jwt_decode",
+      "version": "0.3.1",
+      "scope": "transitive",
+      "source": "hosted",
+      "license_sha256": "6c322afa39d0e6ad3015dc1580e7516c1adfb2447627580c48c52f8a5bab9cb1",
+      "license_status": "cached license inspected by hash"
+    },
+    {
+      "name": "leak_tracker",
+      "version": "11.0.2",
+      "scope": "transitive",
+      "source": "hosted",
+      "license_sha256": "08a004aa8956c3cf3b24f7f69c966247233953e18e6afaa61191ea47b7eb70f6",
+      "license_status": "cached license inspected by hash"
+    },
+    {
+      "name": "leak_tracker_flutter_testing",
+      "version": "3.0.10",
+      "scope": "transitive",
+      "source": "hosted",
+      "license_sha256": "08a004aa8956c3cf3b24f7f69c966247233953e18e6afaa61191ea47b7eb70f6",
+      "license_status": "cached license inspected by hash"
+    },
+    {
+      "name": "leak_tracker_testing",
+      "version": "3.0.2",
+      "scope": "transitive",
+      "source": "hosted",
+      "license_sha256": "08a004aa8956c3cf3b24f7f69c966247233953e18e6afaa61191ea47b7eb70f6",
+      "license_status": "cached license inspected by hash"
+    },
+    {
+      "name": "logging",
+      "version": "1.3.0",
+      "scope": "transitive",
+      "source": "hosted",
+      "license_sha256": "dfb09c74e29386cd3e2719f32d4995d59526179753931d31840757c77fbf2791",
+      "license_status": "cached license inspected by hash"
+    },
+    {
+      "name": "markdown",
+      "version": "7.3.1",
+      "scope": "transitive",
+      "source": "hosted",
+      "license_sha256": "0aa335b5e036b9efbb35ad7a35835cd32e4eb656c08bfe040550a9f6fa84fcc7",
+      "license_status": "cached license inspected by hash"
+    },
+    {
+      "name": "matcher",
+      "version": "0.12.19",
+      "scope": "transitive",
+      "source": "hosted",
+      "license_sha256": "3c32b53167c7dae9190c38dab5dd9fe1789c53623ebc7d1babcb29914c5b3f16",
+      "license_status": "cached license inspected by hash"
+    },
+    {
+      "name": "material_color_utilities",
+      "version": "0.13.0",
+      "scope": "transitive",
+      "source": "hosted",
+      "license_sha256": "d103f246ef4c18dab8af0c1dcf6a8af884e5cff554da7261a48ac43c17d98f2e",
+      "license_status": "cached license inspected by hash"
+    },
+    {
+      "name": "meta",
+      "version": "1.18.0",
+      "scope": "transitive",
+      "source": "hosted",
+      "license_sha256": "b71519245009a3b8f126196a5408ec031e216e8e0d985085958c6543f82a8a2a",
+      "license_status": "cached license inspected by hash"
+    },
+    {
+      "name": "mime",
+      "version": "2.0.0",
+      "scope": "transitive",
+      "source": "hosted",
+      "license_sha256": "ff15faa32a2e638107b7789592b14426162a75ba620044ee2340a20ec6ce5e73",
+      "license_status": "cached license inspected by hash"
+    },
+    {
+      "name": "passkeys_platform_interface",
+      "version": "2.8.0",
+      "scope": "transitive",
+      "source": "hosted",
+      "license_sha256": "0422cdf4d700216b8ada10019aaf6f24b8a4efd825737fda9520fe21db6e43dc",
+      "license_status": "cached license inspected by hash"
+    },
+    {
+      "name": "path",
+      "version": "1.9.1",
+      "scope": "transitive",
+      "source": "hosted",
+      "license_sha256": "3c32b53167c7dae9190c38dab5dd9fe1789c53623ebc7d1babcb29914c5b3f16",
+      "license_status": "cached license inspected by hash"
+    },
+    {
+      "name": "path_parsing",
+      "version": "1.1.0",
+      "scope": "transitive",
+      "source": "hosted",
+      "license_sha256": "f4fc0fe1e273823b06540b3b948640ff81f3a5c5dc7088972eef662fe450ad77",
+      "license_status": "cached license inspected by hash"
+    },
+    {
+      "name": "path_provider_linux",
+      "version": "2.2.2",
+      "scope": "transitive",
+      "source": "hosted",
+      "license_sha256": "420f7739f169097f0aad1242045169cd643c8f1d94e62866fad265ae4c369b7d",
+      "license_status": "cached license inspected by hash"
+    },
+    {
+      "name": "path_provider_platform_interface",
+      "version": "2.1.3",
+      "scope": "transitive",
+      "source": "hosted",
+      "license_sha256": "420f7739f169097f0aad1242045169cd643c8f1d94e62866fad265ae4c369b7d",
+      "license_status": "cached license inspected by hash"
+    },
+    {
+      "name": "path_provider_windows",
+      "version": "2.3.0",
+      "scope": "transitive",
+      "source": "hosted",
+      "license_sha256": "89519eca6f7b9529b35bdddd623a58c3af06a88c458dbd6531ddb4675acf75a9",
+      "license_status": "cached license inspected by hash"
+    },
+    {
+      "name": "pdf",
+      "version": "3.13.0",
+      "scope": "direct main",
+      "source": "hosted",
+      "license_sha256": "cc4d4de0920b0d3912203b5d9aa76728ac4a11087f55da9ea00576db7d1e34e2",
+      "license_status": "cached license inspected by hash"
+    },
+    {
+      "name": "pdf_widget_wrapper",
+      "version": "1.0.4",
+      "scope": "transitive",
+      "source": "hosted",
+      "license_sha256": "cc4d4de0920b0d3912203b5d9aa76728ac4a11087f55da9ea00576db7d1e34e2",
+      "license_status": "cached license inspected by hash"
+    },
+    {
+      "name": "petitparser",
+      "version": "7.0.2",
+      "scope": "transitive",
+      "source": "hosted",
+      "license_sha256": "d2e8ffdbe89acbc10d5d1f2b03e7dbddf0a9f1742e809176682b62ef3d573b3e",
+      "license_status": "cached license inspected by hash"
+    },
+    {
+      "name": "platform",
+      "version": "3.1.6",
+      "scope": "transitive",
+      "source": "hosted",
+      "license_sha256": "143839f62c9b7f88143ea9f688361c27050888acde7696b34e04414bd254fafc",
+      "license_status": "cached license inspected by hash"
+    },
+    {
+      "name": "plugin_platform_interface",
+      "version": "2.1.8",
+      "scope": "transitive",
+      "source": "hosted",
+      "license_sha256": "89519eca6f7b9529b35bdddd623a58c3af06a88c458dbd6531ddb4675acf75a9",
+      "license_status": "cached license inspected by hash"
+    },
+    {
+      "name": "pointycastle",
+      "version": "4.0.0",
+      "scope": "transitive",
+      "source": "hosted",
+      "license_sha256": "3a7bb295473da049a1c6edd2f8c41b9e526a4e80f200c0200cc5600b2634df3f",
+      "license_status": "cached license inspected by hash"
+    },
+    {
+      "name": "posix",
+      "version": "6.5.0",
+      "scope": "transitive",
+      "source": "hosted",
+      "license_sha256": "aaf6271abd048deb3125828613f1797b7556472de6c7acd7103bd43e9cb6a84b",
+      "license_status": "cached license inspected by hash"
+    },
+    {
+      "name": "postgrest",
+      "version": "2.8.0",
+      "scope": "transitive",
+      "source": "hosted",
+      "license_sha256": "334dd6820e2eaeab2064e7c59001b810566728a28a41a7c1dbf69bbee17d0936",
+      "license_status": "cached license inspected by hash"
+    },
+    {
+      "name": "printing",
+      "version": "5.15.0",
+      "scope": "direct main",
+      "source": "hosted",
+      "license_sha256": "cc4d4de0920b0d3912203b5d9aa76728ac4a11087f55da9ea00576db7d1e34e2",
+      "license_status": "cached license inspected by hash"
+    },
+    {
+      "name": "qr",
+      "version": "3.0.2",
+      "scope": "transitive",
+      "source": "hosted",
+      "license_sha256": "1d6c0bc8208cd835577eeb9195dc646f092728b62803abd60c404d984524abf7",
+      "license_status": "cached license inspected by hash"
+    },
+    {
+      "name": "realtime_client",
+      "version": "2.11.0",
+      "scope": "transitive",
+      "source": "hosted",
+      "license_sha256": "334dd6820e2eaeab2064e7c59001b810566728a28a41a7c1dbf69bbee17d0936",
+      "license_status": "cached license inspected by hash"
+    },
+    {
+      "name": "retry",
+      "version": "3.1.2",
+      "scope": "transitive",
+      "source": "hosted",
+      "license_sha256": "58d1e17ffe5109a7ae296caafcadfdbe6a7d176f0bc4ab01e12a689b0499d8bd",
+      "license_status": "cached license inspected by hash"
+    },
+    {
+      "name": "rxdart",
+      "version": "0.28.0",
+      "scope": "transitive",
+      "source": "hosted",
+      "license_sha256": "c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4",
+      "license_status": "cached license inspected by hash"
+    },
+    {
+      "name": "shared_preferences",
+      "version": "2.5.5",
+      "scope": "direct main",
+      "source": "hosted",
+      "license_sha256": "420f7739f169097f0aad1242045169cd643c8f1d94e62866fad265ae4c369b7d",
+      "license_status": "cached license inspected by hash"
+    },
+    {
+      "name": "shared_preferences_android",
+      "version": "2.4.26",
+      "scope": "transitive",
+      "source": "hosted",
+      "license_sha256": "420f7739f169097f0aad1242045169cd643c8f1d94e62866fad265ae4c369b7d",
+      "license_status": "cached license inspected by hash"
+    },
+    {
+      "name": "shared_preferences_foundation",
+      "version": "2.5.6",
+      "scope": "transitive",
+      "source": "hosted",
+      "license_sha256": "420f7739f169097f0aad1242045169cd643c8f1d94e62866fad265ae4c369b7d",
+      "license_status": "cached license inspected by hash"
+    },
+    {
+      "name": "shared_preferences_linux",
+      "version": "2.4.1",
+      "scope": "transitive",
+      "source": "hosted",
+      "license_sha256": "89519eca6f7b9529b35bdddd623a58c3af06a88c458dbd6531ddb4675acf75a9",
+      "license_status": "cached license inspected by hash"
+    },
+    {
+      "name": "shared_preferences_platform_interface",
+      "version": "2.4.2",
+      "scope": "transitive",
+      "source": "hosted",
+      "license_sha256": "420f7739f169097f0aad1242045169cd643c8f1d94e62866fad265ae4c369b7d",
+      "license_status": "cached license inspected by hash"
+    },
+    {
+      "name": "shared_preferences_web",
+      "version": "2.4.3",
+      "scope": "transitive",
+      "source": "hosted",
+      "license_sha256": "89519eca6f7b9529b35bdddd623a58c3af06a88c458dbd6531ddb4675acf75a9",
+      "license_status": "cached license inspected by hash"
+    },
+    {
+      "name": "shared_preferences_windows",
+      "version": "2.4.1",
+      "scope": "transitive",
+      "source": "hosted",
+      "license_sha256": "89519eca6f7b9529b35bdddd623a58c3af06a88c458dbd6531ddb4675acf75a9",
+      "license_status": "cached license inspected by hash"
+    },
+    {
+      "name": "sky_engine",
+      "version": "0.0.0",
+      "scope": "transitive",
+      "source": "sdk",
+      "license_sha256": null,
+      "license_status": "present in SDK"
+    },
+    {
+      "name": "source_span",
+      "version": "1.10.2",
+      "scope": "transitive",
+      "source": "hosted",
+      "license_sha256": "3c32b53167c7dae9190c38dab5dd9fe1789c53623ebc7d1babcb29914c5b3f16",
+      "license_status": "cached license inspected by hash"
+    },
+    {
+      "name": "stack_trace",
+      "version": "1.12.1",
+      "scope": "transitive",
+      "source": "hosted",
+      "license_sha256": "ff0b91d4f3c32b25cb6ec84985e8da89b0ba2a2b2f7eef353cda5e5423a20390",
+      "license_status": "cached license inspected by hash"
+    },
+    {
+      "name": "storage_client",
+      "version": "2.6.0",
+      "scope": "transitive",
+      "source": "hosted",
+      "license_sha256": "334dd6820e2eaeab2064e7c59001b810566728a28a41a7c1dbf69bbee17d0936",
+      "license_status": "cached license inspected by hash"
+    },
+    {
+      "name": "stream_channel",
+      "version": "2.1.4",
+      "scope": "transitive",
+      "source": "hosted",
+      "license_sha256": "ff15faa32a2e638107b7789592b14426162a75ba620044ee2340a20ec6ce5e73",
+      "license_status": "cached license inspected by hash"
+    },
+    {
+      "name": "string_scanner",
+      "version": "1.4.1",
+      "scope": "transitive",
+      "source": "hosted",
+      "license_sha256": "3c32b53167c7dae9190c38dab5dd9fe1789c53623ebc7d1babcb29914c5b3f16",
+      "license_status": "cached license inspected by hash"
+    },
+    {
+      "name": "supabase",
+      "version": "2.14.0",
+      "scope": "transitive",
+      "source": "hosted",
+      "license_sha256": "334dd6820e2eaeab2064e7c59001b810566728a28a41a7c1dbf69bbee17d0936",
+      "license_status": "cached license inspected by hash"
+    },
+    {
+      "name": "supabase_flutter",
+      "version": "2.16.0",
+      "scope": "direct main",
+      "source": "hosted",
+      "license_sha256": "334dd6820e2eaeab2064e7c59001b810566728a28a41a7c1dbf69bbee17d0936",
+      "license_status": "cached license inspected by hash"
+    },
+    {
+      "name": "term_glyph",
+      "version": "1.2.2",
+      "scope": "transitive",
+      "source": "hosted",
+      "license_sha256": "ea97a7558a7bd7cee4e2355f7529e3cbebb0dcbb546ddb9a90f10c9eb6b08da5",
+      "license_status": "cached license inspected by hash"
+    },
+    {
+      "name": "test_api",
+      "version": "0.7.11",
+      "scope": "transitive",
+      "source": "hosted",
+      "license_sha256": "ff1b9f0df9036c04be424b1e3ce12789bea880ad5ffc3a48e069ae2d40a087a4",
+      "license_status": "cached license inspected by hash"
+    },
+    {
+      "name": "typed_data",
+      "version": "1.4.0",
+      "scope": "transitive",
+      "source": "hosted",
+      "license_sha256": "ff15faa32a2e638107b7789592b14426162a75ba620044ee2340a20ec6ce5e73",
+      "license_status": "cached license inspected by hash"
+    },
+    {
+      "name": "url_launcher",
+      "version": "6.3.2",
+      "scope": "transitive",
+      "source": "hosted",
+      "license_sha256": "89519eca6f7b9529b35bdddd623a58c3af06a88c458dbd6531ddb4675acf75a9",
+      "license_status": "cached license inspected by hash"
+    },
+    {
+      "name": "url_launcher_android",
+      "version": "6.3.32",
+      "scope": "transitive",
+      "source": "hosted",
+      "license_sha256": "420f7739f169097f0aad1242045169cd643c8f1d94e62866fad265ae4c369b7d",
+      "license_status": "cached license inspected by hash"
+    },
+    {
+      "name": "url_launcher_ios",
+      "version": "6.4.1",
+      "scope": "transitive",
+      "source": "hosted",
+      "license_sha256": "420f7739f169097f0aad1242045169cd643c8f1d94e62866fad265ae4c369b7d",
+      "license_status": "cached license inspected by hash"
+    },
+    {
+      "name": "url_launcher_linux",
+      "version": "3.2.2",
+      "scope": "transitive",
+      "source": "hosted",
+      "license_sha256": "420f7739f169097f0aad1242045169cd643c8f1d94e62866fad265ae4c369b7d",
+      "license_status": "cached license inspected by hash"
+    },
+    {
+      "name": "url_launcher_macos",
+      "version": "3.2.5",
+      "scope": "transitive",
+      "source": "hosted",
+      "license_sha256": "420f7739f169097f0aad1242045169cd643c8f1d94e62866fad265ae4c369b7d",
+      "license_status": "cached license inspected by hash"
+    },
+    {
+      "name": "url_launcher_platform_interface",
+      "version": "2.3.2",
+      "scope": "transitive",
+      "source": "hosted",
+      "license_sha256": "89519eca6f7b9529b35bdddd623a58c3af06a88c458dbd6531ddb4675acf75a9",
+      "license_status": "cached license inspected by hash"
+    },
+    {
+      "name": "url_launcher_web",
+      "version": "2.4.3",
+      "scope": "transitive",
+      "source": "hosted",
+      "license_sha256": "420f7739f169097f0aad1242045169cd643c8f1d94e62866fad265ae4c369b7d",
+      "license_status": "cached license inspected by hash"
+    },
+    {
+      "name": "url_launcher_windows",
+      "version": "3.1.5",
+      "scope": "transitive",
+      "source": "hosted",
+      "license_sha256": "420f7739f169097f0aad1242045169cd643c8f1d94e62866fad265ae4c369b7d",
+      "license_status": "cached license inspected by hash"
+    },
+    {
+      "name": "vector_math",
+      "version": "2.2.0",
+      "scope": "transitive",
+      "source": "hosted",
+      "license_sha256": "b5d856a1e27e9ebea4957fc3526f1c65782a04894b113c6b3b0fb1321dbdec55",
+      "license_status": "cached license inspected by hash"
+    },
+    {
+      "name": "vm_service",
+      "version": "15.4.0",
+      "scope": "transitive",
+      "source": "hosted",
+      "license_sha256": "ad6a71997da90924b2cfb1fb47ec46537f70faf469efe016168794ae45ed6888",
+      "license_status": "cached license inspected by hash"
+    },
+    {
+      "name": "web",
+      "version": "1.1.1",
+      "scope": "transitive",
+      "source": "hosted",
+      "license_sha256": "aa913ff50d7542eb8cc35b9f48a80928ac6819ba9057f85d424655e3e8dc271c",
+      "license_status": "cached license inspected by hash"
+    },
+    {
+      "name": "web_socket",
+      "version": "1.0.1",
+      "scope": "transitive",
+      "source": "hosted",
+      "license_sha256": "cbe822ef3446af4366b2b82c48b0979d0b12865edfe74c22b9aa617fc362d6e0",
+      "license_status": "cached license inspected by hash"
+    },
+    {
+      "name": "web_socket_channel",
+      "version": "3.0.3",
+      "scope": "transitive",
+      "source": "hosted",
+      "license_sha256": "a4b5d7d31626e90b77e8696f1c47643aa31f52e17c1907c1ab60b068110e6e10",
+      "license_status": "cached license inspected by hash"
+    },
+    {
+      "name": "win32",
+      "version": "5.15.0",
+      "scope": "transitive",
+      "source": "hosted",
+      "license_sha256": "87ef8bccdd619f2345ba5b9026cf1d6cccb305e36ab83849a8a3af9293abde7e",
+      "license_status": "cached license inspected by hash"
+    },
+    {
+      "name": "xdg_directories",
+      "version": "1.1.0",
+      "scope": "transitive",
+      "source": "hosted",
+      "license_sha256": "89519eca6f7b9529b35bdddd623a58c3af06a88c458dbd6531ddb4675acf75a9",
+      "license_status": "cached license inspected by hash"
+    },
+    {
+      "name": "xml",
+      "version": "7.0.1",
+      "scope": "transitive",
+      "source": "hosted",
+      "license_sha256": "0be767174b97278f17da4923a74169e8645631f03ea3d8482ec3523c9b1a0dd3",
+      "license_status": "cached license inspected by hash"
+    },
+    {
+      "name": "yet_another_json_isolate",
+      "version": "2.1.1",
+      "scope": "transitive",
+      "source": "hosted",
+      "license_sha256": "be8c4de36f5c20598e7dcb2dd8d33d398d3c74fda7f9d33d902804302abf41f2",
+      "license_status": "cached license inspected by hash"
+    }
+  ],
+  "notes": [
+    "Inventário técnico, não atesta compatibilidade jurídica/licenças de marcas.",
+    "Nenhum secret de assinatura lido. Assets institucionais exigem titularidade/autorização humana.",
+    "Arquivo exato para NITT só após freeze aprovado; nenhum hash de pacote definitivo nesta auditoria."
+  ]
+}
