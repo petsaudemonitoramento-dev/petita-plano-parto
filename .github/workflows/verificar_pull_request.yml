@@ -37,6 +37,8 @@ jobs:
             sudo apt-get update -qq
             sudo apt-get install -y poppler-utils
           fi
+      - name: Validar telas institucionais com diagnóstico por cenário
+        run: bash tool/run_bounded_audit.sh institutional-widget 180 flutter test --no-pub --reporter expanded test/institutional_ui_test.dart
       - name: Executar testes offline
         run: bash tool/run_bounded_audit.sh ci-tests 480 flutter test --no-pub --timeout 60s
       - name: Validar estrutura do questionário
