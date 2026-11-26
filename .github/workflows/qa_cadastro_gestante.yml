@@ -1,0 +1,18 @@
+name: Cadastro real da gestante em homologação
+on:
+  push:
+    branches: ['qa/cadastro-gestante-20261126']
+permissions:
+  contents: read
+jobs:
+  signup:
+    runs-on: ubuntu-latest
+    timeout-minutes: 7
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.44.0'
+          cache: true
+      - run: bash tool/run_bounded_audit.sh auth-pub 180 flutter pub get --enforce-lockfile
+      - run: bash tool/run_bounded_audit.sh signup-neon 120 flutter test --no-pub --reporter expanded test/online_signup_homologacao.dart
