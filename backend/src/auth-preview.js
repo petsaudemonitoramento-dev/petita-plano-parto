@@ -1,4 +1,4 @@
-import {createAuthClient} from '@neondatabase/auth';
+import {createAuthClient} from '@neon/auth';
 const status=document.querySelector('#status');
 const form=document.querySelector('#auth');
 const buttons=[...form.querySelectorAll('button')];

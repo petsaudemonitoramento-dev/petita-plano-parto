@@ -18,6 +18,8 @@ jobs:
         with:
           node-version: '22'
       - run: npm install --ignore-scripts
+      - name: Registrar versões resolvidas
+        run: npm ls @neon/auth better-auth @better-auth/drizzle-adapter zod --all
       - run: npm run check
       - run: npm test
       - run: npm run build:auth
