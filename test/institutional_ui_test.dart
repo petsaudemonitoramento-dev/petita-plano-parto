@@ -42,6 +42,17 @@ void main() {
         auth, api, PlanSyncController(api: api, auth: auth, vault: vault));
   }
 
+  Future<void> finishAction(WidgetTester tester, List<String> calls) async {
+    // Let each in-memory request complete and paint the state it scheduled.
+    // Stay below the client's timeout so a transport failure cannot look idle.
+    final progress = find.byType(LinearProgressIndicator);
+    for (var frame = 0; frame < 120; frame++) {
+      await tester.pump(const Duration(milliseconds: 16));
+      if (progress.evaluate().isEmpty) return;
+    }
+    fail('A tela continua carregando. Requisições observadas: $calls');
+  }
+
   setUp(() => SharedPreferences.setMockInitialValues({}));
   testWidgets(
       'online consent starts entirely unchecked and cannot POST implicit acceptance',
@@ -54,29 +65,19 @@ void main() {
     final r = runtime('patient', calls);
     await tester
         .pumpWidget(MaterialApp(home: InstitutionalAccountScreen(runtime: r)));
-    await tester.runAsync(() async {
-      await Future<void>.delayed(const Duration(milliseconds: 40));
-    });
-    await tester.pump(const Duration(milliseconds: 100));
-    expect(find.byType(LinearProgressIndicator), findsNothing,
-        reason: 'Requests observed: $calls');
-    await tester.pumpAndSettle(const Duration(milliseconds: 100),
-        EnginePhase.sendSemanticsUpdate, const Duration(seconds: 3));
+    await finishAction(tester, calls);
     final choices = tester
         .widgetList<CheckboxListTile>(find.byType(CheckboxListTile))
         .toList();
     expect(choices, hasLength(6));
     expect(choices.every((c) => c.value == false), true);
+    expect(calls, contains('GET /api/consent'));
+    expect(calls, isNot(contains('POST /api/consent')));
     await tester.tap(find.text('Registrar consentimento online'));
-    await tester.runAsync(() async {
-      await Future<void>.delayed(const Duration(milliseconds: 40));
-    });
-    await tester.pump(const Duration(milliseconds: 100));
-    expect(find.byType(LinearProgressIndicator), findsNothing,
-        reason: 'Requests observed: $calls');
-    await tester.pumpAndSettle(const Duration(milliseconds: 100),
-        EnginePhase.sendSemanticsUpdate, const Duration(seconds: 3));
+    await finishAction(tester, calls);
     expect(calls.contains('POST /api/consent'), false);
+    expect(find.textContaining('Não foi possível concluir a operação.'),
+        findsOneWidget);
     expect(find.text('Consentimento online registrado.'), findsNothing);
     expect(tester.takeException(), isNull);
   });
@@ -86,15 +87,10 @@ void main() {
     final calls = <String>[];
     await tester.pumpWidget(MaterialApp(
         home: InstitutionalAreaScreen(runtime: runtime('patient', calls))));
-    await tester.runAsync(() async {
-      await Future<void>.delayed(const Duration(milliseconds: 40));
-    });
-    await tester.pump(const Duration(milliseconds: 100));
-    expect(find.byType(LinearProgressIndicator), findsNothing,
-        reason: 'Requests observed: $calls');
-    await tester.pumpAndSettle(const Duration(milliseconds: 100),
-        EnginePhase.sendSemanticsUpdate, const Duration(seconds: 3));
+    await finishAction(tester, calls);
     expect(find.text('Solicitar acesso profissional'), findsOneWidget);
+    expect(calls, contains('GET /api/ubs'));
+    expect(find.text('Solicitações profissionais pendentes'), findsNothing);
     expect(find.text('Aprovar profissional'), findsNothing);
     expect(calls.any((c) => c.contains('/api/admin/')), false);
     expect(tester.takeException(), isNull);
@@ -104,11 +100,7 @@ void main() {
       (tester) async {
     await tester
         .pumpWidget(const MaterialApp(home: InstitutionalAccountScreen()));
-    await tester.runAsync(() async {
-      await Future<void>.delayed(const Duration(milliseconds: 40));
-    });
-    await tester.pumpAndSettle(const Duration(milliseconds: 100),
-        EnginePhase.sendSemanticsUpdate, const Duration(seconds: 3));
+    await tester.pumpAndSettle();
     expect(
         find.textContaining('conexão institucional ainda não está disponível'),
         findsOneWidget);
