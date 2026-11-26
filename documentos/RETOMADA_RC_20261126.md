@@ -1,4 +1,13 @@
 # Implementação institucional — 26/11/2026
+
+## Atualização da homologação em 26/11/2026
+
+**Parecer institucional: NO-GO para produção e uso assistencial.** O bloqueio dos dois widgets foi resolvido no código `72782ff3399d7e9a1a5477ca3d4c5853954b37ab`. O CI confirmou análise estática, 3/3 testes de tela, 144/144 na suíte completa e build Web. Os três testes estão incluídos nos 144. [Execução e logs](https://github.com/petsaudemonitoramento-dev/petita-plano-parto/actions/runs/45899191707).
+
+Os testes intercalam a fila real de eventos com os frames do relógio simulado. A tela de conta fornece uma superfície Material às caixas de consentimento dentro do cartão decorado. Com HTTP e cofre simulados, o CI verificou as seis opções desmarcadas, a mensagem de recusa e zero POST de consentimento após a tentativa incompleta. O perfil patient carregou a lista de UBS, mostrou a solicitação de acesso profissional e manteve a área administrativa inacessível na tela, sem requisição administrativa.
+
+O próximo teste de interface em aberto é o fluxo em Chromium com fixtures. A validação de OTP, sessão nativa, revogação de JWT e isolamento remoto depende da homologação institucional descrita abaixo. A migration 006 continua validada apenas em PostgreSQL descartável. A entrega anterior e os resultados a seguir são históricos.
+
 Base confirmada: feat/neon-enrollment-20261126 @fc554711, sem commit posterior ao início. Main atual3a09378; PRs15/17/24–28 abertas. PR28 já contém migrations001–005, transportes e backend; telas Flutter ainda apontavam ao Supabase legado.
 
 Marco1: reaproveitadas correções de persistência/feedback/PDF/RAG da PR24 e manifesto Web/iOS da PR25, sem merge na main e sem refazer componentes. Lockfile npm gerado;17 testes Node passaram e npm audit retornou0 vulnerabilidades. Questionário SHA9dbc0ceebb6b507df1c5d15a812ddbb689fe2935e4ba8c8e9637f8de0d4678dd preservado.
