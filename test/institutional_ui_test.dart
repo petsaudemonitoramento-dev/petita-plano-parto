@@ -47,6 +47,8 @@ void main() {
     // Stay below the client's timeout so a transport failure cannot look idle.
     final progress = find.byType(LinearProgressIndicator);
     for (var frame = 0; frame < 120; frame++) {
+      // Stream completion may cross the real event queue between API calls.
+      await tester.runAsync(() => Future<void>.delayed(Duration.zero));
       await tester.pump(const Duration(milliseconds: 16));
       if (progress.evaluate().isEmpty) return;
     }
