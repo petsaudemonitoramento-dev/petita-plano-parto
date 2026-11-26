@@ -161,4 +161,22 @@ void main() {
     await expectLater(c.syncPlan(id: id, expectedRevision: 0, answers: {}),
       throwsA(status(401)));
   });
+
+  test('token provider failure is sanitized without contacting backend', () async {
+    final c = NeonApiClient(origin: origin,
+      client: MockClient((_) async => throw StateError('should not call')),
+      tokenProvider: () async => throw StateError('private session detail'));
+    await expectLater(c.loadProfile(), throwsA(allOf(status(503),
+      predicate((e) => !e.toString().contains('private session detail')))));
+  });
+
+  test('token retrieval timeout fails closed before contacting backend', () async {
+    final c = NeonApiClient(origin: origin,
+      client: MockClient((_) async => throw StateError('should not call')),
+      tokenProvider: () => Future<String?>.delayed(
+        const Duration(milliseconds: 30), () => 'late-token'),
+      timeout: const Duration(milliseconds: 1));
+    await expectLater(c.loadProfile(), throwsA(status(503)));
+    await Future<void>.delayed(const Duration(milliseconds: 40));
+  });
 }
