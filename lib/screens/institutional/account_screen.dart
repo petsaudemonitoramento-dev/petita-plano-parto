@@ -265,24 +265,29 @@ class _InstitutionalAccountScreenState extends State<InstitutionalAccountScreen>
                         style: TextStyle(fontWeight: FontWeight.bold)),
                     const Text(
                         'Você pode continuar sem sincronizar. O envio pode incluir informações pessoais e de saúde deste plano e ficará associado à conta institucional acima.'),
-                    for (final item in (const {
-                      'terms': 'Li os Termos de Uso',
-                      'privacy': 'Li a Política de Privacidade',
-                      'responsibility':
-                          'Li o aviso de responsabilidade em saúde',
-                      'planScience': 'Li a ciência do Plano de Parto',
-                      'healthData':
-                          'Concordo com o tratamento das informações de saúde fornecidas',
-                      'onlineSync':
-                          'Autorizo a sincronização online deste plano'
-                    }).entries)
-                      CheckboxListTile(
-                          value: _choices[item.key] ?? false,
-                          onChanged: _busy
-                              ? null
-                              : (v) => setState(
-                                  () => _choices[item.key] = v == true),
-                          title: Text(item.value)),
+                    Material(
+                      type: MaterialType.transparency,
+                      child: Column(children: [
+                        for (final item in (const {
+                          'terms': 'Li os Termos de Uso',
+                          'privacy': 'Li a Política de Privacidade',
+                          'responsibility':
+                              'Li o aviso de responsabilidade em saúde',
+                          'planScience': 'Li a ciência do Plano de Parto',
+                          'healthData':
+                              'Concordo com o tratamento das informações de saúde fornecidas',
+                          'onlineSync':
+                              'Autorizo a sincronização online deste plano'
+                        }).entries)
+                          CheckboxListTile(
+                              value: _choices[item.key] ?? false,
+                              onChanged: _busy
+                                  ? null
+                                  : (v) => setState(
+                                      () => _choices[item.key] = v == true),
+                              title: Text(item.value)),
+                      ]),
+                    ),
                     TextButton(
                         onPressed: () =>
                             Navigator.pushNamed(context, AppRoutes.privacy),
