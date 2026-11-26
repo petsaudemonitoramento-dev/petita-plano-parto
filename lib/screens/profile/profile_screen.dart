@@ -1,3 +1,4 @@
+import '../../widgets/local_persistence_feedback.dart';
 import 'package:flutter/material.dart';
 import '../../config/app_theme.dart';
 import '../../models/ubs_unit.dart';
@@ -65,12 +66,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
     });
   }
 
-  Future<void> _saveLocal() async {
+  Future<bool> _saveLocal() async {
     final name = _nameController.text.trim();
     final email = _emailController.text.trim();
     if (name.isEmpty || email.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Informe nome e e-mail para preparar o cadastro local.')));
-      return;
+      return false;
     }
 
     String? ubsCode = _selectedUbsCode;
@@ -95,10 +96,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
       ubsName: ubsName,
       createdAt: _profile?.createdAt ?? DateTime.now(),
     );
-    await _storage.saveProfile(profile);
-    if (!mounted) return;
+    if (!await confirmLocalChange(context, () => _storage.saveProfile(profile))) return false;
+    if (!mounted) return false;
     setState(() => _profile = profile);
     ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Cadastro local salvo.')));
+    return true;
   }
 
   Future<void> _signUpOnline() async {
@@ -111,7 +113,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     }
     setState(() => _busy = true);
     try {
-      await _saveLocal();
+      if (!await _saveLocal()) return;
       await _online.signUpPatient(name: name, email: email, password: password, ubsCode: _selectedUbsCode);
       if (_online.isLoggedIn) {
         await _online.updatePatientProfile(name: name, email: email, ubsCode: _selectedUbsCode);
@@ -163,7 +165,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   Future<void> _clear() async {
-    await _storage.clearProfile();
+    if (!await confirmLocalChange(context, () => _storage.clearProfile())) return;
     if (!mounted) return;
     setState(() {
       _profile = null;

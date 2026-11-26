@@ -5,12 +5,17 @@ on:
     branches: [main]
   workflow_dispatch:
 
+concurrency:
+  group: audit-flutter-${{ github.ref }}
+  cancel-in-progress: true
+
 permissions:
   contents: read
 
 jobs:
   flutter-web:
     runs-on: ubuntu-latest
+    timeout-minutes: 25
     steps:
       - name: Baixar código
         uses: actions/checkout@v4
@@ -21,9 +26,9 @@ jobs:
           channel: stable
           cache: true
       - name: Instalar dependências
-        run: flutter pub get --enforce-lockfile
+        run: bash tool/run_bounded_audit.sh deps 300 flutter pub get --enforce-lockfile
       - name: Analisar código
-        run: flutter analyze --no-pub
+        run: bash tool/run_bounded_audit.sh analyze 180 flutter analyze --no-pub
       - name: Preparar validação independente dos PDFs
         run: |
           if ! command -v pdftotext >/dev/null || ! command -v pdffonts >/dev/null; then
@@ -31,14 +36,15 @@ jobs:
             sudo apt-get install -y poppler-utils
           fi
       - name: Executar testes offline
-        run: flutter test --no-pub
+        run: bash tool/run_bounded_audit.sh tests 480 flutter test --no-pub
       - name: Validar estrutura do questionário
         run: |
           python3 - <<'PY'
-          import json
+          import json, hashlib
           from pathlib import Path
           data = json.loads(Path('assets/data/birth_plan_flow.json').read_text(encoding='utf-8'))
-          assert data, 'Fluxo vazio'
+          assert len(data) == 31, 'Total canônico alterado'
+          assert hashlib.sha256(Path('assets/data/birth_plan_flow.json').read_bytes()).hexdigest() == '9dbc0ceebb6b507df1c5d15a812ddbb689fe2935e4ba8c8e9637f8de0d4678dd', 'Bytes canônicos alterados'
           ids = [item['id'] for item in data]
           assert len(ids) == len(set(ids)), 'IDs duplicados'
           for item in data:
@@ -47,4 +53,9 @@ jobs:
           print(f'Questionário validado: {len(data)} perguntas')
           PY
       - name: Compilar web para detectar erros de código
-        run: flutter build web --release --base-href "/petita-plano-parto/" --no-wasm-dry-run
+        run: bash tool/run_bounded_audit.sh web 900 flutter build web --release --base-href "/petita-plano-parto/" --no-wasm-dry-run
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Testar fronteiras Edge sem rede ou dados reais
+        run: bash tool/run_bounded_audit.sh edge 60 node --experimental-vm-modules --test-isolation=none --test tool/test_edge_security.mjs

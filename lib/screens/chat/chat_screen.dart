@@ -1,3 +1,4 @@
+import '../../widgets/local_persistence_feedback.dart';
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
@@ -263,7 +264,7 @@ class _ChatScreenState extends State<ChatScreen> {
         return;
       }
       if (choice == _PlanStartChoice.restart) {
-        await _storage.clearAnswers();
+        if (!await confirmLocalChange(context, () => _storage.clearAnswers())) return;
         answers = [];
         restarting = true;
       }
@@ -373,9 +374,9 @@ class _ChatScreenState extends State<ChatScreen> {
   }
 
   Future<void> _savePronouns(String pronouns) async {
-    await _storage.saveTreatmentPreferences(
+    if (!await confirmLocalChange(context, () => _storage.saveTreatmentPreferences(
       TreatmentPreferences(pronouns: pronouns),
-    );
+    ))) return;
     if (!mounted) return;
     setState(() {
       _messages.add(ChatMessage(
@@ -395,6 +396,7 @@ class _ChatScreenState extends State<ChatScreen> {
     final cleaned = values.map((e) => e.trim()).where((e) => e.isNotEmpty).toList();
     if (cleaned.isEmpty) return;
     _answering = true;
+    final previousAnswers = List<BirthPlanAnswer>.from(_answers);
     try {
       _answers.removeWhere((a) => a.questionId == q.id);
       _answers.add(BirthPlanAnswer(questionId: q.id, values: cleaned));
@@ -437,6 +439,10 @@ class _ChatScreenState extends State<ChatScreen> {
       } else {
         await _showCurrentQuestion();
       }
+    } on LocalPersistenceException {
+      _answers = previousAnswers;
+      _controller.text = cleaned.join(", ");
+      if (mounted) showLocalPersistenceError(context);
     } finally {
       _answering = false;
     }
@@ -875,7 +881,7 @@ class _ChatScreenState extends State<ChatScreen> {
     _answering = true;
     try {
       final q = _questions[_currentQuestion];
-      await _storage.deferQuestionForConsultation(q.id);
+      if (!await confirmLocalChange(context, () => _storage.deferQuestionForConsultation(q.id))) return;
       if (!mounted) return;
       setState(() {
         _messages.add(ChatMessage(

@@ -1,0 +1,544 @@
+{
+  "scope": "candidato de revisao; nao submetido; nao hash definitivo INPI",
+  "commit": "d34f4a33e8e9e098ec87730a08feff28218661da",
+  "archive": "Petita_codigo_candidato_d34f4a3.zip",
+  "bytes": 2390645,
+  "sha256": "147bca9b923dfcbb082ca34c1b317e4f77ffea3e6ec07d3f9d85cc3ec17aac39",
+  "files": [
+    {
+      "path": ".github/workflows/medir_tamanho_apk_tts.yml",
+      "bytes": 1789,
+      "sha256": "b2d69ab3df022d6e90ac39ed43aef26a845644ae6357798ec796d5ff65193a44"
+    },
+    {
+      "path": ".github/workflows/migrar_snapshot_neon.yml",
+      "bytes": 5152,
+      "sha256": "de3df31aad084afca87e6be3de9dc7134c333db64eb956f49998cfc1e8d5f8ef"
+    },
+    {
+      "path": ".github/workflows/publicar_apk_petita_v030.yml",
+      "bytes": 5739,
+      "sha256": "2e9924e286b5fa8f06be6e48cf9624f6844807cd7eae7029956eb6d5d27d18aa"
+    },
+    {
+      "path": ".github/workflows/publicar_flutter_web.yml",
+      "bytes": 1251,
+      "sha256": "f00a30c36880f1434cd9d9f46d0f257a5e28c173bcb18d9b9fee1d9bae83434e"
+    },
+    {
+      "path": ".github/workflows/testar_apk_leve_appetize.yml",
+      "bytes": 2963,
+      "sha256": "8d8f5224aef8c658bff30134cb9cbf9a8f455082d67080bb4f2568a8916ec6a8"
+    },
+    {
+      "path": ".github/workflows/validar_apk_tts.yml",
+      "bytes": 1842,
+      "sha256": "430163b0042f92de534e90d4307e8decae6c42b4285869dbf27967539889a289"
+    },
+    {
+      "path": ".github/workflows/verificar_pull_request.yml",
+      "bytes": 2465,
+      "sha256": "592c87f38777f92b8e621e63fdc6196e61611a7f9fc24dce686bae120711e796"
+    },
+    {
+      "path": "README.md",
+      "bytes": 3109,
+      "sha256": "5ef855892b877ad5209df8f45a7e8fe8d800bc7c87a787b85a5418d3a1be5dc4"
+    },
+    {
+      "path": "assets/branding/Petita_icone_android_1024.png",
+      "bytes": 837935,
+      "sha256": "bea39885f9277a0d059a1a100c4821320617a56ff21c5d4178ad45cb8429ceb9"
+    },
+    {
+      "path": "assets/branding/README.md",
+      "bytes": 1709,
+      "sha256": "26998252698bd5c044a6a5f32c87c5ac4924b35a297f7f90f925857fcd9a1295"
+    },
+    {
+      "path": "assets/data/birth_plan_flow.json",
+      "bytes": 12569,
+      "sha256": "9dbc0ceebb6b507df1c5d15a812ddbb689fe2935e4ba8c8e9637f8de0d4678dd"
+    },
+    {
+      "path": "assets/data/faq.json",
+      "bytes": 2684,
+      "sha256": "e34039fa65289b463271d76ccf0b82bbb7da3a7a7fc04de1bb35035fb896c6ae"
+    },
+    {
+      "path": "assets/data/ubs.json",
+      "bytes": 456,
+      "sha256": "5c1f87162502c519f0960a897d411f384768c86b2753f58fb6d9d22dd826c923"
+    },
+    {
+      "path": "assets/fonts/DejaVuSans-Bold.ttf",
+      "bytes": 708920,
+      "sha256": "a4c5bc453ca281d90ea079e596da7ae0dfeb5777497c29ec254e76d97ff6f890"
+    },
+    {
+      "path": "assets/fonts/DejaVuSans-LICENSE.txt",
+      "bytes": 3857,
+      "sha256": "e81d9dced49fea2a7d576cbea283873de58563c5d488f954deb282843c3ea79c"
+    },
+    {
+      "path": "assets/fonts/DejaVuSans.ttf",
+      "bytes": 759720,
+      "sha256": "57f73e11f51999432bf7ab22ce55b6f945d5eca1bf824404cfa9ec2e3718c84e"
+    },
+    {
+      "path": "assets/images/pet_saude_avatar.png",
+      "bytes": 31788,
+      "sha256": "f2e572a422b4897472cba3ee6bd033a8775ef7213b770d3cc29f583d50f76ca1"
+    },
+    {
+      "path": "assets/images/pet_saude_logo.png",
+      "bytes": 257177,
+      "sha256": "e53fe678e02a15f28aa62ac2e66b2c4f0034384ff1f708e2b41515721a8b7f0f"
+    },
+    {
+      "path": "assets/images/petita.png",
+      "bytes": 293291,
+      "sha256": "f169f2aa5799ce3ca30b77666fa8641ebd404479eacb0651f268f3c01e7a1316"
+    },
+    {
+      "path": "assets/images/ufcg_avatar.png",
+      "bytes": 4680,
+      "sha256": "3ec171257e87695e7d1435ec77a4cf6bdfea5bd3e4a2054c00800af25bd1da0e"
+    },
+    {
+      "path": "assets/images/ufcg_logo.png",
+      "bytes": 155528,
+      "sha256": "5961dcd3f770fd2536787fecc4ee7efaaeea45b2d18f75a8d6e3bfaf7bb18863"
+    },
+    {
+      "path": "assets/legal/aviso_responsabilidade.md",
+      "bytes": 826,
+      "sha256": "a6caa0727a2d19a898b52cce8464b0e684023aab1255b4edbfa4156725115ef2"
+    },
+    {
+      "path": "assets/legal/politica_privacidade.md",
+      "bytes": 3670,
+      "sha256": "36581281ac039442b616684af524d739bae520e4851b7bbb4ccee1d610ff2ccd"
+    },
+    {
+      "path": "assets/legal/termo_ciencia_inicial.md",
+      "bytes": 2858,
+      "sha256": "7bf7661c0533e168c6da0f667e4e89cce8632df86a9e11150a1a3e7bf02caa31"
+    },
+    {
+      "path": "assets/legal/termo_consentimento_isencao.pdf",
+      "bytes": 3557,
+      "sha256": "025ab54b5c287e986257e9651b1583e7f8add64ca36b94351777b13731d25695"
+    },
+    {
+      "path": "assets/legal/termos_uso.md",
+      "bytes": 2500,
+      "sha256": "31ba7f6b7a556acc8f45739e130ce1189f92cc5696be9282ce133f3f73def716"
+    },
+    {
+      "path": "lib/app.dart",
+      "bytes": 2050,
+      "sha256": "b4f97c9985e683a1c4c6cb04507e09262f6ce3f76ce86f468a8035094b49ced6"
+    },
+    {
+      "path": "lib/config/app_info.dart",
+      "bytes": 483,
+      "sha256": "23d4af65d30175c1acd56d546e73ec5b5e65b102965d4dd85b8e74efaaa96b3b"
+    },
+    {
+      "path": "lib/config/app_routes.dart",
+      "bytes": 466,
+      "sha256": "23da8d3e51f0b639a5b43f6f405c29630f5099ba044c5153eacb1b88b20b1781"
+    },
+    {
+      "path": "lib/config/app_theme.dart",
+      "bytes": 2787,
+      "sha256": "0d6c2c3b51bceaa2fc7a746f86eed25d9f9f797c202fdfde326d7a2de2e5d9d9"
+    },
+    {
+      "path": "lib/config/supabase_config.dart",
+      "bytes": 335,
+      "sha256": "e169236df23ee073110046dd8fde19cd4663920a0db27e7ba677c40af583a68d"
+    },
+    {
+      "path": "lib/main.dart",
+      "bytes": 378,
+      "sha256": "0144875c234775eb3233050a289daa7f6ecb0ebbbac6060c072242f19344973e"
+    },
+    {
+      "path": "lib/models/birth_plan_answer.dart",
+      "bytes": 468,
+      "sha256": "b510bf92bac19ebab5503e8807322c0c2a2d3df81df0334c024e3b0787e5db0c"
+    },
+    {
+      "path": "lib/models/birth_plan_question.dart",
+      "bytes": 756,
+      "sha256": "4b91a7fe634e51ce7dd7c60e697431ae773d3ad9466534668919db4480859bd8"
+    },
+    {
+      "path": "lib/models/chat_message.dart",
+      "bytes": 202,
+      "sha256": "dabaf722f2d16fee2ef82e7824e4b77a0069c5802a8a6fbc1406937e0a87d5db"
+    },
+    {
+      "path": "lib/models/consent_record.dart",
+      "bytes": 1764,
+      "sha256": "cd5c2737fb53cb50bc6a7017572ac2a9def7adca304cecf410b95ab43c7cf798"
+    },
+    {
+      "path": "lib/models/faq_item.dart",
+      "bytes": 702,
+      "sha256": "25b5b6cea382182754c237d71ac2a0ba620d98b64b93d1d2e7a5ac9b837e34cb"
+    },
+    {
+      "path": "lib/models/knowledge_document.dart",
+      "bytes": 871,
+      "sha256": "f964536f630495f99570dcd8f7372f4a1f9bea8968d39bdb605b6196a977cf6c"
+    },
+    {
+      "path": "lib/models/patient_question_history.dart",
+      "bytes": 1856,
+      "sha256": "33b7a2dae248670824c0ffa8398268c0b75c93ce379f0f81027b2bbfbbc46242"
+    },
+    {
+      "path": "lib/models/support_document.dart",
+      "bytes": 3133,
+      "sha256": "b78a66aae07244d09e704f2dbe453469cbca74578acb621c3fdad0ce6a2b28d5"
+    },
+    {
+      "path": "lib/models/treatment_preferences.dart",
+      "bytes": 1090,
+      "sha256": "38337fe3d2934003a697bf6cc4762d724aa7d2cc0a9e1f0cae5c69ea16063fd9"
+    },
+    {
+      "path": "lib/models/ubs_question.dart",
+      "bytes": 1706,
+      "sha256": "6bfd726405f13b3f23dde136e9bf2b0094e9bd4a7d24b3519cf42379023223c6"
+    },
+    {
+      "path": "lib/models/ubs_unit.dart",
+      "bytes": 716,
+      "sha256": "c4c768140f009b7430d7ef6fa3d9173558eb0f9e3a215e406b64274129a40478"
+    },
+    {
+      "path": "lib/models/user_profile.dart",
+      "bytes": 1124,
+      "sha256": "3891938e2b59a8b71875477c89e4dacc2a43cad8969d75b359b508f8599300c8"
+    },
+    {
+      "path": "lib/screens/about/about_screen.dart",
+      "bytes": 2369,
+      "sha256": "731e4a7c50ed9165de74fe4d83c6b0afa3e13087b291e3d284b42cce5b78975d"
+    },
+    {
+      "path": "lib/screens/admin/admin_screen.dart",
+      "bytes": 26892,
+      "sha256": "551d216e125faca39872b5ef64c9308e07929e088428a7f92ab7d84715d0c3bf"
+    },
+    {
+      "path": "lib/screens/birth_plan/birth_plan_summary_screen.dart",
+      "bytes": 20518,
+      "sha256": "7521c181797dfd7372d41194529588cf32e03184668145286678dea89e9fd8c7"
+    },
+    {
+      "path": "lib/screens/chat/chat_screen.dart",
+      "bytes": 69668,
+      "sha256": "915e2db516f6b68afc8ca68cae570f1cd45149723ff201aeed98a7d6702697e9"
+    },
+    {
+      "path": "lib/screens/consent/consent_gate_screen.dart",
+      "bytes": 8217,
+      "sha256": "251562c7e2062a0fffa83f68692a7a25bfd6c14c21cf226616a5f2c2d9cf0cd9"
+    },
+    {
+      "path": "lib/screens/home/home_screen.dart",
+      "bytes": 10378,
+      "sha256": "5de78b43f1d496559ced3e58c7cd0bcbab3dc4b5b68737479353992ce499ee87"
+    },
+    {
+      "path": "lib/screens/profile/profile_screen.dart",
+      "bytes": 13015,
+      "sha256": "eeebfdc787c1f405d1ab2fda80db7c038a6ba511504c1ec476c82a57443e3330"
+    },
+    {
+      "path": "lib/screens/questions/my_questions_screen.dart",
+      "bytes": 6340,
+      "sha256": "4aa89d03821e3586bcfb6b90ab4c5315834723002f39542446a9a0313f8e3861"
+    },
+    {
+      "path": "lib/screens/terms/terms_screen.dart",
+      "bytes": 1517,
+      "sha256": "ca2b47fb972b5815d9b102f4f4f49794efd9970d98fea7ef23841ef6676f18aa"
+    },
+    {
+      "path": "lib/screens/ubs/ubs_team_screen.dart",
+      "bytes": 11309,
+      "sha256": "ec7f07b4f1c4f38f72184a3722320104e81e6ddb85e30f8f62b5d78aff855558"
+    },
+    {
+      "path": "lib/services/birth_plan_explanations.dart",
+      "bytes": 18352,
+      "sha256": "58e2d3cdfcd25e2f53eaa12f5ad9cb1755b48ce681d1f1cfea451197fed7f5d9"
+    },
+    {
+      "path": "lib/services/birth_plan_flow_service.dart",
+      "bytes": 432,
+      "sha256": "d8d7752bb9acfd864f2269b09a6545cda52daa9f529b82489bb79076ccd048ca"
+    },
+    {
+      "path": "lib/services/chatbot_service.dart",
+      "bytes": 3088,
+      "sha256": "c7b8cafc96eb34ab1fe842bd84a4eb934435d31455468da33ebc325e8add2ca1"
+    },
+    {
+      "path": "lib/services/faq_search_service.dart",
+      "bytes": 4601,
+      "sha256": "1677e6b5b460c2ad138e79c670af6752a8f0d3f366f544d5d886bb9d8fd9e4a7"
+    },
+    {
+      "path": "lib/services/gestational_age_service.dart",
+      "bytes": 1709,
+      "sha256": "e43d7bd38355d0f75ecfd9b35c201854416b4b160bdf69c029379e6ada0cb748"
+    },
+    {
+      "path": "lib/services/pdf_service.dart",
+      "bytes": 36551,
+      "sha256": "a82a1d4082e436c398ce5a055a0c8ca90bdfb879fe154fcd5bb9b08d8757d2a8"
+    },
+    {
+      "path": "lib/services/storage_service.dart",
+      "bytes": 10530,
+      "sha256": "5b9cbeffd282ec349134d247b06631d3cc285544b9ae316e1847b7c3dec3d5bc"
+    },
+    {
+      "path": "lib/services/supabase_service.dart",
+      "bytes": 15542,
+      "sha256": "7a8f44b9094c499017c0ea0cf20304721b6344d96fdda69cdcb7ab65b0af1e7b"
+    },
+    {
+      "path": "lib/services/ubs_service.dart",
+      "bytes": 581,
+      "sha256": "231cd2c6ab1a92d201bd2e483d53a8c5a4d043bd26b31b80d8729323ad3d01f1"
+    },
+    {
+      "path": "lib/widgets/app_button.dart",
+      "bytes": 710,
+      "sha256": "3899771cf0f1d36c19a2c1703950f8429ce344dfd5dff8a770e841950d433da3"
+    },
+    {
+      "path": "lib/widgets/chat_bubble.dart",
+      "bytes": 1148,
+      "sha256": "45ac310abf6a151f54504f2429a78ad5711991d766eefa86eeb58adc8c63829d"
+    },
+    {
+      "path": "lib/widgets/local_persistence_feedback.dart",
+      "bytes": 598,
+      "sha256": "a76ed926dfdad9697f6a438edfde6332adc82e5c1efb230e2274c6d497069e27"
+    },
+    {
+      "path": "lib/widgets/option_chip.dart",
+      "bytes": 765,
+      "sha256": "17e5078e8ce2d908975d73bb66798ac353dce092082533d32a391e949cf985de"
+    },
+    {
+      "path": "lib/widgets/petita_animated_mascot.dart",
+      "bytes": 4008,
+      "sha256": "b8c7161fd82cef4663f64381f44e0e8907ba2b09e790e1c7a0a3b8fa975d23e6"
+    },
+    {
+      "path": "lib/widgets/section_card.dart",
+      "bytes": 755,
+      "sha256": "4f89b54079c2a7d10ba96dce5195866b8f74c9af487207fd051eec83a45c71bd"
+    },
+    {
+      "path": "pubspec.lock",
+      "bytes": 23314,
+      "sha256": "0f18d7d9ea25d11623389e7a178d5efbbc6e45d7d8ce4d7d8908521b75ce65bb"
+    },
+    {
+      "path": "pubspec.yaml",
+      "bytes": 1141,
+      "sha256": "f28336cb3e6b65bcb99d66f0f2acf610accc66f456e8d6c19c67aa801c58ebc7"
+    },
+    {
+      "path": "supabase/.temp/gotrue-version",
+      "bytes": 8,
+      "sha256": "f75a75b98e8dff9c488b13f4dcfe8d335b699fbe091d54f101ca7fd1b97ee68a"
+    },
+    {
+      "path": "supabase/.temp/linked-project.json",
+      "bytes": 133,
+      "sha256": "a144108837739eb335fd081ef1be7e88b1de9db39116de19e04108d7ea4da310"
+    },
+    {
+      "path": "supabase/.temp/pooler-url",
+      "bytes": 92,
+      "sha256": "8ba5a9513e404975796c5a3a0e7c05d3c5193074c2fc2a50bd4ec61f43e052d1"
+    },
+    {
+      "path": "supabase/.temp/postgres-version",
+      "bytes": 10,
+      "sha256": "eba23653f5f46f14c983c379dd897e7e8fd255fae9bbbd80e8b001aa7a0b6ed9"
+    },
+    {
+      "path": "supabase/.temp/project-ref",
+      "bytes": 20,
+      "sha256": "fc481e35f29ea9288bfea1342e1599e655ee6f53459e1867fa8aff51216099da"
+    },
+    {
+      "path": "supabase/.temp/rest-version",
+      "bytes": 5,
+      "sha256": "b25de4a023eef82d4780a9f7816c5685ca35437308a9d457585eece9945485dc"
+    },
+    {
+      "path": "supabase/.temp/storage-migration",
+      "bytes": 33,
+      "sha256": "5eefa09f2bf47edfbd65e0307f2ebf6eec935a663b45e36cbd9395c3f10695d0"
+    },
+    {
+      "path": "supabase/.temp/storage-version",
+      "bytes": 7,
+      "sha256": "2413c9aa419634fb971140ec25bd16439ce3586c45af662e8efb7c2f30611a84"
+    },
+    {
+      "path": "supabase/config.toml",
+      "bytes": 157,
+      "sha256": "632ccac3d66a81dbb5bab7faab5f2044bde887e90627343a5c5201ca8ffbc65a"
+    },
+    {
+      "path": "supabase/functions/ask-petita-rag/index.ts",
+      "bytes": 7941,
+      "sha256": "cb3eecd12b8a2f3638f1e0e726c1e2b15b45c6adda8cc0ef7f79c8d51972a2bd"
+    },
+    {
+      "path": "supabase/functions/delete-support-document/index.ts",
+      "bytes": 2397,
+      "sha256": "193fa758eb70dd088bcd019a2c9799e318b9838ce314f516f515c8367deaff3b"
+    },
+    {
+      "path": "supabase/functions/process-support-document/index.ts",
+      "bytes": 12457,
+      "sha256": "e15f97ac6ca2fb87a9f5ec318c78c97dcb33d1a485f6b97f53d9ba71955d254c"
+    },
+    {
+      "path": "test/benchmarks/audit_benchmark_test.dart",
+      "bytes": 2874,
+      "sha256": "f7fdc48a770a5a5c3f2071a786ece23e82216ef5c9b7e8872b5577992ab42d2e"
+    },
+    {
+      "path": "test/birth_plan_flow_test.dart",
+      "bytes": 1257,
+      "sha256": "e8e21d677b91a9a2588846ef8c8654eb80f8dfa50adef57a78f7ad4f004e0474"
+    },
+    {
+      "path": "test/chat_flow_test.dart",
+      "bytes": 14113,
+      "sha256": "79523350dd300e01263e0473ea9c94dc8f87e840aeb6af1bbeae631766e4ac4b"
+    },
+    {
+      "path": "test/chat_responsive_test.dart",
+      "bytes": 5203,
+      "sha256": "3f8125bbba39097b53f963f5bc164c964af3c849c068a94ac2bdcb6663808588"
+    },
+    {
+      "path": "test/consent_gate_test.dart",
+      "bytes": 2146,
+      "sha256": "1a51f57f2250d0ae7f6d7bc3c54493cb78065e9a3e0def04e04a861632939023"
+    },
+    {
+      "path": "test/consultation_offline_test.dart",
+      "bytes": 2299,
+      "sha256": "1044355de5aa5a194b5f282f18e539829e6e01447977ac7a4dae3594b92fbd68"
+    },
+    {
+      "path": "test/education_explanations_test.dart",
+      "bytes": 998,
+      "sha256": "32b35a605e99f9089cfcb9ef86816f28a1fc2ffe578ad1c93a57a43fbfc76ea6"
+    },
+    {
+      "path": "test/faq_offline_test.dart",
+      "bytes": 1405,
+      "sha256": "6f9aa1b3ef2ddce562ff5f218b692a3083de84c0fecf3412fb86e37e9e9ba7bd"
+    },
+    {
+      "path": "test/gestational_age_service_test.dart",
+      "bytes": 1032,
+      "sha256": "051b0d8257d4f37fadf8f9c6dafc270ad93704e270c82c167b91f3cab8c085df"
+    },
+    {
+      "path": "test/navigation_layout_test.dart",
+      "bytes": 9633,
+      "sha256": "8517e06a874fe80c4d5611c947a3133ae36d904a50406d788d5f63cf0598c6bd"
+    },
+    {
+      "path": "test/pdf_presentation_test.dart",
+      "bytes": 4305,
+      "sha256": "cc97963316da69bfad363cd150537608b3fb6e5656662f3df534b8ea98827ee8"
+    },
+    {
+      "path": "test/pdf_service_test.dart",
+      "bytes": 8861,
+      "sha256": "6686b64d43ea19a1561494221145ab86efd05a51c297a42b47d1619b784c0528"
+    },
+    {
+      "path": "test/profile_offline_test.dart",
+      "bytes": 3782,
+      "sha256": "3ff9209a9f64828c8cdbd37608937f319fe457d9128c36eff012aaaf1dea8ff6"
+    },
+    {
+      "path": "test/profile_screen_test.dart",
+      "bytes": 1759,
+      "sha256": "67368809217df22141671d62cc0e52f706f59b0da8afc4dd1a46df82a313e213"
+    },
+    {
+      "path": "test/security_auth_boundary_test.dart",
+      "bytes": 4821,
+      "sha256": "50ec8eb83c0e41579392e7331bcd8abeb0a8feac684d7bb4dd14446eef56c36a"
+    },
+    {
+      "path": "test/security_storage_audit_test.dart",
+      "bytes": 5451,
+      "sha256": "bfd1aae4d2cfd352b9cd3a2734189c40308320c78d51fc56131e6e883645049d"
+    },
+    {
+      "path": "test/storage_recovery_test.dart",
+      "bytes": 2700,
+      "sha256": "869df3903e681cb797f575c88010f5db577395e5a9ad65fa60439889f40bb263"
+    },
+    {
+      "path": "test/storage_service_test.dart",
+      "bytes": 4221,
+      "sha256": "daa95aea0a033a65465c04907f0d89094087017efa7ecaf39f71470d7ebb2504"
+    },
+    {
+      "path": "test/support/offline_helpers.dart",
+      "bytes": 1789,
+      "sha256": "d7a09257d80097a34f2055acd0854e611ad44b2c1381ae7d4ef02553e1661efa"
+    },
+    {
+      "path": "test/treatment_preferences_test.dart",
+      "bytes": 1478,
+      "sha256": "604613450b0d9ef7b78c748a094303a2789558ab95d9ed745c708eb9af0b567e"
+    },
+    {
+      "path": "tool/prepare_android_tts_manifest.py",
+      "bytes": 1114,
+      "sha256": "e97b0574a2f791b6b65d5767a98a669706381aa23348349c55401a37eed4db2c"
+    },
+    {
+      "path": "tool/run_bounded_audit.sh",
+      "bytes": 1812,
+      "sha256": "d47fe5a24ee4a71758b0538626ec7c4a6ea9347bfa434a208e3b29296b14c101"
+    },
+    {
+      "path": "tool/test_edge_security.mjs",
+      "bytes": 8962,
+      "sha256": "395e5787af2cd751d7ec4c613d658359407085f44e0ba5c51576a7141c6ebd6b"
+    }
+  ],
+  "limited_secret_pattern_findings": [],
+  "limits": [
+    "Verificacao por padroes do pacote atual; nao prova ausencia de todos os segredos nem audita historico/artefatos.",
+    "Chaves publicaveis e nomes de variaveis de secrets sao referencias, nao credenciais privilegiadas."
+  ]
+}

@@ -33,10 +33,10 @@ Deno.serve(async (req) => {
 
       const { data: profile } = await userClient
         .from('profiles')
-        .select('role')
+        .select('role, active')
         .eq('id', userData.user.id)
         .maybeSingle()
-      if (profile?.role !== 'admin') return json({ error: 'Apenas administradores podem processar documentos.' }, 403)
+      if (profile?.role !== 'admin' || profile.active !== true) return json({ error: 'Apenas administradores podem processar documentos.' }, 403)
     }
 
     const { document_id, phase = 'prepare' } = await req.json()

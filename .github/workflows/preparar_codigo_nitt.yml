@@ -1,0 +1,59 @@
+name: Preparar codigo-fonte da Petita para revisao NITT (sem hash)
+
+on:
+  push:
+    branches:
+      - audit/codex-final-petita-20261104
+    paths:
+      - .github/workflows/preparar_codigo_nitt.yml
+      - scripts/preparar_codigo_nitt.py
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: codigo-nitt-petita-audit
+  cancel-in-progress: false
+
+jobs:
+  preparar-fontes:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Baixar codigo versionado
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Preparar Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Instalar gerador local de PDF
+        run: |
+          python -m pip install --disable-pip-version-check 'reportlab==4.4.9'
+
+      - name: Verificar commit de origem
+        run: |
+          test "$(git rev-parse d34f4a33e8e9e098ec87730a08feff28218661da)" = "d34f4a33e8e9e098ec87730a08feff28218661da"
+          git cat-file -t d34f4a33e8e9e098ec87730a08feff28218661da | grep -Fx commit
+          echo 'Candidato Petita 0.3.0+21 confirmado'
+
+      - name: Produzir PDF representativo e ZIP completo, sem hash
+        env:
+          PETITA_NITT_OUTPUT: dist-nitt
+        run: |
+          python scripts/preparar_codigo_nitt.py
+          test -s dist-nitt/Petita_0.3.0_build21_codigo_fonte_completo_NITT.zip
+          test -s dist-nitt/Petita_0.3.0_build21_codigo_fonte_representativo_NITT.pdf
+
+      - name: Disponibilizar somente artifact para revisao (sem release/deploy)
+        uses: actions/upload-artifact@v4
+        with:
+          name: petita-codigo-fonte-nitt-v030-build21
+          path: dist-nitt/
+          retention-days: 30
+          if-no-files-found: error

@@ -17,6 +17,21 @@ Deno.serve(async (req) => {
       return json({ found: false, answer: '', sources: [], error: 'Chave do aplicativo inválida.' }, 401)
     }
 
+    // Keep paid/external processing off until isolated Auth + quota homologation.
+    if (Deno.env.get('PETITA_RAG_ENABLED') !== 'true') {
+      return json({ found: false, answer: '', sources: [], error: 'Consulta indisponível no momento.' }, 503)
+    }
+    const token = /^Bearer ([^\s]+)$/.exec(req.headers.get('Authorization') ?? '')?.[1]
+    if (!token) return json({ found: false, answer: '', sources: [] }, 401)
+    const userClient = createClient(mustEnv('SUPABASE_URL'), apiKey, {
+      global: { headers: { Authorization: `Bearer ${token}` } },
+    })
+    const { data: identity, error: identityError } = await userClient.auth.getUser(token)
+    if (identityError || !identity.user) return json({ found: false, answer: '', sources: [] }, 401)
+    const { data: profile, error: profileError } = await userClient.from('profiles')
+      .select('active').eq('id', identity.user.id).maybeSingle()
+    if (profileError || profile?.active !== true) return json({ found: false, answer: '', sources: [] }, 403)
+
     const { question, category } = await req.json()
     const cleanQuestion = String(question ?? '').trim()
     if (cleanQuestion.length < 3 || cleanQuestion.length > 1500) {
@@ -24,6 +39,13 @@ Deno.serve(async (req) => {
     }
 
     const service = createClient(mustEnv('SUPABASE_URL'), mustEnv('SUPABASE_SERVICE_ROLE_KEY'))
+    // Server-only atomic persistent limiter. Missing/failed RPC must never allow a call.
+    // No migration is applied by this handler or by the audit.
+    const { data: allowed, error: quotaError } = await service.rpc('consume_petita_rag_quota', {
+      p_user_id: identity.user.id,
+    })
+    if (quotaError || typeof allowed !== 'boolean') return json({ found: false, answer: '', sources: [] }, 503)
+    if (!allowed) return json({ found: false, answer: '', sources: [] }, 429)
     const queryEmbedding = await createEmbedding(cleanQuestion)
 
     let matches = await findMatches(service, queryEmbedding, category ? String(category) : null)
@@ -57,8 +79,8 @@ Deno.serve(async (req) => {
       sources,
       similarity: topSimilarity,
     })
-  } catch (error) {
-    return json({ found: false, answer: '', sources: [], error: safeMessage(error) }, 200)
+  } catch (_) {
+    return json({ found: false, answer: '', sources: [], error: 'Consulta indisponível no momento.' }, 503)
   }
 })
 
@@ -77,6 +99,7 @@ async function createEmbedding(input: string): Promise<number[]> {
   const accountId = mustEnv('CLOUDFLARE_ACCOUNT_ID')
   const apiToken = mustEnv('CLOUDFLARE_API_TOKEN')
   const response = await fetch(`https://api.cloudflare.com/client/v4/accounts/${accountId}/ai/v1/embeddings`, {
+    signal: AbortSignal.timeout(8000),
     method: 'POST',
     headers: {
       Authorization: `Bearer ${apiToken}`,
@@ -94,6 +117,7 @@ async function generateAnswer(question: string, context: string): Promise<string
   const accountId = mustEnv('CLOUDFLARE_ACCOUNT_ID')
   const apiToken = mustEnv('CLOUDFLARE_API_TOKEN')
   const response = await fetch(`https://api.cloudflare.com/client/v4/accounts/${accountId}/ai/v1/chat/completions`, {
+    signal: AbortSignal.timeout(8000),
     method: 'POST',
     headers: {
       Authorization: `Bearer ${apiToken}`,
@@ -156,10 +180,6 @@ function mustEnv(name: string): string {
   const value = Deno.env.get(name)
   if (!value) throw new Error(`Segredo ${name} não configurado.`)
   return value
-}
-
-function safeMessage(error: unknown): string {
-  return error instanceof Error ? error.message : String(error)
 }
 
 function json(body: unknown, status = 200) {

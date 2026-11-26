@@ -4,7 +4,7 @@ Aplicativo Flutter offline-first para construção guiada do Plano de Parto, ate
 
 ## Versão
 
-`0.2.0-beta` / build `20` — V6.0
+`0.3.0` / build `21` — código em auditoria; não equivale a APK publicado ou homologação assistencial. RAG externo desativado por padrão; autenticação/RLS/isolamento remoto ainda não homologados.
 
 ## Principais recursos da V6.0
 
