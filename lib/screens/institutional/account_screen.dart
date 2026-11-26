@@ -215,21 +215,24 @@ class _InstitutionalAccountScreenState extends State<InstitutionalAccountScreen>
                       children: [
                     Text('Conta: ${runtime.auth.user!['email'] ?? ''}'),
                     if (runtime.auth.user?['emailVerified'] != true)
-                      ExpansionTile(
-                        title: const Text('Verificação para acesso profissional'),
-                        children: [
-                          _button('Enviar código de verificação',
-                              () => runtime.auth.resend(runtime.auth.user!['email'] as String),
-                              success: 'Confira seu e-mail.'),
-                          TextField(
-                            controller: _professionalOtp,
-                            decoration: const InputDecoration(labelText: 'Código de verificação profissional'),
-                          ),
-                          _button('Verificar e-mail profissional', () async {
-                            await runtime.auth.verify(runtime.auth.user!['email'] as String, _professionalOtp.text);
-                            await _load();
-                          }, success: 'E-mail verificado.'),
-                        ],
+                      Material(
+                        type: MaterialType.transparency,
+                        child: ExpansionTile(
+                          title: const Text('Verificação para acesso profissional'),
+                          children: [
+                            _button('Enviar código de verificação',
+                                () => runtime.auth.resend(runtime.auth.user!['email'] as String),
+                                success: 'Confira seu e-mail.'),
+                            TextField(
+                              controller: _professionalOtp,
+                              decoration: const InputDecoration(labelText: 'Código de verificação profissional'),
+                            ),
+                            _button('Verificar e-mail profissional', () async {
+                              await runtime.auth.verify(runtime.auth.user!['email'] as String, _professionalOtp.text);
+                              await _load();
+                            }, success: 'E-mail verificado.'),
+                          ],
+                        ),
                       ),
                     if (_profile != null) ...[
                       Text('Perfil institucional: ${_profile!['role']}'),
