@@ -75,4 +75,90 @@ void main() {
         throwsArgumentError);
     }
   });
+
+  test('enrollment cannot send a role or arbitrary identity', () async {
+    final c = api(MockClient((request) async {
+      expect(request.method, 'POST');
+      expect(request.url.path, '/api/profile');
+      expect(jsonDecode(request.body), isEmpty);
+      expect(request.headers['Authorization'], 'Bearer test-token');
+      return ok();
+    }));
+    await c.enrollProfile();
+  });
+
+  test('consent preserves all explicit decisions and the operation ID', () async {
+    final c = api(MockClient((request) async {
+      expect(request.method, 'POST');
+      expect(request.url.path, '/api/consent');
+      expect(jsonDecode(request.body), {
+        'operation_id': id, 'terms_version': '2026-10-21-v1',
+        'accepted_terms': true, 'accepted_privacy': true,
+        'accepted_responsibility': true, 'accepted_plan_science': true,
+        'accepted_health_data': true, 'accepted_online_sync': false,
+      });
+      return http.Response('', 400);
+    }));
+    await expectLater(c.acceptSyncConsent(
+      operationId: id, termsVersion: '2026-10-21-v1',
+      acceptedTerms: true, acceptedPrivacy: true,
+      acceptedResponsibility: true, acceptedPlanScience: true,
+      acceptedHealthData: true, acceptedOnlineSync: false,
+    ), throwsA(status(400)));
+  });
+
+  test('consent withdrawal has separate authenticated route', () async {
+    final c = api(MockClient((request) async {
+      expect(request.method, 'POST');
+      expect(request.url.path, '/api/consent/withdraw');
+      expect(request.headers['Authorization'], 'Bearer test-token');
+      expect(jsonDecode(request.body), {
+        'operation_id': id, 'terms_version': '2026-10-21-v1',
+      });
+      return ok();
+    }));
+    await c.withdrawSyncConsent(id, '2026-10-21-v1');
+  });
+
+  test('plan creation and update preserve revision, not patient identity', () async {
+    var revision = 0;
+    final c = api(MockClient((request) async {
+      expect(request.method, 'POST');
+      expect(request.url.path, '/api/plans');
+      expect(jsonDecode(request.body), {
+        'id': id, 'expected_revision': revision,
+        'patient_name': 'Paciente fictícia', 'dpp': '2027-01-01',
+        'companion': null,
+        'answers': {'nome_gestante': ['Paciente fictícia']},
+      });
+      return http.Response('{"data":[{"revision":${revision + 1}}]}', 200,
+        headers: {'content-type': 'application/json'});
+    }));
+    for (revision = 0; revision < 2; revision++) {
+      final result = await c.syncPlan(id: id, expectedRevision: revision,
+        patientName: 'Paciente fictícia', dppIso: '2027-01-01',
+        answers: {'nome_gestante': ['Paciente fictícia']});
+      expect(result.single['revision'], revision + 1);
+    }
+  });
+
+  test('sync conflict is not reported as successful or retried silently', () async {
+    var calls = 0;
+    final c = api(MockClient((request) async {
+      calls++;
+      return http.Response('{"error":"Conflito"}', 409);
+    }));
+    await expectLater(c.syncPlan(id: id, expectedRevision: 1,
+      answers: {}), throwsA(status(409)));
+    expect(calls, 1);
+  });
+
+  test('consent and plan operations require a session before network', () async {
+    final c = api(MockClient((_) async => throw StateError('should not call')), token: null);
+    await expectLater(c.getSyncConsent(), throwsA(status(401)));
+    await expectLater(c.listPlans(), throwsA(status(401)));
+    await expectLater(c.withdrawSyncConsent(id, '2026-10-21-v1'), throwsA(status(401)));
+    await expectLater(c.syncPlan(id: id, expectedRevision: 0, answers: {}),
+      throwsA(status(401)));
+  });
 }
