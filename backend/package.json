@@ -1,0 +1,17 @@
+{
+  "name": "petita-ubs-api",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node --test",
+    "check": "node --check api/index.js && node --check lib/auth.js && node --check lib/policy.js"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "@neondatabase/serverless": "^1.0.0",
+    "jose": "^6.0.0"
+  }
+}

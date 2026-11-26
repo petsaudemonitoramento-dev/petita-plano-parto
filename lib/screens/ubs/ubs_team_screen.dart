@@ -150,7 +150,7 @@ class _UbsTeamScreenState extends State<UbsTeamScreen> {
               SizedBox(height: 12),
               Text('Área da Equipe UBS', textAlign: TextAlign.center, style: TextStyle(fontSize: 23, fontWeight: FontWeight.w900, color: AppColors.petDarkBlue)),
               SizedBox(height: 8),
-              Text('As dúvidas são exibidas de forma anonimizada. A equipe não vê nome, e-mail, telefone, CPF, cartão SUS ou plano completo da paciente.', textAlign: TextAlign.center),
+              Text('As dúvidas são exibidas sem dados cadastrais da gestante. A equipe não recebe nome, e-mail, telefone, CPF, cartão SUS nem plano completo. O próprio texto pode conter informações identificáveis; trate-o como dado sensível.', textAlign: TextAlign.center),
             ])),
             if (_message != null) SectionCard(child: Text(_message!, style: const TextStyle(color: AppColors.petOrange))),
             if (_profile == null) _loginCard(),
@@ -211,7 +211,7 @@ class _UbsTeamScreenState extends State<UbsTeamScreen> {
       SectionCard(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Text('UBS vinculada: ${_profile!.ubsCode ?? 'não informada'}', style: const TextStyle(fontWeight: FontWeight.w900, color: AppColors.petDarkBlue)),
         const SizedBox(height: 8),
-        const Text('Regra de acesso: esta equipe visualiza apenas dúvidas anonimizadas vinculadas à própria UBS.'),
+        const Text('Regra de acesso: esta equipe só deve acessar dúvidas de sua própria UBS. O canal é educativo, não é plantão e não estabelece prazo ou compromisso de resposta. Dúvidas urgentes devem ser atendidas presencialmente.'),
         const SizedBox(height: 10),
         Row(children: [
           Expanded(child: AppButton(label: 'Atualizar', icon: Icons.refresh, onPressed: _busy ? () {} : _load)),
@@ -219,7 +219,7 @@ class _UbsTeamScreenState extends State<UbsTeamScreen> {
           Expanded(child: AppButton(label: 'Sair', icon: Icons.logout, outlined: true, onPressed: _busy ? () {} : _signOut)),
         ]),
       ])),
-      if (_questions.isEmpty) const SectionCard(child: Text('Nenhuma dúvida pendente para a sua UBS.')),
+      if (_questions.isEmpty) const SectionCard(child: Text('Nenhuma dúvida pendente para sua UBS. Não é necessário permanecer conectado para monitoramento de urgências.')),
       ..._questions.map((q) => SectionCard(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             Text('${q.publicCode} • ${_riskLabel(q.selfRiskLevel)}', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w900, color: AppColors.primaryPink)),
             const SizedBox(height: 6),
