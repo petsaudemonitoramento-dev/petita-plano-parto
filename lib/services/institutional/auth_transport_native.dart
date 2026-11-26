@@ -136,8 +136,6 @@ class NativeNeonAuthTransport implements AuthTransport {
         throw const InstitutionalAuthException(401);
       }
       if (action == 'session') return session;
-      if (user['emailVerified'] != true)
-        throw const InstitutionalAuthException(403);
       // Fetch a fresh short-lived JWT via the session; no anonymous fallback.
       return _request('GET', '/token', null, credential: _credential);
     }

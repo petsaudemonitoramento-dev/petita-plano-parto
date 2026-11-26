@@ -57,8 +57,10 @@ class EnrollmentSyncTests(unittest.TestCase):
         self.assertEqual(self.value(s,"SELECT petita.ensure_patient_profile()"),p)
         self.assertEqual(self.value(s,"SELECT role||':'||coalesce(ubs_code,'none') FROM petita.profiles"),"patient:none")
 
+    require_verified_patient = True
+
     def test_02_identity_denials(self):
-        for s,issuer in [("",ISSUER),(uid(),ISSUER),(fixture(False),ISSUER),
+        for s,issuer in [("",ISSUER),(uid(),ISSUER),*([(fixture(False),ISSUER)] if self.require_verified_patient else []),
                          (fixture(True,True),ISSUER),(fixture(),"https://wrong.invalid")]:
             self.assertEqual(self.value(s,"SELECT petita.auth_identity_active()",issuer),"f")
             self.deny(s,"SELECT petita.ensure_patient_profile()",issuer=issuer)

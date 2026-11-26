@@ -9,7 +9,7 @@ export function authOrigin(base) {
 export function verifiedIdentity(payload,origin) {
   if(payload.iss!==origin || !(payload.aud===origin || (Array.isArray(payload.aud) && payload.aud.includes(origin))) ||
     typeof payload.sub!=='string' || !payload.sub.trim() || payload.sub.length>512 ||
-    payload.emailVerified!==true || payload.banned!==false) throw problem(401,'Sessão inválida');
+    typeof payload.emailVerified!=='boolean' || payload.banned!==false) throw problem(401,'Sessão inválida');
   return {issuer:origin,subject:payload.sub};
 }
 export async function identify(header) {

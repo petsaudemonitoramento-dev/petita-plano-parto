@@ -27,7 +27,7 @@ void main() {
     var tokenCalls = 0;
     final client = MockClient((r) async {
       expect(r.followRedirects, false);
-      if (r.url.path.endsWith('/sign-in/email'))
+      if (r.url.path.endsWith('/sign-in/email') || r.url.path.endsWith('/sign-up/email'))
         return ok(r, {
           'token': 'opaque-session-fixture',
           'user': {'id': 'fixture-a'}
@@ -35,7 +35,7 @@ void main() {
       expect(r.headers['Authorization'], 'Bearer opaque-session-fixture');
       if (r.url.path.endsWith('/get-session'))
         return ok(r, {
-          'user': {'id': 'fixture-a', 'emailVerified': true},
+          'user': {'id': 'fixture-a', 'emailVerified': false},
           'session': {
             'expiresAt':
                 DateTime.now().add(const Duration(hours: 1)).toIso8601String()
@@ -45,8 +45,9 @@ void main() {
       return ok(r, {'token': 'short-lived-api-fixture'});
     });
     final auth = InstitutionalAuth(NativeNeonAuthTransport(url, vault, client));
+    await auth.signup('Fixture', 'fixture@example.invalid', 'PASSWORD-NEVER-PERSIST');
     await auth.login('fixture@example.invalid', 'PASSWORD-NEVER-PERSIST');
-    expect(auth.verified, true);
+    expect(auth.signedIn, true);
     expect(await auth.token(), 'short-lived-api-fixture');
     final restored =
         InstitutionalAuth(NativeNeonAuthTransport(url, vault, client));

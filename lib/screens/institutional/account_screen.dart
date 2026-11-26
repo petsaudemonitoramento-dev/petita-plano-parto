@@ -21,6 +21,7 @@ class _InstitutionalAccountScreenState extends State<InstitutionalAccountScreen>
     with WidgetsBindingObserver {
   final _name = TextEditingController(), _email = TextEditingController();
   final _password = TextEditingController(), _otp = TextEditingController();
+  final _professionalOtp = TextEditingController();
   final _choices = <String, bool>{};
   InstitutionalRuntime? get _runtime =>
       widget.runtime ?? InstitutionalRuntime.instance;
@@ -42,6 +43,7 @@ class _InstitutionalAccountScreenState extends State<InstitutionalAccountScreen>
     _email.dispose();
     _password.dispose();
     _otp.dispose();
+    _professionalOtp.dispose();
     super.dispose();
   }
 
@@ -49,7 +51,7 @@ class _InstitutionalAccountScreenState extends State<InstitutionalAccountScreen>
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed &&
         !_busy &&
-        _runtime?.auth.verified == true) {
+        _runtime?.auth.signedIn == true) {
       _run(() async {
         await _runtime!.sync.retryPending();
         await _load();
@@ -74,12 +76,6 @@ class _InstitutionalAccountScreenState extends State<InstitutionalAccountScreen>
           _loadedSubject = runtime.auth.subject;
         });
       if (runtime.auth.user != null) {
-        if (!runtime.auth.verified) {
-          if (mounted)
-            setState(() => _message =
-                'Confirme seu e-mail para habilitar os serviços institucionais.');
-          return;
-        }
         await runtime.api.enrollProfile();
         final rows = await runtime.api.loadProfile();
         final units = await runtime.api.listUbs();
@@ -123,6 +119,7 @@ class _InstitutionalAccountScreenState extends State<InstitutionalAccountScreen>
     } finally {
       _password.clear();
       _otp.clear();
+      _professionalOtp.clear();
       if (mounted) setState(() => _busy = false);
     }
   }
@@ -185,32 +182,21 @@ class _InstitutionalAccountScreenState extends State<InstitutionalAccountScreen>
                       enableSuggestions: false,
                       autocorrect: false,
                       decoration: const InputDecoration(labelText: 'Senha')),
-                  TextField(
-                      controller: _otp,
-                      autocorrect: false,
-                      enableSuggestions: false,
-                      decoration: const InputDecoration(
-                          labelText:
-                              'Código de verificação recebido por e-mail')),
-                  _button(
-                      'Criar conta',
-                      () => runtime.auth
-                          .signup(_name.text, _email.text, _password.text),
-                      success:
-                          'Cadastro solicitado. Confirme o código enviado ao seu e-mail.'),
-                  _button('Confirmar e-mail',
-                      () => runtime.auth.verify(_email.text, _otp.text),
-                      success: 'E-mail confirmado. Entre para continuar.'),
-                  _button(
-                      'Reenviar código', () => runtime.auth.resend(_email.text),
-                      success:
-                          'Solicitação de código concluída. Confira seu e-mail.'),
+                  _button('Criar conta', () async {
+                    await runtime.auth.signup(_name.text, _email.text, _password.text);
+                  }, success: 'Cadastro solicitado. Entre com seu e-mail e senha.'),
                   _button('Entrar', () async {
                     await runtime.auth.login(_email.text, _password.text);
                     await _load();
                   },
                       success:
-                          'Sessão verificada. Confira a situação do perfil abaixo.'),
+                          'Sessão iniciada. Confira a situação do perfil abaixo.'),
+                  TextField(
+                      controller: _otp,
+                      autocorrect: false,
+                      enableSuggestions: false,
+                      decoration: const InputDecoration(
+                          labelText: 'Código de recuperação de senha')),
                   _button('Recuperar senha',
                       () => runtime.auth.requestReset(_email.text),
                       success:
@@ -228,8 +214,23 @@ class _InstitutionalAccountScreenState extends State<InstitutionalAccountScreen>
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
                     Text('Conta: ${runtime.auth.user!['email'] ?? ''}'),
-                    Text(
-                        'E-mail ${runtime.auth.verified ? 'verificado' : 'aguardando confirmação'}'),
+                    if (runtime.auth.user?['emailVerified'] != true)
+                      ExpansionTile(
+                        title: const Text('Verificação para acesso profissional'),
+                        children: [
+                          _button('Enviar código de verificação',
+                              () => runtime.auth.resend(runtime.auth.user!['email'] as String),
+                              success: 'Confira seu e-mail.'),
+                          TextField(
+                            controller: _professionalOtp,
+                            decoration: const InputDecoration(labelText: 'Código de verificação profissional'),
+                          ),
+                          _button('Verificar e-mail profissional', () async {
+                            await runtime.auth.verify(runtime.auth.user!['email'] as String, _professionalOtp.text);
+                            await _load();
+                          }, success: 'E-mail verificado.'),
+                        ],
+                      ),
                     if (_profile != null) ...[
                       Text('Perfil institucional: ${_profile!['role']}'),
                       Text(
@@ -256,7 +257,7 @@ class _InstitutionalAccountScreenState extends State<InstitutionalAccountScreen>
                         success:
                             'Sessão encerrada. O plano offline permanece neste aparelho.'),
                   ])),
-            if (_profile?['role'] == 'patient' && runtime.auth.verified) ...[
+            if (_profile?['role'] == 'patient' && runtime.auth.signedIn) ...[
               SectionCard(
                   child: Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -369,7 +370,7 @@ class _InstitutionalAccountScreenState extends State<InstitutionalAccountScreen>
                           'Solicitação ${request['ubs_code']}: ${request['status']}'),
                   ])),
             ],
-            if (runtime.auth.verified && _profile != null)
+            if (runtime.auth.signedIn && _profile != null)
               _button('Área profissional e administrativa', () async {
                 await Navigator.pushNamed(context, AppRoutes.ubs);
               }),

@@ -37,7 +37,7 @@ class FixtureAuthTransport implements AuthTransport {
           'id': subject,
           'name': 'SYNTHETIC',
           'email': 'fixture@example.invalid',
-          'emailVerified': true
+          'emailVerified': false
         }
       };
     if (action == 'token') return {'token': 'fixture-api-token'};

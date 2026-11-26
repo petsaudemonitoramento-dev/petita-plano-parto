@@ -8,6 +8,17 @@ import test_neon_workflows as workflows
 import test_neon_enrollment_sync as enrollment
 
 class PatientUbsTests(enrollment.EnrollmentSyncTests):
+    require_verified_patient = False
+
+    def test_signup_without_email_verification_is_patient_only(self):
+        subject = enrollment.fixture(False)
+        profile = self.value(subject, 'SELECT petita.ensure_patient_profile()')
+        self.assertEqual(self.value(subject, 'SELECT role FROM petita.profiles'), 'patient')
+        self.deny(subject, 'SELECT * FROM petita.list_patient_ubs_requests()')
+        base.sql(f"UPDATE petita.profiles SET role='admin' WHERE id='{profile}'", 'postgres')
+        self.assertEqual(self.value(subject, 'SELECT petita.auth_identity_active()'), 'f')
+        self.deny(subject, 'SELECT petita.ensure_patient_profile()')
+
     def ask(self, subject, code='TEST-A', operation=None):
         return json.loads(self.value(subject,f"SELECT petita.request_patient_ubs('{code}','{operation or enrollment.uid()}')"))
 
@@ -74,7 +85,7 @@ def main():
           CREATE TABLE neon_auth."user"(id uuid PRIMARY KEY,name text,"emailVerified" boolean,banned boolean);
           GRANT USAGE ON SCHEMA neon_auth TO petita_test_migrator WITH GRANT OPTION;
           GRANT SELECT ON neon_auth."user" TO petita_test_migrator WITH GRANT OPTION;''','postgres')
-        for name in ['004_auth_enrollment','005_sync_consent','006_patient_ubs']:
+        for name in ['004_auth_enrollment','005_sync_consent','006_patient_ubs','007_patient_signup']:
             base.sql(f"SET petita.migration_target='isolated-homologation'; SET petita.auth_issuer='{base.ISSUER}';\n"+
                      (base.MIGRATIONS/f'{name}.up.sql').read_text(),'petita_test_migrator')
         r=unittest.TextTestRunner(verbosity=2).run(unittest.defaultTestLoader.loadTestsFromTestCase(PatientUbsTests))

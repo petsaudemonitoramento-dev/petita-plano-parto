@@ -46,7 +46,7 @@ class _InstitutionalAreaScreenState extends State<InstitutionalAreaScreen> {
     final r = runtime;
     if (r == null) throw const NeonApiException(503);
     await r.auth.restore();
-    if (!r.auth.verified) throw const NeonApiException(401);
+    if (!r.auth.signedIn) throw const NeonApiException(401);
     final profile = (await r.api.loadProfile()).single;
     // Clear old privileged content before the next request, including role changes.
     if (mounted)

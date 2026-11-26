@@ -53,7 +53,7 @@ class PlanSyncController extends ChangeNotifier {
   Future<void> _save(String subject, Map<String, dynamic> value) =>
       vault.write(_stateKey(subject), jsonEncode(value));
   String _subject() {
-    if (auth.subject == null || !auth.verified || auth.locallySignedOut)
+    if (auth.subject == null || !auth.signedIn || auth.locallySignedOut)
       throw const NeonApiException(401);
     return auth.subject!;
   }
@@ -218,7 +218,7 @@ class PlanSyncController extends ChangeNotifier {
   }
 
   Future<void> retryPending() async {
-    if (busy || auth.subject == null || !auth.verified) return;
+    if (busy || auth.subject == null || !auth.signedIn) return;
     final subject = _subject();
     final state = await _state(subject);
     // Never grant consent implicitly on reconnect, or resurrect a withdrawn queue.

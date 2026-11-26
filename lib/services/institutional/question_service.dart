@@ -11,7 +11,7 @@ class InstitutionalQuestionService {
   InstitutionalRuntime? get runtime =>
       injected ?? InstitutionalRuntime.instance;
   bool get isLoggedIn =>
-      runtime?.auth.verified == true && runtime?.auth.locallySignedOut == false;
+      runtime?.auth.signedIn == true && runtime?.auth.locallySignedOut == false;
   Future<({bool connected})> checkConnection() async {
     try {
       await runtime!.api.loadProfile();

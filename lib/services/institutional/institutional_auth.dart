@@ -8,7 +8,7 @@ class InstitutionalAuth extends ChangeNotifier {
   int _generation = 0;
   InstitutionalAuth(this.transport);
   String? get subject => user?['id'] as String?;
-  bool get verified => user?['emailVerified'] == true;
+  bool get signedIn => !locallySignedOut && subject?.isNotEmpty == true;
   Future<void> signup(String name, String email, String password) async {
     await transport.call('signup',
         {'name': name.trim(), 'email': email.trim(), 'password': password});
