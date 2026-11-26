@@ -35,7 +35,13 @@ class NeonApiClient {
     final url = _origin.replace(path: path);
     final headers = <String, String>{'Accept': 'application/json'};
     if (!isPublic) {
-      final token = await _token();
+      final String? token;
+      try {
+        token = await _token().timeout(timeout);
+      } catch (_) {
+        // Session-provider failures must not leak credentials or internal details.
+        throw const NeonApiException(503);
+      }
       if (token == null || token.isEmpty || token.length > 16384 ||
           RegExp(r'\s').hasMatch(token)) {
         throw const NeonApiException(401);
