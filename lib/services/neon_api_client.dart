@@ -91,6 +91,8 @@ class NeonApiClient {
 
   Future<List<Map<String, dynamic>>> listUbs() =>
       _request('GET', '/api/ubs', isPublic: true);
+  Future<List<Map<String, dynamic>>> enrollProfile() =>
+      _request('POST', '/api/profile', body: {});
   Future<List<Map<String, dynamic>>> loadProfile() =>
       _request('GET', '/api/me');
   Future<List<Map<String, dynamic>>> listMyQuestions() =>

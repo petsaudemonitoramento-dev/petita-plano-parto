@@ -8,6 +8,7 @@ const only = (b, keys) => { if (!b || Array.isArray(b) || typeof b !== 'object' 
 const q = (sql, params = [], isPublic = false) => ({sql, params, isPublic});
 export function route(method, path, body = {}) {
   if (method === 'GET' && path === '/api/ubs') { noBody(body); return q('select code,name,city,state from petita.ubs where active order by name', [], true); }
+  if (method === 'POST' && path === '/api/profile') { noBody(body); return {...q('select petita.ensure_patient_profile() as id'), enrollment:true}; }
   if (method === 'GET' && path === '/api/me') { noBody(body); return q('select id,display_name,role,ubs_code from petita.profiles where id=petita_private.actor_id()'); }
   if (method === 'GET' && path === '/api/questions/mine') { noBody(body); return q('select * from petita.list_my_patient_questions(50,null,null)'); }
   if (method === 'GET' && path === '/api/team/queue') { noBody(body); return q('select * from petita.list_team_patient_questions(50,null,null)'); }

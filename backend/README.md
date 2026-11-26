@@ -12,3 +12,6 @@ npm run check
 npm test
 
 Antes do deploy, gerar e revisar package-lock.json, usar npm ci, verificar dependências, validar regras de Vercel e concluir gates de integração. A migração do Flutter continua em PR própria para preservar a experiência offline e o questionário.
+
+## Migration 004
+A API passa a exigir a migration 004 antes de operações autenticadas. A identidade Neon verificada é consultada no banco (emailVerified, banned) e o cadastro inicial é explícito via POST /api/profile, sem parâmetros de identidade/papel/UBS. A função cria somente patient sem vínculo UBS; o vínculo profissional e a vinculação institucional da gestante continuam processos de autorização separados. O contexto continua derivado exclusivamente do JWT validado pelo backend. A verificação de estado da conta não prova revogação individual de JWT em logout. Não aplicar 004 em produção sem CI, revisão e reconciliação da identidade histórica.

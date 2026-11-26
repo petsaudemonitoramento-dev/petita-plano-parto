@@ -24,6 +24,10 @@ export async function execute(operation,identity) {
     if(runtime?.role!=='petita_runtime' || runtime.rolbypassrls || runtime.rolsuper || runtime.rolcanlogin) throw problem(503,'Role insegura');
     await client.query("select set_config('petita.issuer',$1,true),set_config('petita.subject',$2,true)",[identity?.issuer??'',identity?.subject??'']);
     if(identity) {
+      const {rows:[verified]}=await client.query('select petita.auth_identity_active() as active');
+      if(verified?.active!==true) throw problem(401,'Identidade inativa');
+    }
+    if(identity && !operation.enrollment) {
       const {rows:[actor]}=await client.query('select petita_private.actor_id() as id');
       if(!actor?.id) throw problem(403,'Perfil ainda não habilitado');
     }
