@@ -1,0 +1,145 @@
+import 'dart:async';
+import 'dart:convert';
+import 'package:http/http.dart' as http;
+
+/// Transport-only client for the new API. No database credentials or session
+/// persistence. An authenticated Neon token provider must be wired separately.
+class NeonApiException implements Exception {
+  final int status;
+  const NeonApiException(this.status);
+  @override
+  String toString() => 'Petita online: operação indisponível ($status).';
+}
+typedef NeonTokenProvider = Future<String?> Function();
+
+class NeonApiClient {
+  final Uri _origin;
+  final http.Client _http;
+  final NeonTokenProvider _token;
+  final Duration timeout;
+  NeonApiClient({
+    required Uri origin,
+    required http.Client client,
+    required NeonTokenProvider tokenProvider,
+    this.timeout = const Duration(seconds: 15),
+  }) : _origin = origin, _http = client, _token = tokenProvider {
+    if (origin.scheme != 'https' || !origin.hasAuthority ||
+        origin.userInfo.isNotEmpty || origin.hasQuery || origin.hasFragment ||
+        (origin.path.isNotEmpty && origin.path != '/')) {
+      throw ArgumentError('A API deve ter uma origem HTTPS válida.');
+    }
+  }
+
+  Future<List<Map<String, dynamic>>> _request(String method, String path,
+      {Map<String, dynamic>? body, bool isPublic = false}) async {
+    final url = _origin.replace(path: path);
+    final headers = <String, String>{'Accept': 'application/json'};
+    if (!isPublic) {
+      final token = await _token();
+      if (token == null || token.isEmpty || token.length > 16384 ||
+          RegExp(r'\s').hasMatch(token)) {
+        throw const NeonApiException(401);
+      }
+      headers['Authorization'] = 'Bearer $token';
+    }
+    final request = http.Request(method, url)
+      ..followRedirects = false
+      ..headers.addAll(headers);
+    if (body != null) {
+      request.headers['Content-Type'] = 'application/json';
+      request.body = jsonEncode(body);
+    }
+    try {
+      final response = await _http.send(request).timeout(timeout);
+      if (response.statusCode != 200) {
+        await response.stream.drain<void>().timeout(timeout);
+        throw NeonApiException(response.statusCode);
+      }
+      if (!(response.headers['content-type'] ?? '').toLowerCase().startsWith('application/json')) {
+        await response.stream.drain<void>().timeout(timeout);
+        throw const NeonApiException(502);
+      }
+      final bytes = <int>[];
+      await for (final chunk in response.stream.timeout(timeout)) {
+        if (bytes.length + chunk.length > 1024 * 1024) {
+          throw const NeonApiException(502);
+        }
+        bytes.addAll(chunk);
+      }
+      final decoded = jsonDecode(utf8.decode(bytes));
+      if (decoded is! Map || decoded['data'] is! List) {
+        throw const NeonApiException(502);
+      }
+      return (decoded['data'] as List).map((row) {
+        if (row is! Map<String, dynamic>) throw const NeonApiException(502);
+        return row;
+      }).toList(growable: false);
+    } on NeonApiException {
+      rethrow;
+    } on Exception {
+      // Never leak backend errors or tokens to UI/logs.
+      throw const NeonApiException(503);
+    }
+  }
+
+  static String _id(String value) {
+    if (!RegExp(r'^[a-fA-F0-9]{8}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{12}$').hasMatch(value)) {
+      throw const NeonApiException(400);
+    }
+    return value;
+  }
+
+  Future<List<Map<String, dynamic>>> listUbs() =>
+      _request('GET', '/api/ubs', isPublic: true);
+  Future<List<Map<String, dynamic>>> loadProfile() =>
+      _request('GET', '/api/me');
+  Future<List<Map<String, dynamic>>> listMyQuestions() =>
+      _request('GET', '/api/questions/mine');
+  Future<List<Map<String, dynamic>>> listTeamQueue() =>
+      _request('GET', '/api/team/queue');
+  Future<List<Map<String, dynamic>>> listTeamRequests() =>
+      _request('GET', '/api/admin/team-requests');
+
+  /// The caller must keep this operation's idempotency key stable across retries.
+  /// Each acknowledgement must reflect the user's explicit action.
+  Future<List<Map<String, dynamic>>> submitQuestion({
+    required String idempotencyKey,
+    required String ubsCode,
+    required String category,
+    required String question,
+    required String risk,
+    required List<String> warningSigns,
+    required bool acknowledgedNonUrgent,
+    required bool acknowledgedOptionalReply,
+    required bool acknowledgedPseudonymization,
+    required bool acknowledgedOwnUbs,
+  }) => _request('POST', '/api/questions', body: {
+    'idempotency_key': _id(idempotencyKey),
+    'ubs_code': ubsCode, 'category': category, 'question_text': question,
+    'self_risk_level': risk, 'warning_signs': warningSigns,
+    'confirmou_nao_urgencia': acknowledgedNonUrgent,
+    'confirmou_resposta_facultativa': acknowledgedOptionalReply,
+    'confirmou_visibilidade_anonimizada': acknowledgedPseudonymization,
+    'confirmou_ubs_exclusiva': acknowledgedOwnUbs,
+  });
+
+  Future<List<Map<String, dynamic>>> requestTeamAccess(
+      String ubsCode, String idempotencyKey) =>
+      _request('POST', '/api/team/access-request', body: {
+        'ubs_code': ubsCode, 'idempotency_key': _id(idempotencyKey),
+      });
+  Future<List<Map<String, dynamic>>> respondToQuestion(
+      String questionId, String answer, String idempotencyKey) =>
+      _request('POST', '/api/team/questions/${_id(questionId)}/answer', body: {
+        'answer_text': answer, 'idempotency_key': _id(idempotencyKey),
+      });
+  Future<List<Map<String, dynamic>>> decideTeamRequest(
+      String requestId, bool approved) =>
+      _request('POST',
+        '/api/admin/team-requests/${_id(requestId)}/${approved ? "approve" : "reject"}',
+        body: {});
+  Future<List<Map<String, dynamic>>> revokeTeamMember(
+      String profileId, String reason) =>
+      _request('POST', '/api/admin/team-members/${_id(profileId)}/revoke',
+        body: {'reason': reason});
+}
