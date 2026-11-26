@@ -24,3 +24,6 @@ Tela interna auth-preview.html utiliza o SDK oficial Neon para cadastro, entrada
 
 ## Atualização da dependência de autenticação
 Candidata de homologação: migração de @neondatabase/auth 0.6.0-beta para @neon/auth, pacote recomendado na documentação atual do Neon. Não forçar npm audit fix --force nem ignorar avisos. O CI registra a árvore resolvida, compila o bundle, roda os testes e exige auditoria sem risco alto/crítico. A tag latest é somente uma etapa para descobrir uma versão compatível; fixar versão exata e lockfile após aprovação. Alertas: GHSA-44jh-23m7-hpcf e GHSA-mrhx-c7xc-m3w5. A publicação permanece bloqueada até resultado e testes reais.
+
+### Resultado da correção
+CI 45857790724: @neon/auth 0.8.2, better-auth 1.7.28, zod 4.6.7; 17/17 testes, build do cliente e npm audit com zero vulnerabilidades. Fixada a versão direta do SDK. Lockfile reprodutível ainda deve ser gerado e revisado antes do deploy definitivo. O teste positivo de autenticação, o Flutter integrado e os demais gates continuam pendentes; não publicar produção.

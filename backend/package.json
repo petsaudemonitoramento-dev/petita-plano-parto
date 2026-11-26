@@ -14,7 +14,7 @@
   "dependencies": {
     "jose": "6.1.0",
     "pg": "8.16.3",
-    "@neon/auth": "latest"
+    "@neon/auth": "0.8.2"
   },
   "devDependencies": {
     "esbuild": "0.25.12"
