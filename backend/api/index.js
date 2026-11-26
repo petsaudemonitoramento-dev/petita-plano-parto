@@ -1,3 +1,4 @@
+import {previewConfig} from '../lib/preview-config.js';
 import {identify} from '../lib/auth.js';
 import {execute} from '../lib/db.js';
 import {route,problem,publicError} from '../lib/routes.js';
@@ -36,6 +37,7 @@ export default async function handler(req,res) {
     if(req.method==='OPTIONS') return res.status(204).end();
     if(!['GET','POST'].includes(req.method)) throw problem(405,'Método não permitido');
     const path=new URL(req.url,'https://petita.invalid').pathname;
+    if(req.method==='GET' && path==='/api/auth-preview-config') return send(200,previewConfig(process.env,req.headers.host));
     if(req.method==='GET' && path==='/api/health') return send(200,{status:'ok',mode:'homologacao',database_checked:false});
     const op=route(req.method,path,await readBody(req));
     const identity=op.isPublic?null:await identify(req.headers.authorization);

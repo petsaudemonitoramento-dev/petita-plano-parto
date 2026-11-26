@@ -20,3 +20,4 @@ jobs:
       - run: npm install --ignore-scripts --no-package-lock
       - run: npm run check
       - run: npm test
+      - run: npm run build:auth
