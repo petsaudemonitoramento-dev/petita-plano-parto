@@ -38,7 +38,7 @@ void main() {
     final suffix = List.generate(16, (_) => random.nextInt(256).toRadixString(16).padLeft(2, '0')).join();
     final password = List.generate(32, (_) => random.nextInt(256).toRadixString(16).padLeft(2, '0')).join();
     final email = 'petita-qa-$suffix@example.invalid';
-    final client = http.Client();
+    final client = DiagnosticClient();
     addTearDown(client.close);
     final url = Uri.parse('https://ep-calm-night-b61u6bdb.neonauth.c-2.sa-east-1.aws.neon.tech/neondb/auth');
     final auth = InstitutionalAuth(NativeNeonAuthTransport(url, MemoryVault(), client));
