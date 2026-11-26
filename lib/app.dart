@@ -1,17 +1,15 @@
 import 'screens/institutional/account_screen.dart';
+import 'screens/institutional/area_screen.dart';
 import 'package:flutter/material.dart';
 import 'config/app_routes.dart';
 import 'config/app_theme.dart';
 import 'screens/about/about_screen.dart';
-import 'screens/admin/admin_screen.dart';
 import 'screens/birth_plan/birth_plan_summary_screen.dart';
 import 'screens/chat/chat_screen.dart';
 import 'screens/consent/consent_gate_screen.dart';
 import 'screens/home/home_screen.dart';
 import 'screens/profile/profile_screen.dart';
-import 'screens/questions/my_questions_screen.dart';
 import 'screens/terms/terms_screen.dart';
-import 'screens/ubs/ubs_team_screen.dart';
 
 class PlanoPartoPetSaudeApp extends StatelessWidget {
   const PlanoPartoPetSaudeApp({super.key});
@@ -34,9 +32,9 @@ class PlanoPartoPetSaudeApp extends StatelessWidget {
         AppRoutes.about: (_) => const AboutScreen(),
         AppRoutes.institutional: (_) => const ConsentRequiredScreen(child: InstitutionalAccountScreen()),
         AppRoutes.profile: (_) => const ConsentRequiredScreen(child: ProfileScreen()),
-        AppRoutes.ubs: (_) => const UbsTeamScreen(),
-        AppRoutes.admin: (_) => const AdminScreen(),
-        AppRoutes.myQuestions: (_) => const ConsentRequiredScreen(child: MyQuestionsScreen()),
+        AppRoutes.ubs: (_) => const InstitutionalAreaScreen(),
+        AppRoutes.admin: (_) => const InstitutionalAreaScreen(),
+        AppRoutes.myQuestions: (_) => const ConsentRequiredScreen(child: InstitutionalAreaScreen(myQuestions:true)),
       },
     );
   }

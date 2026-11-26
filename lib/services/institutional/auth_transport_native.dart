@@ -31,7 +31,7 @@ class NativeNeonAuthTransport implements AuthTransport {
   }
   String get _key => 'petita.auth.session.v1:${base.toString()}';
 
-  Future<Map<String, dynamic>> _request(
+  Future<Map<String, dynamic>> _performRequest(
       String method, String path, Map<String, dynamic>? data,
       {String? credential}) async {
     try {
@@ -67,6 +67,25 @@ class NativeNeonAuthTransport implements AuthTransport {
         throw const InstitutionalAuthException(503);
       return decoded;
     } on InstitutionalAuthException {
+      rethrow;
+    } catch (_) {
+      throw const InstitutionalAuthException(503);
+    }
+  }
+
+  Future<Map<String, dynamic>> _request(
+      String method, String path, Map<String, dynamic>? body,
+      {String? credential}) async {
+    try {
+      return await _performRequest(method, path, body, credential: credential)
+          .timeout(timeout);
+    } on InstitutionalAuthException catch (e) {
+      if (e.status == 401 && credential != null && credential == _credential) {
+        await vault.delete(_key);
+        _credential = null;
+        _subject = null;
+        _generation++;
+      }
       rethrow;
     } catch (_) {
       throw const InstitutionalAuthException(503);

@@ -49,6 +49,21 @@ class PatientUbsTests(enrollment.EnrollmentSyncTests):
         self.value('admin',f"SELECT petita.decide_patient_ubs('{r['id']}',false)")
         self.assertEqual(self.value(s,"SELECT coalesce(petita_private.actor_ubs(),'none')"),'none')
 
+    def test_12_approved_patient_and_professional_ubs_remain_isolated_after_migration_006(self):
+        a,pa=self.enroll(); b,_=self.enroll()
+        for subject,unit in [(a,'TEST-A'),(b,'TEST-B')]:
+            r=self.ask(subject,unit)
+            self.value('admin',f"SELECT petita.decide_patient_ubs('{r['id']}',true)")
+        qa=json.loads(self.value(a,workflows.submit_sql(unit='TEST-A')))
+        qb=json.loads(self.value(b,workflows.submit_sql(unit='TEST-B')))
+        self.deny(a,workflows.submit_sql(unit='TEST-B'))
+        self.assertEqual(self.value('team-a',f"SELECT count(*) FROM petita.list_team_patient_questions() WHERE id='{qb['id']}'"),'0')
+        self.assertEqual(self.value('team-b',f"SELECT count(*) FROM petita.list_team_patient_questions() WHERE id='{qa['id']}'"),'0')
+        self.assertEqual(self.value(b,f"SELECT count(*) FROM petita.list_my_patient_questions() WHERE id='{qa['id']}'"),'0')
+        self.deny('team-b',workflows.answer_sql(qa['id']))
+        self.value('admin',f"SELECT petita.revoke_patient_ubs('{pa}','Synthetic revocation')")
+        self.deny(a,workflows.submit_sql(unit='TEST-A'))
+
 
 def main():
     created=False

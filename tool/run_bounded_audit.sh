@@ -23,7 +23,9 @@ if [[ ! "$duration" =~ ^[0-9]+$ ]] || ((duration < 1 || duration > 1200)); then
   echo "Invalid SECONDS: must be 1..1200" >&2
   exit 2
 fi
-if ! command -v timeout >/dev/null 2>&1; then
+timeout_cmd=timeout
+if ! command -v timeout >/dev/null 2>&1 && command -v gtimeout >/dev/null 2>&1; then timeout_cmd=gtimeout; fi
+if ! command -v "$timeout_cmd" >/dev/null 2>&1; then
   echo "TIMEOUT_TOOL_UNAVAILABLE. Do NOT run unbounded command; switch to existing CI." >&2
   exit 127
 fi
@@ -33,7 +35,7 @@ mkdir -p "$logdir"
 logfile="$(mktemp "$logdir/${name}.XXXXXX.log")"
 start="$(date +%s)"
 set +e
-timeout --signal=TERM --kill-after=15s "${duration}s" "$@" >"$logfile" 2>&1
+"$timeout_cmd" --signal=TERM --kill-after=15s "${duration}s" "$@" >"$logfile" 2>&1
 status=$?
 set -e
 elapsed="$(( $(date +%s) - start ))"

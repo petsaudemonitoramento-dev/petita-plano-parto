@@ -18,3 +18,16 @@ test('cadastro usa identidade autenticada, sem campos de privilégio',()=>{const
 
 test('consentimento online é distinto e exige todos os aceites',()=>{const b={operation_id:id,terms_version:'2026-10-21-v1',accepted_terms:true,accepted_privacy:true,accepted_responsibility:true,accepted_plan_science:true,accepted_health_data:true,accepted_online_sync:true};const r=route('POST','/api/consent',b);assert.equal(r.actorLock,true);assert.equal(r.params[2],'grant');for(const k of Object.keys(b).filter(k=>k.startsWith('accepted_')))assert.throws(()=>route('POST','/api/consent',{...b,[k]:false}),{status:400});assert.equal(route('POST','/api/consent/withdraw',{operation_id:id,terms_version:'2026-10-21-v1'}).params[2],'withdraw');});
 test('sincronização inicial e atualização usam revisão otimista',()=>{const p={id,expected_revision:0,patient_name:'Teste fictício',dpp:'2027-01-01',companion:null,answers:{nome_gestante:['Teste fictício']}};const create=route('POST','/api/plans',p);assert.equal(create.requireRow,true);assert.ok(create.sql.includes('petita_private.actor_id()'));assert.equal(route('POST','/api/plans',{...p,expected_revision:1}).params[5],1);for(const b of [{...p,expected_revision:-1},{...p,patient_id:id},{...p,answers:{unexpected:['x']}},{...p,dpp:'2027-02-31'}])assert.throws(()=>route('POST','/api/plans',b),{status:400});});
+
+
+test('vinculação da gestante usa funções restritas e nunca aceita identidade ou papel do cliente',()=>{
+  const r=route('POST','/api/patient/ubs-requests',{ubs_code:'TEST-A',operation_id:id});
+  assert.equal(r.isPublic,false);assert.deepEqual(r.params,['TEST-A',id]);assert.match(r.sql,/petita.request_patient_ubs/);
+  for(const field of ['role','patient_id','approved','subject','issuer'])assert.throws(()=>route('POST','/api/patient/ubs-requests',{ubs_code:'TEST-A',operation_id:id,[field]:'forged'}),{status:400});
+  for(const [method,path,b,fn] of [
+    ['GET','/api/patient/ubs-requests',{},'list_my_ubs_requests'],
+    ['GET','/api/admin/patient-ubs-requests',{},'list_patient_ubs_requests'],
+    ['POST',`/api/admin/patient-ubs-requests/${id}/approve`,{},'decide_patient_ubs'],
+    ['POST',`/api/admin/patient-ubs-members/${id}/revoke`,{reason:'Synthetic revocation'},'revoke_patient_ubs'],
+  ]){const op=route(method,path,b);assert.equal(op.isPublic,false);assert.ok(op.sql.includes(fn));}
+});

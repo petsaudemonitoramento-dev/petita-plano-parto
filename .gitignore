@@ -39,3 +39,6 @@ web/neon_auth_bridge.js
 *.p12
 *.jks
 *.keystore
+
+# Python audit runners
+__pycache__/

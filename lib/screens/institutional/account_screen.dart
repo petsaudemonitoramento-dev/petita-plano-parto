@@ -27,7 +27,7 @@ class _InstitutionalAccountScreenState extends State<InstitutionalAccountScreen>
   Map<String, dynamic>? _profile;
   List<Map<String, dynamic>> _plans = [], _units = [], _requests = [];
   bool _busy = false;
-  String? _message, _ubs;
+  String? _message, _ubs, _loadedSubject;
   @override
   void initState() {
     super.initState();
@@ -62,6 +62,17 @@ class _InstitutionalAccountScreenState extends State<InstitutionalAccountScreen>
     if (runtime == null) return;
     try {
       await runtime.auth.restore();
+      if (mounted)
+        setState(() {
+          _profile = null;
+          _plans = [];
+          _requests = [];
+          if (_loadedSubject != runtime.auth.subject) {
+            _choices.clear();
+            _ubs = null;
+          }
+          _loadedSubject = runtime.auth.subject;
+        });
       if (runtime.auth.user != null) {
         if (!runtime.auth.verified) {
           if (mounted)

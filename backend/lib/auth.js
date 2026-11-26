@@ -21,7 +21,14 @@ export async function identify(header) {
   if(!token) throw problem(401,'Autenticação necessária');
   try {
     if(!cached || cached.url!==jwks) cached={url:jwks,keys:createRemoteJWKSet(new URL(jwks),{timeoutDuration:5000})};
-    const {payload}=await jwtVerify(token[1],cached.keys,{issuer:origin,audience:origin,algorithms:['EdDSA'],requiredClaims:['sub','iat','exp'],maxTokenAge:'15m',clockTolerance:5});
-    return verifiedIdentity(payload,origin);
+    return await verifyAccessToken(token[1],cached.keys,origin);
   } catch { throw problem(401,'Sessão inválida'); }
+}
+
+// Production identify() always supplies the validated remote JWKS above.
+export async function verifyAccessToken(token,keys,origin){
+  try{
+    const {payload}=await jwtVerify(token,keys,{issuer:origin,audience:origin,algorithms:['EdDSA'],requiredClaims:['sub','iat','exp'],maxTokenAge:'15m',clockTolerance:5});
+    return verifiedIdentity(payload,origin);
+  }catch{throw problem(401,'Sessão inválida');}
 }

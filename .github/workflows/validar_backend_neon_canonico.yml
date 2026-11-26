@@ -9,6 +9,7 @@ permissions:
 jobs:
   api:
     runs-on: ubuntu-latest
+    timeout-minutes: 12
     defaults:
       run:
         working-directory: backend
@@ -17,11 +18,11 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
-      - run: npm install --ignore-scripts
+      - run: bash ../tool/run_bounded_audit.sh backend-ci 180 npm ci --ignore-scripts
       - name: Registrar versões resolvidas
         run: npm ls @neon/auth better-auth @better-auth/drizzle-adapter zod --all
-      - run: npm run check
-      - run: npm test
-      - run: npm run build:auth
+      - run: bash ../tool/run_bounded_audit.sh backend-check 180 npm run check
+      - run: bash ../tool/run_bounded_audit.sh backend-test 180 npm test
+      - run: bash ../tool/run_bounded_audit.sh backend-auth 180 npm run build:auth
       - name: Bloquear dependências de risco alto ou crítico
-        run: npm audit --audit-level=high
+        run: bash ../tool/run_bounded_audit.sh backend-audit 180 npm audit --audit-level=high

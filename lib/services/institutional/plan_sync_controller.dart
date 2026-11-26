@@ -31,6 +31,7 @@ class PlanSyncController extends ChangeNotifier {
   bool busy = false;
   bool pending = false;
   bool consentActive = false;
+  bool _remoteConsentActive = false;
   static const termsVersion = '2026-10-21-v1';
   PlanSyncController(
       {required this.api,
@@ -65,10 +66,16 @@ class PlanSyncController extends ChangeNotifier {
     final subject = _subject();
     final rows = await api.getSyncConsent();
     _unchanged(subject);
-    consentActive = rows.isNotEmpty &&
+    _remoteConsentActive = rows.isNotEmpty &&
         rows.single['terms_version'] == termsVersion &&
         rows.single['action'] == 'grant';
-    pending = (await _state(subject))['pending'] != null;
+    final state = await _state(subject);
+    state['consentGranted'] = _remoteConsentActive;
+    state['consentVersion'] = termsVersion;
+    if (!_remoteConsentActive) state.remove('pending');
+    await _save(subject, state);
+    consentActive = _remoteConsentActive && state['withdrawOperation'] == null;
+    pending = state['pending'] != null;
     notifyListeners();
   }
 
@@ -104,8 +111,9 @@ class PlanSyncController extends ChangeNotifier {
     }
     _unchanged(subject);
     await refreshConsent();
-    state.remove('grantOperation');
-    await _save(subject, state);
+    final latest = await _state(subject);
+    latest.remove('grantOperation');
+    await _save(subject, latest);
     if (!consentActive) throw const NeonApiException(403);
   }
 
@@ -126,9 +134,10 @@ class PlanSyncController extends ChangeNotifier {
     }
     _unchanged(subject);
     await refreshConsent();
-    if (consentActive) throw const NeonApiException(503);
-    state.remove('withdrawOperation');
-    await _save(subject, state);
+    if (_remoteConsentActive) throw const NeonApiException(503);
+    final latest = await _state(subject);
+    latest.remove('withdrawOperation');
+    await _save(subject, latest);
   }
 
   Future<void> synchronize(List<BirthPlanAnswer> local) async {
@@ -139,34 +148,73 @@ class PlanSyncController extends ChangeNotifier {
     try {
       final owner = await vault.read('petita.local-plan.owner');
       if (owner != null && owner != subject) throw PlanConflict();
+      final cached = await _state(subject);
+      // Keep a durable queue even if the consent endpoint itself is offline,
+      // only after this account explicitly granted the current terms earlier.
+      if (cached['consentGranted'] == true &&
+          cached['consentVersion'] == termsVersion &&
+          cached['withdrawOperation'] == null &&
+          cached['pending'] == null &&
+          jsonEncode(cached['lastPayload']) != jsonEncode(_payload(local))) {
+        await vault.write('petita.local-plan.owner', subject);
+        cached['pending'] = _payload(local);
+        await _save(subject, cached);
+        pending = true;
+        notifyListeners();
+      }
       await refreshConsent();
       final state = await _state(subject);
       if (!consentActive || state['withdrawOperation'] != null)
         throw const NeonApiException(403);
       if (state['pending'] != null) await _sendPending(subject, state);
       _unchanged(subject);
-      final map = {
-        for (final answer in local) answer.questionId: answer.values
-      };
-      final dpp = map['dpp']?.firstOrNull?.split('/');
-      final payload = <String, dynamic>{
-        'answers': map,
-        'patient_name': map['nome_gestante']?.firstOrNull?.trim(),
-        'dpp': dpp?.length == 3
-            ? '${dpp![2]}-${dpp[1].padLeft(2, '0')}-${dpp[0].padLeft(2, '0')}'
-            : null,
-        'companion': map['acompanhante_principal']?.join(', ').trim()
-      };
+      final payload = _payload(local);
       if (jsonEncode(state['lastPayload']) == jsonEncode(payload)) return;
       state['pending'] = payload;
-      await _save(subject,
-          state); // durable queue before sending, never a success notification
       await vault.write('petita.local-plan.owner', subject);
+      await _save(subject, state); // durable queue before sending
       await _sendPending(subject, state);
     } finally {
       busy = false;
       notifyListeners();
     }
+  }
+
+  Map<String, dynamic> _payload(List<BirthPlanAnswer> local) {
+    final map = {for (final answer in local) answer.questionId: answer.values};
+    final dpp = map['dpp']?.firstOrNull?.split('/');
+    return <String, dynamic>{
+      'answers': map,
+      'patient_name': map['nome_gestante']?.firstOrNull?.trim(),
+      'dpp': dpp?.length == 3
+          ? '${dpp![2]}-${dpp[1].padLeft(2, '0')}-${dpp[0].padLeft(2, '0')}'
+          : null,
+      'companion': map['acompanhante_principal']?.join(', ').trim()
+    };
+  }
+
+  // Invoked before verified local erasure. No network dependency and no clinical
+  // payload remains in a retry/backup that could resurrect the cleared plan.
+  Future<void> prepareLocalClear(bool revokeConsent) async {
+    if (busy) throw const NeonApiException(409);
+    final owner = await vault.read('petita.local-plan.owner') ?? auth.subject;
+    if (owner == null) return;
+    final state = await _state(owner);
+    state.remove('pending');
+    state.remove('lastPayload');
+    state.remove('grantOperation');
+    state['planId'] = newOperationId();
+    state['revision'] = 0;
+    if (revokeConsent) {
+      state['withdrawOperation'] ??= newOperationId();
+      state['consentGranted'] = false;
+      consentActive = false;
+    }
+    await _save(owner, state);
+    await vault.delete('petita.local-plan.backup:$owner');
+    await vault.delete('petita.local-plan.owner');
+    pending = false;
+    notifyListeners();
   }
 
   Future<void> retryPending() async {
@@ -219,7 +267,9 @@ class PlanSyncController extends ChangeNotifier {
     _unchanged(subject);
     if (rows.length != 1 ||
         rows.single['id'] != state['planId'] ||
-        rows.single['revision'] is! int) throw const NeonApiException(502);
+        rows.single['revision'] is! int ||
+        rows.single['revision'] != (state['revision'] as int) + 1)
+      throw const NeonApiException(502);
     state['revision'] = rows.single['revision'];
     state['lastPayload'] = data;
     state.remove('pending');
@@ -251,7 +301,10 @@ class PlanSyncController extends ChangeNotifier {
       final plan = rows.where((p) => p['id'] == planId).firstOrNull;
       if (plan == null ||
           plan['answers_json'] is! Map ||
-          plan['revision'] is! int) throw const NeonApiException(404);
+          plan['revision'] is! int ||
+          (plan['revision'] as int) < 1) throw const NeonApiException(404);
+      if (utf8.encode(jsonEncode(plan['answers_json'])).length > 12000)
+        throw const NeonApiException(502);
       final allowed = (await BirthPlanFlowService().loadQuestions())
           .map((q) => q.id)
           .toSet();
@@ -259,7 +312,9 @@ class PlanSyncController extends ChangeNotifier {
           !(plan['answers_json'] as Map).keys.every(allowed.contains))
         throw const NeonApiException(502);
       final values = (plan['answers_json'] as Map).entries.map((e) {
-        if (e.value is! List || (e.value as List).any((v) => v is! String))
+        if (e.value is! List ||
+            (e.value as List).length > 30 ||
+            (e.value as List).any((v) => v is! String || v.length > 1500))
           throw const NeonApiException(502);
         return BirthPlanAnswer(
             questionId: '${e.key}', values: List<String>.from(e.value));

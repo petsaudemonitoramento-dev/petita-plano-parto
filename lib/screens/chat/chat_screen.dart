@@ -15,7 +15,7 @@ import '../../services/birth_plan_explanations.dart';
 import '../../services/chatbot_service.dart';
 import '../../services/faq_search_service.dart';
 import '../../services/storage_service.dart';
-import '../../services/supabase_service.dart';
+import '../../services/institutional/question_service.dart';
 
 enum _PlanStartChoice { resume, restart, summary }
 
@@ -32,7 +32,7 @@ class _ChatScreenState extends State<ChatScreen> {
   final _cardScrollController = ScrollController();
   final _inputFocusNode = FocusNode();
   final _storage = StorageService();
-  final _online = SupabaseService();
+  final _online = InstitutionalQuestionService();
   late final ChatbotService _chatbot;
 
   List<ChatMessage> _messages = [];
@@ -478,7 +478,7 @@ class _ChatScreenState extends State<ChatScreen> {
     try {
       final reply = await _chatbot.respond(result.question, category: result.category);
       final answerText = reply.text.contains('Ainda não encontrei uma resposta segura')
-          ? 'Eu não encontrei uma resposta suficientemente segura na minha base validada para essa dúvida. Posso encaminhar sua pergunta, de forma anônima, para a Equipe UBS vinculada ao seu perfil.'
+          ? 'Eu não encontrei uma resposta suficientemente segura na minha base validada para essa dúvida. Posso encaminhar sua pergunta, de forma pseudonimizada, para a Equipe UBS vinculada ao seu perfil.'
           : '${reply.text}\n\nEssa resposta foi satisfatória para você?';
 
       if (!mounted) return;
@@ -567,9 +567,8 @@ class _ChatScreenState extends State<ChatScreen> {
       return;
     }
 
-    final profile = await _storage.loadProfile();
     final onlineProfile = await _online.loadOnlineProfile().catchError((_) => null);
-    final activeProfile = onlineProfile ?? profile;
+    final activeProfile = onlineProfile;
 
     if (!_online.isLoggedIn) {
       setState(() => _messages.add(const ChatMessage(
@@ -608,17 +607,19 @@ class _ChatScreenState extends State<ChatScreen> {
         warningSigns: pending.warningSigns,
         urgencyAcknowledged: pending.urgencyAcknowledged,
         expectedResponseNoticeAccepted: true,
+        ownUbsAcknowledged: true,
+        pseudonymizationAcknowledged: true,
       );
       final publicCode = data['public_code']?.toString() ?? 's/código';
       _pendingUbsQuestion = null;
       setState(() => _messages.add(ChatMessage(
-            text: 'Sua dúvida foi enviada de forma anonimizada para a Equipe UBS.\n\nCódigo da dúvida: $publicCode\n\nA equipe verá a dúvida, a UBS vinculada, a autopercepção de risco e os sinais informados, mas não verá seu nome, e-mail ou outros dados pessoais.',
+            text: 'Sua dúvida foi enviada de forma pseudonimizada para a Equipe UBS.\n\nCódigo da dúvida: $publicCode\n\nA equipe verá a dúvida, a UBS vinculada, a autopercepção de risco e os sinais informados, mas não verá seu nome, e-mail ou outros dados pessoais.',
             isUser: false,
             options: const ['Minhas dúvidas', 'Montar meu plano', 'Ver meu plano'],
           )));
     } catch (e) {
       setState(() => _messages.add(ChatMessage(
-            text: 'Não foi possível enviar sua dúvida agora. Verifique sua internet e tente novamente. Em caso de urgência, procure imediatamente um serviço de saúde.\n\nDetalhe técnico: $e',
+            text: 'Não foi possível enviar sua dúvida agora. Verifique sua internet e tente novamente. Em caso de urgência, procure imediatamente um serviço de saúde.\n\nSeus dados locais foram preservados.',
             isUser: false,
             options: const ['Sinais de atenção', 'Montar meu plano'],
           )));
@@ -1580,8 +1581,9 @@ class _ConfirmAnonymousSendDialog extends StatefulWidget {
 class _ConfirmAnonymousSendDialogState extends State<_ConfirmAnonymousSendDialog> {
   bool _anonymousAck = false;
   bool _responseAck = false;
+  bool _ubsAck = false;
 
-  bool get _canSend => _anonymousAck && _responseAck;
+  bool get _canSend => _anonymousAck && _responseAck && _ubsAck;
 
   @override
   Widget build(BuildContext context) {
@@ -1599,7 +1601,7 @@ class _ConfirmAnonymousSendDialogState extends State<_ConfirmAnonymousSendDialog
               border: Border.all(color: AppColors.primaryPink.withAlpha((255 * 0.35).round())),
             ),
             child: const Text(
-              'Sua dúvida será encaminhada de forma anônima. A Equipe UBS não verá seu nome, e-mail, telefone, CPF, cartão SUS ou plano completo.',
+              'Sua dúvida será encaminhada de forma pseudonimizada. O sistema não envia os campos de identificação ou seu plano completo à equipe. Não escreva nomes, contatos ou documentos no texto da dúvida.',
               style: TextStyle(fontWeight: FontWeight.w700),
             ),
           ),
@@ -1607,7 +1609,7 @@ class _ConfirmAnonymousSendDialogState extends State<_ConfirmAnonymousSendDialog
           CheckboxListTile(
             value: _anonymousAck,
             onChanged: (v) => setState(() => _anonymousAck = v ?? false),
-            title: const Text('Entendi que a dúvida será enviada de forma anônima.'),
+            title: const Text('Entendi que a dúvida será enviada de forma pseudonimizada e não incluirei identificadores pessoais no texto.'),
           ),
           CheckboxListTile(
             value: _responseAck,
@@ -1617,6 +1619,7 @@ class _ConfirmAnonymousSendDialogState extends State<_ConfirmAnonymousSendDialog
         ],
       ),
       actions: [
+        CheckboxListTile(value:_ubsAck,onChanged:(v)=>setState(()=>_ubsAck=v==true),title:const Text('Autorizo o envio somente à minha UBS aprovada.')),
         TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancelar')),
         FilledButton(onPressed: _canSend ? () => Navigator.pop(context, true) : null, child: const Text('Enviar')),
       ],

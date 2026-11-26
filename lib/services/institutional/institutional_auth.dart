@@ -5,6 +5,7 @@ class InstitutionalAuth extends ChangeNotifier {
   final AuthTransport transport;
   Map<String, dynamic>? user;
   bool locallySignedOut = false;
+  int _generation = 0;
   InstitutionalAuth(this.transport);
   String? get subject => user?['id'] as String?;
   bool get verified => user?['emailVerified'] == true;
@@ -14,10 +15,14 @@ class InstitutionalAuth extends ChangeNotifier {
   }
 
   Future<void> login(String email, String password) async {
+    final generation = ++_generation;
+    user = null;
     await transport
         .call('login', {'email': email.trim(), 'password': password});
+    if (generation != _generation) throw const InstitutionalAuthException(401);
     locallySignedOut = false;
     await restore();
+    if (user == null) throw const InstitutionalAuthException(401);
   }
 
   Future<void> verify(String email, String otp) async {
@@ -33,8 +38,10 @@ class InstitutionalAuth extends ChangeNotifier {
           {'email': email.trim(), 'otp': otp.trim(), 'password': password});
   Future<void> restore() async {
     if (locallySignedOut) return;
+    final generation = _generation;
     try {
       final result = await transport.call('session', {});
+      if (generation != _generation || locallySignedOut) return;
       final candidate = result['user'];
       user = candidate is Map && candidate['id'] is String
           ? Map<String, dynamic>.from(candidate)
@@ -49,8 +56,11 @@ class InstitutionalAuth extends ChangeNotifier {
 
   Future<String?> token() async {
     if (locallySignedOut) return null;
+    final generation = _generation;
     try {
       final result = await transport.call('token', {});
+      if (generation != _generation || locallySignedOut)
+        throw const InstitutionalAuthException(401);
       return result['token'] as String?;
     } on InstitutionalAuthException catch (e) {
       if (e.status == 401) {
@@ -62,6 +72,7 @@ class InstitutionalAuth extends ChangeNotifier {
   }
 
   Future<void> logout() async {
+    _generation++;
     locallySignedOut = true;
     user = null;
     notifyListeners(); // immediately gate all API callers, including remote failure

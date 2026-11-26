@@ -9,6 +9,8 @@ import 'package:plano_parto_pet_saude/screens/birth_plan/birth_plan_summary_scre
 import 'package:plano_parto_pet_saude/screens/chat/chat_screen.dart';
 import 'package:plano_parto_pet_saude/screens/consent/consent_gate_screen.dart';
 import 'package:plano_parto_pet_saude/screens/home/home_screen.dart';
+import 'package:plano_parto_pet_saude/screens/institutional/account_screen.dart';
+import 'package:plano_parto_pet_saude/screens/institutional/area_screen.dart';
 import 'package:plano_parto_pet_saude/screens/profile/profile_screen.dart';
 import 'package:plano_parto_pet_saude/screens/questions/my_questions_screen.dart';
 import 'package:plano_parto_pet_saude/screens/terms/terms_screen.dart';
@@ -78,10 +80,11 @@ void main() {
       AppRoutes.chat: ChatScreen,
       AppRoutes.summary: BirthPlanSummaryScreen,
       AppRoutes.profile: ProfileScreen,
-      AppRoutes.myQuestions: MyQuestionsScreen,
+      AppRoutes.myQuestions: InstitutionalAreaScreen,
+      AppRoutes.institutional: InstitutionalAccountScreen,
       AppRoutes.about: AboutScreen,
-      AppRoutes.ubs: UbsTeamScreen,
-      AppRoutes.admin: AdminScreen,
+      AppRoutes.ubs: InstitutionalAreaScreen,
+      AppRoutes.admin: InstitutionalAreaScreen,
       AppRoutes.terms: TermsScreen,
       AppRoutes.initialScience: TermsScreen,
       AppRoutes.privacy: TermsScreen,

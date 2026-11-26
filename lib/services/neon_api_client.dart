@@ -10,6 +10,7 @@ class NeonApiException implements Exception {
   @override
   String toString() => 'Petita online: operação indisponível ($status).';
 }
+
 typedef NeonTokenProvider = Future<String?> Function();
 
 class NeonApiClient {
@@ -22,9 +23,14 @@ class NeonApiClient {
     required http.Client client,
     required NeonTokenProvider tokenProvider,
     this.timeout = const Duration(seconds: 15),
-  }) : _origin = origin, _http = client, _token = tokenProvider {
-    if (origin.scheme != 'https' || !origin.hasAuthority ||
-        origin.userInfo.isNotEmpty || origin.hasQuery || origin.hasFragment ||
+  })  : _origin = origin,
+        _http = client,
+        _token = tokenProvider {
+    if (origin.scheme != 'https' ||
+        !origin.hasAuthority ||
+        origin.userInfo.isNotEmpty ||
+        origin.hasQuery ||
+        origin.hasFragment ||
         (origin.path.isNotEmpty && origin.path != '/')) {
       throw ArgumentError('A API deve ter uma origem HTTPS válida.');
     }
@@ -32,6 +38,21 @@ class NeonApiClient {
 
   Future<List<Map<String, dynamic>>> _request(String method, String path,
       {Map<String, dynamic>? body, bool isPublic = false}) async {
+    final abort = Completer<void>();
+    try {
+      return await _boundedRequest(method, path,
+              body: body, isPublic: isPublic, abortTrigger: abort.future)
+          .timeout(timeout * 2,
+              onTimeout: () => throw const NeonApiException(503));
+    } finally {
+      if (!abort.isCompleted) abort.complete();
+    }
+  }
+
+  Future<List<Map<String, dynamic>>> _boundedRequest(String method, String path,
+      {Map<String, dynamic>? body,
+      bool isPublic = false,
+      required Future<void> abortTrigger}) async {
     final url = _origin.replace(path: path);
     final headers = <String, String>{'Accept': 'application/json'};
     if (!isPublic) {
@@ -42,15 +63,18 @@ class NeonApiClient {
         // Session-provider failures must not leak credentials or internal details.
         throw const NeonApiException(503);
       }
-      if (token == null || token.isEmpty || token.length > 16384 ||
+      if (token == null ||
+          token.isEmpty ||
+          token.length > 16384 ||
           RegExp(r'\s').hasMatch(token)) {
         throw const NeonApiException(401);
       }
       headers['Authorization'] = 'Bearer $token';
     }
-    final request = http.Request(method, url)
-      ..followRedirects = false
-      ..headers.addAll(headers);
+    final request =
+        http.AbortableRequest(method, url, abortTrigger: abortTrigger)
+          ..followRedirects = false
+          ..headers.addAll(headers);
     if (body != null) {
       request.headers['Content-Type'] = 'application/json';
       request.body = jsonEncode(body);
@@ -61,7 +85,9 @@ class NeonApiClient {
         await response.stream.drain<void>().timeout(timeout);
         throw NeonApiException(response.statusCode);
       }
-      if (!(response.headers['content-type'] ?? '').toLowerCase().startsWith('application/json')) {
+      if (!(response.headers['content-type'] ?? '')
+          .toLowerCase()
+          .startsWith('application/json')) {
         await response.stream.drain<void>().timeout(timeout);
         throw const NeonApiException(502);
       }
@@ -89,7 +115,9 @@ class NeonApiClient {
   }
 
   static String _id(String value) {
-    if (!RegExp(r'^[a-fA-F0-9]{8}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{12}$').hasMatch(value)) {
+    if (!RegExp(
+            r'^[a-fA-F0-9]{8}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{12}$')
+        .hasMatch(value)) {
       throw const NeonApiException(400);
     }
     return value;
@@ -98,40 +126,67 @@ class NeonApiClient {
   Future<List<Map<String, dynamic>>> getSyncConsent() =>
       _request('GET', '/api/consent');
   Future<List<Map<String, dynamic>>> acceptSyncConsent({
-    required String operationId, required String termsVersion,
-    required bool acceptedTerms, required bool acceptedPrivacy,
-    required bool acceptedResponsibility, required bool acceptedPlanScience,
-    required bool acceptedHealthData, required bool acceptedOnlineSync,
-  }) => _request('POST', '/api/consent', body: {
-    'operation_id': _id(operationId), 'terms_version': termsVersion,
-    'accepted_terms': acceptedTerms, 'accepted_privacy': acceptedPrivacy,
-    'accepted_responsibility': acceptedResponsibility,
-    'accepted_plan_science': acceptedPlanScience,
-    'accepted_health_data': acceptedHealthData,
-    'accepted_online_sync': acceptedOnlineSync,
-  });
-  Future<List<Map<String, dynamic>>> withdrawSyncConsent(String operationId, String termsVersion) =>
-      _request('POST', '/api/consent/withdraw', body: {
-        'operation_id': _id(operationId), 'terms_version': termsVersion,
+    required String operationId,
+    required String termsVersion,
+    required bool acceptedTerms,
+    required bool acceptedPrivacy,
+    required bool acceptedResponsibility,
+    required bool acceptedPlanScience,
+    required bool acceptedHealthData,
+    required bool acceptedOnlineSync,
+  }) =>
+      _request('POST', '/api/consent', body: {
+        'operation_id': _id(operationId),
+        'terms_version': termsVersion,
+        'accepted_terms': acceptedTerms,
+        'accepted_privacy': acceptedPrivacy,
+        'accepted_responsibility': acceptedResponsibility,
+        'accepted_plan_science': acceptedPlanScience,
+        'accepted_health_data': acceptedHealthData,
+        'accepted_online_sync': acceptedOnlineSync,
       });
-  Future<List<Map<String, dynamic>>> listPlans() => _request('GET', '/api/plans');
+  Future<List<Map<String, dynamic>>> withdrawSyncConsent(
+          String operationId, String termsVersion) =>
+      _request('POST', '/api/consent/withdraw', body: {
+        'operation_id': _id(operationId),
+        'terms_version': termsVersion,
+      });
+  Future<List<Map<String, dynamic>>> listPlans() =>
+      _request('GET', '/api/plans');
   Future<List<Map<String, dynamic>>> syncPlan({
-    required String id, required int expectedRevision,
-    String? patientName, String? dppIso, String? companion,
+    required String id,
+    required int expectedRevision,
+    String? patientName,
+    String? dppIso,
+    String? companion,
     required Map<String, List<String>> answers,
-  }) => _request('POST', '/api/plans', body: {
-    'id': _id(id), 'expected_revision': expectedRevision,
-    'patient_name': patientName, 'dpp': dppIso, 'companion': companion,
-    'answers': answers,
-  });
-  Future<List<Map<String,dynamic>>> listMyUbsRequests() => _request('GET','/api/patient/ubs-requests');
-  Future<List<Map<String,dynamic>>> requestPatientUbs(String code,String operationId) =>
-      _request('POST','/api/patient/ubs-requests',body:{'ubs_code':code,'operation_id':_id(operationId)});
-  Future<List<Map<String,dynamic>>> listPatientUbsRequests() => _request('GET','/api/admin/patient-ubs-requests');
-  Future<List<Map<String,dynamic>>> decidePatientUbs(String requestId,bool approve) =>
-      _request('POST','/api/admin/patient-ubs-requests/${_id(requestId)}/${approve?"approve":"reject"}',body:{});
-  Future<List<Map<String,dynamic>>> revokePatientUbs(String patientId,String reason) =>
-      _request('POST','/api/admin/patient-ubs-members/${_id(patientId)}/revoke',body:{'reason':reason});
+  }) =>
+      _request('POST', '/api/plans', body: {
+        'id': _id(id),
+        'expected_revision': expectedRevision,
+        'patient_name': patientName,
+        'dpp': dppIso,
+        'companion': companion,
+        'answers': answers,
+      });
+  Future<List<Map<String, dynamic>>> listMyUbsRequests() =>
+      _request('GET', '/api/patient/ubs-requests');
+  Future<List<Map<String, dynamic>>> requestPatientUbs(
+          String code, String operationId) =>
+      _request('POST', '/api/patient/ubs-requests',
+          body: {'ubs_code': code, 'operation_id': _id(operationId)});
+  Future<List<Map<String, dynamic>>> listPatientUbsRequests() =>
+      _request('GET', '/api/admin/patient-ubs-requests');
+  Future<List<Map<String, dynamic>>> decidePatientUbs(
+          String requestId, bool approve) =>
+      _request('POST',
+          '/api/admin/patient-ubs-requests/${_id(requestId)}/${approve ? "approve" : "reject"}',
+          body: {});
+  Future<List<Map<String, dynamic>>> revokePatientUbs(
+          String patientId, String reason) =>
+      _request(
+          'POST', '/api/admin/patient-ubs-members/${_id(patientId)}/revoke',
+          body: {'reason': reason});
   Future<List<Map<String, dynamic>>> listUbs() =>
       _request('GET', '/api/ubs', isPublic: true);
   Future<List<Map<String, dynamic>>> enrollProfile() =>
@@ -158,33 +213,39 @@ class NeonApiClient {
     required bool acknowledgedOptionalReply,
     required bool acknowledgedPseudonymization,
     required bool acknowledgedOwnUbs,
-  }) => _request('POST', '/api/questions', body: {
-    'idempotency_key': _id(idempotencyKey),
-    'ubs_code': ubsCode, 'category': category, 'question_text': question,
-    'self_risk_level': risk, 'warning_signs': warningSigns,
-    'confirmou_nao_urgencia': acknowledgedNonUrgent,
-    'confirmou_resposta_facultativa': acknowledgedOptionalReply,
-    'confirmou_visibilidade_anonimizada': acknowledgedPseudonymization,
-    'confirmou_ubs_exclusiva': acknowledgedOwnUbs,
-  });
+  }) =>
+      _request('POST', '/api/questions', body: {
+        'idempotency_key': _id(idempotencyKey),
+        'ubs_code': ubsCode,
+        'category': category,
+        'question_text': question,
+        'self_risk_level': risk,
+        'warning_signs': warningSigns,
+        'confirmou_nao_urgencia': acknowledgedNonUrgent,
+        'confirmou_resposta_facultativa': acknowledgedOptionalReply,
+        'confirmou_visibilidade_anonimizada': acknowledgedPseudonymization,
+        'confirmou_ubs_exclusiva': acknowledgedOwnUbs,
+      });
 
   Future<List<Map<String, dynamic>>> requestTeamAccess(
-      String ubsCode, String idempotencyKey) =>
+          String ubsCode, String idempotencyKey) =>
       _request('POST', '/api/team/access-request', body: {
-        'ubs_code': ubsCode, 'idempotency_key': _id(idempotencyKey),
+        'ubs_code': ubsCode,
+        'idempotency_key': _id(idempotencyKey),
       });
   Future<List<Map<String, dynamic>>> respondToQuestion(
-      String questionId, String answer, String idempotencyKey) =>
+          String questionId, String answer, String idempotencyKey) =>
       _request('POST', '/api/team/questions/${_id(questionId)}/answer', body: {
-        'answer_text': answer, 'idempotency_key': _id(idempotencyKey),
+        'answer_text': answer,
+        'idempotency_key': _id(idempotencyKey),
       });
   Future<List<Map<String, dynamic>>> decideTeamRequest(
-      String requestId, bool approved) =>
+          String requestId, bool approved) =>
       _request('POST',
-        '/api/admin/team-requests/${_id(requestId)}/${approved ? "approve" : "reject"}',
-        body: {});
+          '/api/admin/team-requests/${_id(requestId)}/${approved ? "approve" : "reject"}',
+          body: {});
   Future<List<Map<String, dynamic>>> revokeTeamMember(
-      String profileId, String reason) =>
+          String profileId, String reason) =>
       _request('POST', '/api/admin/team-members/${_id(profileId)}/revoke',
-        body: {'reason': reason});
+          body: {'reason': reason});
 }

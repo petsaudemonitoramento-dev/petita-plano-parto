@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:http/http.dart' as http;
 import '../../config/institutional_config.dart';
 import '../neon_api_client.dart';
+import '../storage_service.dart';
 import 'auth_transport_native.dart'
     if (dart.library.js_interop) 'auth_transport_web.dart' as platform;
 import 'institutional_auth.dart';
@@ -26,6 +27,7 @@ class InstitutionalRuntime {
         tokenProvider: auth.token);
     final sync = PlanSyncController(api: api, auth: auth, vault: vault);
     instance = InstitutionalRuntime(auth, api, sync);
+    StorageService.beforeLocalClear = sync.prepareLocalClear;
     // A network/auth error must not prevent offline plans/PDF from opening.
     unawaited(
         auth.restore().catchError((_) {/* Login screen reports retry. */}));

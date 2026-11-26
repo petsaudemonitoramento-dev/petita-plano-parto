@@ -251,4 +251,47 @@ void main() {
         throwsA(isA<NeonApiException>()));
     expect((await StorageService().loadAnswers()).single.values, ['SYNTHETIC']);
   });
+  test(
+      'explicit local erasure cancels retry payload and backup, retaining a withdrawal tombstone without clinical data',
+      () async {
+    setupClient((r) async => r.url.path == '/api/consent'
+        ? response(r, grant)
+        : response(r, [], 503));
+    await expectLater(
+        sync.synchronize(answers), throwsA(isA<NeonApiException>()));
+    vault.values['petita.local-plan.backup:fixture-a'] = 'OLD-SYNTHETIC';
+    await sync.prepareLocalClear(true);
+    expect(state()['pending'], isNull);
+    expect(state()['lastPayload'], isNull);
+    expect(state()['withdrawOperation'], isNotNull);
+    expect(vault.values['petita.local-plan.backup:fixture-a'], isNull);
+    expect(vault.values['petita.local-plan.owner'], isNull);
+    expect(jsonEncode(vault.values), isNot(contains('SYNTHETIC')));
+  });
+  test(
+      'consent endpoint offline still queues previously authorized current-version plan, then revalidates before retry',
+      () async {
+    var offline = false;
+    var writes = 0;
+    setupClient((r) async {
+      if (offline) return response(r, [], 503);
+      if (r.url.path == '/api/consent') return response(r, grant);
+      writes++;
+      final body = jsonDecode(r.body) as Map;
+      return response(r, [
+        {'id': body['id'], 'revision': 1}
+      ]);
+    });
+    await sync.refreshConsent();
+    offline = true;
+    await expectLater(
+        sync.synchronize(answers), throwsA(isA<NeonApiException>()));
+    expect(state()['pending'], isNotNull);
+    expect(sync.pending, true);
+    expect(writes, 0);
+    offline = false;
+    await sync.retryPending();
+    expect(writes, 1);
+    expect(state()['pending'], isNull);
+  });
 }

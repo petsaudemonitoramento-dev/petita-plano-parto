@@ -18,6 +18,7 @@ class LocalPersistenceException extends StateError {
 class StorageService {
   static ProtectedPatientStore? protectedStore;
   static bool protectionRequired = false;
+  static Future<void> Function(bool revokeConsent)? beforeLocalClear;
   Object? _read(SharedPreferences prefs,String key) {
     if (!ProtectedPatientStore.patientKeys.contains(key)) return prefs.get(key);
     if (protectionRequired && protectedStore == null) throw LocalPersistenceException();
@@ -134,6 +135,7 @@ class StorageService {
   });
 
   Future<void> clearAnswers() => _serialize(() async {
+    await beforeLocalClear?.call(false);
     final prefs = await SharedPreferences.getInstance();
     await _remove(prefs, _answersKey);
     await _remove(prefs, _treatmentKey);
@@ -190,6 +192,7 @@ class StorageService {
   });
 
   Future<void> revokeConsentAndClearPatientData() => _serialize(() async {
+    await beforeLocalClear?.call(true);
     final prefs = await SharedPreferences.getInstance();
     await _remove(prefs, _consentRecordKey);
     await _remove(prefs, _legacyConsentKey);

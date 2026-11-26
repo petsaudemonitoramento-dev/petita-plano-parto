@@ -11,6 +11,7 @@ permissions:
 jobs:
   flutter-web:
     runs-on: ubuntu-latest
+    timeout-minutes: 25
     steps:
       - name: Baixar código
         uses: actions/checkout@v4
@@ -21,9 +22,9 @@ jobs:
           channel: stable
           cache: true
       - name: Instalar dependências
-        run: flutter pub get --enforce-lockfile
+        run: bash tool/run_bounded_audit.sh ci-pub 180 flutter pub get --enforce-lockfile
       - name: Analisar código
-        run: flutter analyze --no-pub
+        run: bash tool/run_bounded_audit.sh ci-analyze 180 flutter analyze --no-pub
       - name: Preparar validação independente dos PDFs
         run: |
           if ! command -v pdftotext >/dev/null || ! command -v pdffonts >/dev/null; then
@@ -31,7 +32,7 @@ jobs:
             sudo apt-get install -y poppler-utils
           fi
       - name: Executar testes offline
-        run: flutter test --no-pub
+        run: bash tool/run_bounded_audit.sh ci-tests 480 flutter test --no-pub --timeout 60s
       - name: Validar estrutura do questionário
         run: |
           python3 - <<'PY'
@@ -46,5 +47,18 @@ jobs:
               assert isinstance(item['options'], list), item
           print(f'Questionário validado: {len(data)} perguntas')
           PY
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: SDK oficial Auth local e dependências travadas
+        run: |
+          bash tool/run_bounded_audit.sh ci-npm 180 npm ci --prefix backend --ignore-scripts
+          bash tool/run_bounded_audit.sh ci-auth-web 180 npm run --prefix backend build:flutter-auth
       - name: Compilar web para detectar erros de código
-        run: flutter build web --release --base-href "/petita-plano-parto/" --no-wasm-dry-run
+        run: bash tool/run_bounded_audit.sh ci-web 900 flutter build web --release --no-pub --no-wasm-dry-run --dart-define-from-file=config/homologacao.json
+      - name: Preservar build Web de homologação para revisão (sem deploy)
+        uses: actions/upload-artifact@v4
+        with:
+          name: petita-web-homologacao-${{ github.sha }}
+          path: build/web
+          retention-days: 7

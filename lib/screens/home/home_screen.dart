@@ -25,7 +25,7 @@ class _HomeScreenState extends State<HomeScreen> {
         content: const Text(
           'O perfil e as respostas do Plano de Parto salvos neste dispositivo serão apagados. '
           'Será necessário aceitar novamente os termos para preencher o aplicativo. '
-          'Isso não apaga dados que já foram sincronizados com serviços online.',
+          'Isso não apaga registros já enviados à nuvem. Envios pendentes locais serão cancelados; a retirada online será confirmada ao reconectar a conta.',
         ),
         actions: [
           TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancelar')),

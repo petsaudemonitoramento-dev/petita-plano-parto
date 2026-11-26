@@ -258,6 +258,11 @@ class _BirthPlanSummaryScreenState extends State<BirthPlanSummaryScreen> {
   }
 
   Future<void> _syncOnline() async {
+    final proceed=await showDialog<bool>(context:context,builder:(c)=>AlertDialog(
+      title:const Text('Sincronizar dados com o serviço online?'),
+      content:const Text('A conta institucional exige verificação e consentimento específico antes do envio. Você pode manter seu plano apenas neste dispositivo.'),
+      actions:[TextButton(onPressed:()=>Navigator.pop(c,false),child:const Text('Manter só neste dispositivo')),FilledButton(onPressed:()=>Navigator.pop(c,true),child:const Text('Abrir conta institucional'))]));
+    if(proceed!=true || !mounted)return;
     await Navigator.pushNamed(context, AppRoutes.institutional);
     await _load();
   }

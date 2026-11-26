@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:async';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
@@ -6,6 +7,13 @@ import 'package:plano_parto_pet_saude/services/institutional/auth_transport_nati
 import 'package:plano_parto_pet_saude/services/institutional/auth_transport.dart';
 import 'package:plano_parto_pet_saude/services/institutional/institutional_auth.dart';
 import 'support/institutional_fakes.dart';
+
+class DelayedFixture extends FixtureAuthTransport {
+  final waiting = Completer<Map<String, dynamic>>();
+  @override
+  Future<Map<String, dynamic>> call(String action, Map<String, dynamic> body) =>
+      action == 'token' ? waiting.future : super.call(action, body);
+}
 
 void main() {
   final url = Uri.parse('https://fixture.neon.tech/neondb/auth');
@@ -112,5 +120,39 @@ void main() {
       expect(e.status, 302);
       expect('$e', isNot(contains('sensitive')));
     }
+  });
+  test('logout invalidates token retrieval already in flight', () async {
+    final fixture = DelayedFixture();
+    final auth = InstitutionalAuth(fixture);
+    await auth.restore();
+    final pending = auth.token();
+    final denied =
+        expectLater(pending, throwsA(isA<InstitutionalAuthException>()));
+    await auth.logout();
+    fixture.waiting.complete({'token': 'PREVIOUS-SYNTHETIC-TOKEN'});
+    await denied;
+    expect(auth.user, isNull);
+    expect(await auth.token(), isNull);
+  });
+  test(
+      'expired native session is erased and never reported as authenticated login',
+      () async {
+    final vault = MemoryVault();
+    final client = MockClient((r) async => ok(
+        r,
+        r.url.path.endsWith('/sign-in/email')
+            ? {
+                'token': 'opaque-fixture',
+                'user': {'id': 'fixture-a'}
+              }
+            : {
+                'user': {'id': 'fixture-a', 'emailVerified': true},
+                'session': {'expiresAt': '2020-01-01T00:00:00Z'}
+              }));
+    final auth = InstitutionalAuth(NativeNeonAuthTransport(url, vault, client));
+    await expectLater(auth.login('fixture@example.invalid', 'fixture-password'),
+        throwsA(isA<InstitutionalAuthException>()));
+    expect(auth.user, isNull);
+    expect(vault.values, isEmpty);
   });
 }
