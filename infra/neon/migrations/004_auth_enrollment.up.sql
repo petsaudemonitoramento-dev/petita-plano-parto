@@ -40,6 +40,12 @@ CREATE POLICY enrollment_profile_read ON petita.profiles FOR SELECT TO petita_en
 
 CREATE POLICY enrollment_patient_insert ON petita.profiles FOR INSERT TO petita_enrollment_executor WITH CHECK(role='patient' AND active AND ubs_code IS NULL);
 
+GRANT CREATE ON SCHEMA petita TO petita_enrollment_executor;
+
+RESET ROLE;
+
+SET LOCAL ROLE petita_enrollment_executor;
+
 CREATE FUNCTION petita.auth_identity_active() RETURNS boolean LANGUAGE sql STABLE SECURITY DEFINER SET search_path=pg_catalog AS $$ SELECT EXISTS(SELECT 1 FROM petita_private.auth_provider_config c JOIN neon_auth."user" u ON u.id::text=nullif(current_setting('petita.subject',true),'') WHERE c.issuer=nullif(current_setting('petita.issuer',true),'') AND u."emailVerified" IS TRUE AND u.banned IS FALSE) $$;
 
 CREATE FUNCTION petita.ensure_patient_profile() RETURNS uuid LANGUAGE plpgsql SECURITY DEFINER SET search_path=pg_catalog AS $$
@@ -63,14 +69,6 @@ END $$;
 REVOKE EXECUTE ON FUNCTION petita.auth_identity_active(),petita.ensure_patient_profile() FROM PUBLIC;
 
 GRANT EXECUTE ON FUNCTION petita.auth_identity_active(),petita.ensure_patient_profile() TO petita_runtime,petita_enrollment_executor;
-
-GRANT CREATE ON SCHEMA petita TO petita_enrollment_executor;
-
-RESET ROLE;
-
-ALTER FUNCTION petita.auth_identity_active() OWNER TO petita_enrollment_executor;
-
-ALTER FUNCTION petita.ensure_patient_profile() OWNER TO petita_enrollment_executor;
 
 SET LOCAL ROLE petita_schema_owner;
 
