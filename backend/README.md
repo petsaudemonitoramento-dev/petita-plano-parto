@@ -1,32 +1,25 @@
-# Petita — API canônica Neon (candidata de homologação)
-Não publicada. Não utilizar dados reais. Implementa as rotas UBS, perfil já vinculado, dúvidas não urgentes, fila, resposta e decisão/revogação de acesso profissional nas funções de `petita`/ `petita_private` das PRs #15/#17. Não reutiliza `petita_atendimento`/ `petita_privado` da PR #19.
+# API institucional Neon — homologação
 
-Neon JWT: iss e aud são a ORIGEM do Auth (não /neondb/auth), conforme https://neon.com/docs/auth/guides/plugins/jwt. EdDSA, exp/iat/sub obrigatórios, email verificado, usuário não banido. Papel só do banco. Contexto por transação READ COMMITTED, role petita_runtime, parâmetros vinculados, sem fallback para owner. O backend recusa login com bypass/CREATEROLE/CREATEDB/superuser e não expõe credenciais ao cliente. A autorização de perfil usa vínculos já aprovados. JWT pode permanecer válido até expiração: revogação de sessão imediata ainda precisa de solução/teste; revogação de vínculo no banco é consultada a cada operação.
+Estado vigente: fonte `89aa160` da PR28, implementação Flutter em `lib/services/institutional` e telas em `lib/screens/institutional`. Entrega, evidências, instalação e bloqueios em [ENTREGA_RC_INSTITUCIONAL_20261126.md](../documentos/ENTREGA_RC_INSTITUCIONAL_20261126.md). **NO-GO para produção/assistência.** As referências anteriores à ausência de cadastro, consentimento, planos e adaptador Flutter foram superadas no fonte; integração real continua não homologada.
 
-Configuração exclusiva de preview: PETITA_MODE=homologacao, DATABASE_URL (login dedicado, TLS verify-full), PETITA_DB_LOGIN, NEON_AUTH_BASE_URL, NEON_AUTH_JWKS_URL, PETITA_WEB_ORIGIN. Nunca utilizar owner ou credenciais de produção. Não usar domínio da versão pública antiga. API retorna dados em envelope {data:[...]}. /api/health não verifica o banco; GET /api/ubs é um teste de DB público sem dados pessoais.
+Reutiliza os schemas canônicos `petita`/`petita_private` e migrations001–006. Nenhuma migração deste checkpoint foi aplicada remotamente. Não utiliza schemas alternativos da PR19. Cadastro explícito cria somente patient, identidade do JWT verificado, sem papel/UBS escolhidos pelo cliente. Equipe/admin e vínculos dependem das funções autorizadoras no banco; admin inicial só por processo institucional externo.
 
-Limites explícitos: não há cadastro automático de identidade, vínculo gestante/UBS, plano de parto sincronizado, consentimento versionado persistente, encerramento sem resposta, RAG/arquivos, rate limiting persistente, adaptador Flutter ou publicação. Não simular sucesso desses fluxos: rota ausente retorna 404. Esta PR não substitui a revisão clínica e jurídica, nem autoriza uso real. Não habilitar Data API. O teste de regressão usa dados fictícios e não conecta ao banco. Rodar testes de JWT real e autorização com login dedicado antes de qualquer deploy público. A branch institucional de homologação possui migrations 001–003; main do banco não foi alterado.
+JWT EdDSA, issuer/audience da origem Auth (sem caminho), exp/iat/sub, e-mail verificado e conta não banida. Estado da conta/perfil/vínculo é consultado por transação READ COMMITTED. Login dedicado, TLS verify-full, petita_runtime sem owner/BYPASSRLS/CREATEROLE/CREATEDB; queries parametrizadas e falha fechada. JWT emitido pode persistir até expiração: não afirmar revogação individual imediata em logout.
 
-npm install --ignore-scripts
-npm run check
-npm test
+Configuração do backend: `PETITA_MODE=homologacao`, `DATABASE_URL` do login dedicado, `PETITA_DB_LOGIN`, `NEON_AUTH_BASE_URL`, `NEON_AUTH_JWKS_URL`, `PETITA_WEB_ORIGIN` exata. Não colocar credenciais em Flutter. `.git.deploymentEnabled=false` preserva bloqueio de publicação da autenticação. SSO Vercel=all/origens Auth ainda exigem resolução institucional; não usar bypass token no app. Node CI/engines22, projeto Vercel informado26: reconciliar antes de publicação autorizada.
 
-Antes do deploy, gerar e revisar package-lock.json, usar npm ci, verificar dependências, validar regras de Vercel e concluir gates de integração. A migração do Flutter continua em PR própria para preservar a experiência offline e o questionário.
+Rotas: `/api/profile`, `/api/me`, `/api/consent`, `/api/consent/withdraw`, `/api/plans`, catálogo UBS, dúvidas do titular, fila profissional, solicitação/aprovação/revogação profissional, solicitação/aprovação/revogação de vínculo gestante/UBS. Identidade/papel nunca vêm do corpo. Envelope `{data:[...]}`, erros sanitizados; `/api/health` não verifica banco. Corpo16KiB/respostas do plano12KiB, revisão esperada e409 em conflito. Consentimento append-only e RLS restritiva bloqueiam gravação incompatível. Leitura dos próprios planos continua após retirada para preservar direito de acesso.
 
-## Migration 004
-A API passa a exigir a migration 004 antes de operações autenticadas. A identidade Neon verificada é consultada no banco (emailVerified, banned) e o cadastro inicial é explícito via POST /api/profile, sem parâmetros de identidade/papel/UBS. A função cria somente patient sem vínculo UBS; o vínculo profissional e a vinculação institucional da gestante continuam processos de autorização separados. O contexto continua derivado exclusivamente do JWT validado pelo backend. A verificação de estado da conta não prova revogação individual de JWT em logout. Não aplicar 004 em produção sem CI, revisão e reconciliação da identidade histórica.
+Sem SQL genérico, fallback legado, RAG/documentos assistenciais, endpoint de elevação de privilégios ou bootstrap administrativo pelo cliente. Rate limiting persistente geral, eliminação remota completa e revisão LGPD continuam pendentes.
 
-## Migration 005 — consentimento de sincronização e revisão
-Consentimento online é um ato separado e explícito, com versão atual do termo e chave de operação; não se inferem consentimentos históricos. Eventos grant/withdraw são append-only. RLS restringe leitura e escrita ao paciente autenticado, e políticas restritivas impedem INSERT/UPDATE de planos sem consentimento ativo. Atualizações exigem expected_revision e retornam 409 em conflito; não há sobrescrita silenciosa. As rotas de leitura dos planos continuam disponíveis ao titular, inclusive após retirar consentimento, para assegurar acesso aos próprios registros. Não há exclusão/exportação completa, revisão jurídica ou integração da UI nesta entrega. O limite de corpo atual é 16 KiB, não há armazenamento documental/RAG. Homologação exclusivamente com dados fictícios.
+No Codex Cloud, na raiz:
 
-## Homologação do login web
-Tela interna auth-preview.html utiliza o SDK oficial Neon para cadastro, entrada, confirmação por OTP, reenvio, sessão e criação do perfil. O endpoint de configuração é restrito ao modo homologacao, flag PETITA_AUTH_PREVIEW e domínio confiável exato. Não usar dados reais. O build inicial passou em 17 testes, porém npm reportou 5 vulnerabilidades (3 altas, 1 crítica, 1 baixa); a nova verificação npm audit --audit-level=high bloqueia publicação até análise e correção. A tela ainda não foi publicada nem testada com OTP real; não equivale à integração do Flutter. O fluxo nativo Android e o fluxo Flutter Web ainda precisam de implementação e validação de sessão. Não compartilhar senhas/OTP em chats ou logs.
+```sh
+bash tool/run_bounded_audit.sh npm-ci 180 npm ci --prefix backend --ignore-scripts
+bash tool/run_bounded_audit.sh api-tests 180 npm test --prefix backend
+bash tool/run_bounded_audit.sh auth-web 180 npm run --prefix backend build:flutter-auth
+bash tool/run_bounded_audit.sh deps 180 npm audit --prefix backend --audit-level=high
+bash tool/run_bounded_audit.sh postgres 180 python3 tools/test_neon_patient_ubs.py
+```
 
-## Atualização da dependência de autenticação
-Candidata de homologação: migração de @neondatabase/auth 0.6.0-beta para @neon/auth, pacote recomendado na documentação atual do Neon. Não forçar npm audit fix --force nem ignorar avisos. O CI registra a árvore resolvida, compila o bundle, roda os testes e exige auditoria sem risco alto/crítico. A tag latest é somente uma etapa para descobrir uma versão compatível; fixar versão exata e lockfile após aprovação. Alertas: GHSA-44jh-23m7-hpcf e GHSA-mrhx-c7xc-m3w5. A publicação permanece bloqueada até resultado e testes reais.
-
-### Resultado da correção
-CI 45857790724: @neon/auth 0.8.2, better-auth 1.7.28, zod 4.6.7; 17/17 testes, build do cliente e npm audit com zero vulnerabilidades. Fixada a versão direta do SDK. Lockfile reprodutível ainda deve ser gerado e revisado antes do deploy definitivo. O teste positivo de autenticação, o Flutter integrado e os demais gates continuam pendentes; não publicar produção.
-
-## Consolidação e regressão SQL
-PR #28 agora inclui cópia byte a byte das migrations 001–003 (e downs) da revisão 86cd6a7d12c4d6de31f3717744d0056cbc8e3db7 e seus runners originais. Os documentos de infra anteriores preservam contexto histórico; nesta homologação institucional as versões 001–005 já foram aplicadas, mas a main permanece intacta. Novo runner test_neon_enrollment_sync.py aplica todas as cinco migrations em PostgreSQL descartável e testa cadastro, identidade falsa/não verificada, revogação, consentimento, conflitos e isolamento. O schema neon_auth simulado existe exclusivamente no container de testes; isso não substitui login e OTP reais. Nenhuma migração é executada em banco remoto pelo workflow.
+SDK oficial `@neon/auth`0.8.2, lockfile versionado; bundle local gerado antes do build Web. Testes JWT assinados com chaves fictícias e PostgreSQL real descartável/Auth fictício não comprovam OTP/JWT/RLS na infraestrutura real. A tela antiga auth-preview também continua sem autorização de deployment. Main, produção e dados existentes não foram alterados.
