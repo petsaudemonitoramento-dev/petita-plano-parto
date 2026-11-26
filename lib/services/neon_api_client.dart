@@ -89,6 +89,35 @@ class NeonApiClient {
     return value;
   }
 
+  Future<List<Map<String, dynamic>>> getSyncConsent() =>
+      _request('GET', '/api/consent');
+  Future<List<Map<String, dynamic>>> acceptSyncConsent({
+    required String operationId, required String termsVersion,
+    required bool acceptedTerms, required bool acceptedPrivacy,
+    required bool acceptedResponsibility, required bool acceptedPlanScience,
+    required bool acceptedHealthData, required bool acceptedOnlineSync,
+  }) => _request('POST', '/api/consent', body: {
+    'operation_id': _id(operationId), 'terms_version': termsVersion,
+    'accepted_terms': acceptedTerms, 'accepted_privacy': acceptedPrivacy,
+    'accepted_responsibility': acceptedResponsibility,
+    'accepted_plan_science': acceptedPlanScience,
+    'accepted_health_data': acceptedHealthData,
+    'accepted_online_sync': acceptedOnlineSync,
+  });
+  Future<List<Map<String, dynamic>>> withdrawSyncConsent(String operationId, String termsVersion) =>
+      _request('POST', '/api/consent/withdraw', body: {
+        'operation_id': _id(operationId), 'terms_version': termsVersion,
+      });
+  Future<List<Map<String, dynamic>>> listPlans() => _request('GET', '/api/plans');
+  Future<List<Map<String, dynamic>>> syncPlan({
+    required String id, required int expectedRevision,
+    String? patientName, String? dppIso, String? companion,
+    required Map<String, List<String>> answers,
+  }) => _request('POST', '/api/plans', body: {
+    'id': _id(id), 'expected_revision': expectedRevision,
+    'patient_name': patientName, 'dpp': dppIso, 'companion': companion,
+    'answers': answers,
+  });
   Future<List<Map<String, dynamic>>> listUbs() =>
       _request('GET', '/api/ubs', isPublic: true);
   Future<List<Map<String, dynamic>>> enrollProfile() =>

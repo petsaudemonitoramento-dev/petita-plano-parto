@@ -31,7 +31,9 @@ export async function execute(operation,identity) {
       const {rows:[actor]}=await client.query('select petita_private.actor_id() as id');
       if(!actor?.id) throw problem(403,'Perfil ainda não habilitado');
     }
+    if(operation.actorLock) await client.query("select pg_advisory_xact_lock(hashtextextended(petita_private.actor_id()::text, 1))");
     const result=await client.query(operation.sql,operation.params);
+    if(operation.requireRow && result.rowCount!==1) throw problem(409,'Conflito ou operação já registrada');
     await client.query('COMMIT');
     return result.rows;
   } catch(error) {

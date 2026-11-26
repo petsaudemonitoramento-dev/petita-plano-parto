@@ -6,7 +6,44 @@ const uuid = v => { if (typeof v !== 'string' || !/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f
 const noBody = b => { if (b && Object.keys(b).length) invalid(); };
 const only = (b, keys) => { if (!b || Array.isArray(b) || typeof b !== 'object' || Object.keys(b).some(k=>!keys.includes(k))) invalid(); };
 const q = (sql, params = [], isPublic = false) => ({sql, params, isPublic});
+const consentVersion='2026-10-21-v1';
+const allowedAnswers=new Set(["nome_gestante","dpp","semanas_gestacao","ubs_referencia","cenario_parto","prioridade_parto","acompanhante_principal","doula","apoio_comunicacao","acompanhamento_continuo","comunicacao_equipe","movimentacao","posicao_contracoes","alimentacao","ambiente","informacao_procedimentos","alivio_dor","posicao_nascimento","episiotomia","toque_vaginal","kristeller","cordao_umbilical","bebe_primeira_hora","cuidados_nao_urgentes","alojamento_conjunto","orientacoes_posparto","cesarea","privacidade","registros_fotograficos","preferencias_culturais","observacoes_finais"]);
+function answers(v) {
+  if (!v || typeof v!=='object' || Array.isArray(v) || Object.keys(v).some(k=>!allowedAnswers.has(k))) invalid();
+  for (const values of Object.values(v)) {
+    if(!Array.isArray(values)||values.length>30||values.some(x=>typeof x!=='string'||x.length>1500)) invalid();
+  }
+  if(Buffer.byteLength(JSON.stringify(v))>12000) invalid();
+  return JSON.stringify(v);
+}
+const nullableText=(v,max)=>v==null?null:text(v,1,max);
+function isoDate(v) {
+  if(v==null) return null;
+  if(typeof v!=='string'||!/^\d{4}-\d{2}-\d{2}$/.test(v)) invalid();
+  const d=new Date(v+'T00:00:00Z');
+  if(Number.isNaN(d.getTime())||d.toISOString().slice(0,10)!==v) invalid();
+  return v;
+}
 export function route(method, path, body = {}) {
+  if (method==='GET' && path==='/api/consent') { noBody(body); return q('select terms_version,action,created_at from petita.sync_consent_events order by id desc limit 1'); }
+  if (method==='POST' && (path==='/api/consent' || path==='/api/consent/withdraw')) {
+    const grant=path==='/api/consent';
+    const flags=['accepted_terms','accepted_privacy','accepted_responsibility','accepted_plan_science','accepted_health_data','accepted_online_sync'];
+    only(body,grant?['operation_id','terms_version',...flags]:['operation_id','terms_version']);
+    if(body.terms_version!==consentVersion || (grant && flags.some(k=>body[k]!==true))) invalid();
+    return {...q("insert into petita.sync_consent_events(patient_id,terms_version,operation_id,action) values(petita_private.actor_id(),$1,$2::uuid,$3) on conflict(patient_id,operation_id) do nothing returning terms_version,action,created_at",[consentVersion,uuid(body.operation_id),grant?'grant':'withdraw']), requireRow:true, actorLock:true};
+  }
+  if (method==='GET' && path==='/api/plans') {
+    noBody(body); return q('select id,patient_name,dpp,companion,answers_json,revision,updated_at from petita.birth_plans order by updated_at desc limit 25');
+  }
+  if (method==='POST' && path==='/api/plans') {
+    only(body,['id','expected_revision','patient_name','dpp','companion','answers']);
+    const rev=body.expected_revision;
+    if(!Number.isInteger(rev)||rev<0||rev>2147483646) invalid();
+    const params=[uuid(body.id),nullableText(body.patient_name,240),isoDate(body.dpp),nullableText(body.companion,240),answers(body.answers)];
+    if(rev===0) return {...q('insert into petita.birth_plans(id,patient_id,ubs_code,patient_name,dpp,companion,answers_json) values($1::uuid,petita_private.actor_id(),petita_private.actor_ubs(),$2,$3::date,$4,$5::jsonb) on conflict(id) do nothing returning id,revision,updated_at',params), requireRow:true, actorLock:true};
+    return {...q('update petita.birth_plans set patient_name=$2,dpp=$3::date,companion=$4,answers_json=$5::jsonb,ubs_code=petita_private.actor_ubs(),revision=revision+1 where id=$1::uuid and revision=$6 returning id,revision,updated_at',[...params,rev]),requireRow:true,actorLock:true};
+  }
   if (method === 'GET' && path === '/api/ubs') { noBody(body); return q('select code,name,city,state from petita.ubs where active order by name', [], true); }
   if (method === 'POST' && path === '/api/profile') { noBody(body); return {...q('select petita.ensure_patient_profile() as id'), enrollment:true}; }
   if (method === 'GET' && path === '/api/me') { noBody(body); return q('select id,display_name,role,ubs_code from petita.profiles where id=petita_private.actor_id()'); }
