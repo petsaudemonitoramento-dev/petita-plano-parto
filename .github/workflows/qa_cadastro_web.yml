@@ -1,0 +1,18 @@
+name: Cadastro Web pelo SDK real em homologação
+on:
+  push:
+    branches: ['qa/cadastro-web-20261126']
+permissions:
+  contents: read
+jobs:
+  signup-web:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: bash tool/run_bounded_audit.sh web-auth-deps 120 npm ci --prefix backend --ignore-scripts
+      - run: bash tool/run_bounded_audit.sh web-auth-build 60 npm run --prefix backend build:flutter-auth
+      - run: bash tool/run_bounded_audit.sh web-auth-real 90 node tool/qa_signup_web.mjs
