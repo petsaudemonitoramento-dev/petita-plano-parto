@@ -20,8 +20,8 @@ Deno.serve(async (req) => {
     const { data: userData, error: userError } = await userClient.auth.getUser()
     if (userError || !userData.user) return json({ error: 'Usuário não autenticado.' }, 401)
 
-    const { data: profile } = await userClient.from('profiles').select('role').eq('id', userData.user.id).maybeSingle()
-    if (profile?.role !== 'admin') return json({ error: 'Apenas administradores podem remover documentos.' }, 403)
+    const { data: profile } = await userClient.from('profiles').select('role, active').eq('id', userData.user.id).maybeSingle()
+    if (profile?.role !== 'admin' || profile.active !== true) return json({ error: 'Apenas administradores podem remover documentos.' }, 403)
 
     const { document_id } = await req.json()
     if (!document_id) return json({ error: 'document_id é obrigatório.' }, 400)

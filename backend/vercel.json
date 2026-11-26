@@ -4,5 +4,8 @@
       "source": "/api/:path*",
       "destination": "/api/index"
     }
-  ]
+  ],
+  "git": {
+    "deploymentEnabled": false
+  }
 }

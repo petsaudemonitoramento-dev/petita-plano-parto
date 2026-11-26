@@ -2,6 +2,7 @@ import 'package:flutter/services.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
+import 'package:image/image.dart' as image;
 import '../config/app_info.dart';
 import '../models/birth_plan_answer.dart';
 import '../models/birth_plan_question.dart';
@@ -213,7 +214,17 @@ class PdfService {
 
   Future<pw.MemoryImage> _loadLogoOrMascot(String path, pw.MemoryImage fallback) async {
     try {
-      return pw.MemoryImage((await rootBundle.load(path)).buffer.asUint8List());
+      final bytes = (await rootBundle.load(path)).buffer.asUint8List();
+      final decoded = image.decodeImage(bytes);
+      if (decoded == null) return fallback;
+      // Logos occupy at most ~70pt in the PDF. Cache a proportional 600px
+      // version instead of decoding the 4520x4500 source on every export.
+      // Original assets and document text are untouched.
+      if (decoded.width <= 600 && decoded.height <= 600) return pw.MemoryImage(bytes);
+      final resized = decoded.width >= decoded.height
+          ? image.copyResize(decoded, width: 600, interpolation: image.Interpolation.average)
+          : image.copyResize(decoded, height: 600, interpolation: image.Interpolation.average);
+      return pw.MemoryImage(image.encodePng(resized));
     } catch (_) {
       // Nunca descartar respostas clínicas por ausência do asset de marca.
       return fallback;

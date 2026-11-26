@@ -12,6 +12,7 @@ dependencies:
   cupertino_icons: ^1.0.8
   shared_preferences: ^2.2.3
   pdf: ^3.10.8
+  image: 4.9.1
   printing: ^5.12.0
   flutter_tts: ^4.2.5
   flutter_markdown: ^0.7.3
