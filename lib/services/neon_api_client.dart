@@ -124,6 +124,14 @@ class NeonApiClient {
     'patient_name': patientName, 'dpp': dppIso, 'companion': companion,
     'answers': answers,
   });
+  Future<List<Map<String,dynamic>>> listMyUbsRequests() => _request('GET','/api/patient/ubs-requests');
+  Future<List<Map<String,dynamic>>> requestPatientUbs(String code,String operationId) =>
+      _request('POST','/api/patient/ubs-requests',body:{'ubs_code':code,'operation_id':_id(operationId)});
+  Future<List<Map<String,dynamic>>> listPatientUbsRequests() => _request('GET','/api/admin/patient-ubs-requests');
+  Future<List<Map<String,dynamic>>> decidePatientUbs(String requestId,bool approve) =>
+      _request('POST','/api/admin/patient-ubs-requests/${_id(requestId)}/${approve?"approve":"reject"}',body:{});
+  Future<List<Map<String,dynamic>>> revokePatientUbs(String patientId,String reason) =>
+      _request('POST','/api/admin/patient-ubs-members/${_id(patientId)}/revoke',body:{'reason':reason});
   Future<List<Map<String, dynamic>>> listUbs() =>
       _request('GET', '/api/ubs', isPublic: true);
   Future<List<Map<String, dynamic>>> enrollProfile() =>

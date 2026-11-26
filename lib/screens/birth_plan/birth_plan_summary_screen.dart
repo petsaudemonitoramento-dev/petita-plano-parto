@@ -1,3 +1,4 @@
+import '../../config/app_routes.dart';
 import '../../widgets/local_persistence_feedback.dart';
 import 'package:flutter/material.dart';
 import 'package:printing/printing.dart';
@@ -8,7 +9,6 @@ import '../../models/treatment_preferences.dart';
 import '../../services/birth_plan_flow_service.dart';
 import '../../services/pdf_service.dart';
 import '../../services/storage_service.dart';
-import '../../services/supabase_service.dart';
 import '../../widgets/app_button.dart';
 import '../../widgets/section_card.dart';
 
@@ -21,7 +21,6 @@ class BirthPlanSummaryScreen extends StatefulWidget {
 
 class _BirthPlanSummaryScreenState extends State<BirthPlanSummaryScreen> {
   final _storage = StorageService();
-  final _online = SupabaseService();
   List<BirthPlanQuestion> _questions = [];
   List<BirthPlanAnswer> _answers = [];
   TreatmentPreferences? _treatment;
@@ -259,40 +258,8 @@ class _BirthPlanSummaryScreenState extends State<BirthPlanSummaryScreen> {
   }
 
   Future<void> _syncOnline() async {
-    if (_answers.isEmpty) return;
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: const Text('Sincronizar dados com o serviço online?'),
-        content: const Text(
-          'O envio incluirá dados do perfil e as respostas do Plano de Parto, '
-          'que podem conter informações pessoais e de saúde. '
-          'Você pode continuar utilizando a Petita offline sem sincronizar. '
-          'Leia a Política de Privacidade antes de escolher.',
-        ),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(dialogContext, false), child: const Text('Manter só neste dispositivo')),
-          FilledButton(onPressed: () => Navigator.pop(dialogContext, true), child: const Text('Confirmar envio')),
-        ],
-      ),
-    );
-    if (confirmed != true || !mounted) return;
-    final answerMap = {for (final a in _answers) a.questionId: a.values.join(', ')};
-    final profile = await _storage.loadProfile();
-    try {
-      await _online.syncBirthPlan(
-        patientName: answerMap['nome_gestante'] ?? profile?.name ?? 'Gestante',
-        ubsCode: profile?.ubsCode,
-        dppBr: answerMap['dpp'],
-        companion: answerMap['acompanhante_principal'],
-        answers: _answers,
-      );
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Plano de Parto sincronizado com Supabase.')));
-    } catch (e) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Não foi possível sincronizar agora. O plano continua salvo offline. Detalhe: $e')));
-    }
+    await Navigator.pushNamed(context, AppRoutes.institutional);
+    await _load();
   }
 
   @override

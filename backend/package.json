@@ -9,7 +9,8 @@
   "scripts": {
     "test": "node --test",
     "check": "node --check api/index.js && node --check lib/auth.js && node --check lib/db.js && node --check lib/routes.js",
-    "build:auth": "node scripts/build-auth.mjs"
+    "build:auth": "node scripts/build-auth.mjs",
+    "build:flutter-auth": "node scripts/build-flutter-auth.mjs"
   },
   "dependencies": {
     "jose": "6.1.0",

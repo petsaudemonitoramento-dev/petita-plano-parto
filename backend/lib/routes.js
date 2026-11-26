@@ -25,6 +25,13 @@ function isoDate(v) {
   return v;
 }
 export function route(method, path, body = {}) {
+  if(method==='GET' && path==='/api/patient/ubs-requests') {noBody(body);return q('select * from petita.list_my_ubs_requests()');}
+  if(method==='POST' && path==='/api/patient/ubs-requests') {only(body,['ubs_code','operation_id']);return q('select petita.request_patient_ubs($1,$2::uuid) as result',[text(body.ubs_code,1,80),uuid(body.operation_id)]);}
+  if(method==='GET' && path==='/api/admin/patient-ubs-requests') {noBody(body);return q('select * from petita.list_patient_ubs_requests()');}
+  const patientDecision=path.match(/^\/api\/admin\/patient-ubs-requests\/([^/]+)\/(approve|reject)$/);
+  if(method==='POST' && patientDecision){noBody(body);return q('select petita.decide_patient_ubs($1::uuid,$2::boolean) as result',[uuid(patientDecision[1]),patientDecision[2]==='approve']);}
+  const revokePatient=path.match(/^\/api\/admin\/patient-ubs-members\/([^/]+)\/revoke$/);
+  if(method==='POST' && revokePatient){only(body,['reason']);return q('select petita.revoke_patient_ubs($1::uuid,$2) as result',[uuid(revokePatient[1]),text(body.reason,3,1000)]);}
   if (method==='GET' && path==='/api/consent') { noBody(body); return q('select terms_version,action,created_at from petita.sync_consent_events order by id desc limit 1'); }
   if (method==='POST' && (path==='/api/consent' || path==='/api/consent/withdraw')) {
     const grant=path==='/api/consent';

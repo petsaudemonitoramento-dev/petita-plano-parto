@@ -1,10 +1,10 @@
+import '../../config/app_routes.dart';
 import '../../widgets/local_persistence_feedback.dart';
 import 'package:flutter/material.dart';
 import '../../config/app_theme.dart';
 import '../../models/ubs_unit.dart';
 import '../../models/user_profile.dart';
 import '../../services/storage_service.dart';
-import '../../services/supabase_service.dart';
 import '../../services/ubs_service.dart';
 import '../../widgets/app_button.dart';
 import '../../widgets/section_card.dart';
@@ -18,10 +18,8 @@ class ProfileScreen extends StatefulWidget {
 
 class _ProfileScreenState extends State<ProfileScreen> {
   final _storage = StorageService();
-  final _online = SupabaseService();
   final _nameController = TextEditingController();
   final _emailController = TextEditingController();
-  final _passwordController = TextEditingController();
   final _customUbsController = TextEditingController();
   List<UbsUnit> _officialUnits = [];
   UserProfile? _profile;
@@ -42,11 +40,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
     final units = await UbsService().loadOfficialUnits();
     final profile = await _storage.loadProfile();
     UserProfile? onlineProfile;
-    try {
-      onlineProfile = await _online.loadOnlineProfile();
-    } catch (_) {
-      onlineProfile = null;
-    }
     if (!mounted) return;
     final source = onlineProfile ?? profile;
     setState(() {
@@ -59,9 +52,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       if (source?.ubsCode == null && source?.ubsName != null) {
         _customUbsController.text = source!.ubsName!;
       }
-      _onlineMessage = onlineProfile == null
-          ? 'Você pode usar o cadastro local offline. Login online é necessário para sincronizar plano e enviar dúvidas à UBS.'
-          : 'Conta online conectada como ${onlineProfile.role}. Dados sincronizados com Supabase.';
+      _onlineMessage = 'Você pode manter seu cadastro local offline. A conta institucional possui consentimento e vínculo UBS separados.';
       _loading = false;
     });
   }
@@ -103,65 +94,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
     return true;
   }
 
-  Future<void> _signUpOnline() async {
-    final name = _nameController.text.trim();
-    final email = _emailController.text.trim();
-    final password = _passwordController.text.trim();
-    if (name.isEmpty || email.isEmpty || password.length < 6) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Informe nome, e-mail e senha com pelo menos 6 caracteres.')));
-      return;
-    }
-    setState(() => _busy = true);
-    try {
-      if (!await _saveLocal()) return;
-      await _online.signUpPatient(name: name, email: email, password: password, ubsCode: _selectedUbsCode);
-      if (_online.isLoggedIn) {
-        await _online.updatePatientProfile(name: name, email: email, ubsCode: _selectedUbsCode);
-      }
-      await _load();
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Cadastro online solicitado. Se o Supabase exigir confirmação de e-mail, confirme antes de entrar.')));
-    } catch (e) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Não foi possível criar cadastro online: $e')));
-    } finally {
-      if (mounted) setState(() => _busy = false);
-    }
-  }
-
-  Future<void> _signInOnline() async {
-    final email = _emailController.text.trim();
-    final password = _passwordController.text.trim();
-    if (email.isEmpty || password.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Informe e-mail e senha.')));
-      return;
-    }
-    setState(() => _busy = true);
-    try {
-      await _online.signIn(email: email, password: password);
-      final onlineProfile = await _online.loadOnlineProfile();
-      if (onlineProfile != null) await _storage.saveProfile(onlineProfile);
-      await _load();
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Login online realizado.')));
-    } catch (e) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Não foi possível entrar: $e')));
-    } finally {
-      if (mounted) setState(() => _busy = false);
-    }
-  }
-
-  Future<void> _signOut() async {
-    setState(() => _busy = true);
-    try {
-      await _online.signOut();
-      await _load();
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Conta online desconectada. O modo offline continua disponível.')));
-    } finally {
-      if (mounted) setState(() => _busy = false);
-    }
+  Future<void> _openInstitutional() async {
+    await Navigator.pushNamed(context,AppRoutes.institutional);
   }
 
   Future<void> _clear() async {
@@ -171,7 +105,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
       _profile = null;
       _nameController.clear();
       _emailController.clear();
-      _passwordController.clear();
       _customUbsController.clear();
       _selectedUbsCode = null;
     });
@@ -218,7 +151,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
               const SizedBox(height: 12),
               TextField(controller: _emailController, keyboardType: TextInputType.emailAddress, decoration: const InputDecoration(labelText: 'E-mail')),
               const SizedBox(height: 12),
-              TextField(controller: _passwordController, obscureText: true, decoration: const InputDecoration(labelText: 'Senha para login online')),
+              const Text('O acesso institucional e a verificação de e-mail ficam na área da conta.'),
               const SizedBox(height: 16),
               const Text('UBS de referência oficial', style: TextStyle(fontWeight: FontWeight.w900, color: AppColors.petDarkBlue)),
               const SizedBox(height: 8),
@@ -272,11 +205,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
             ])),
             AppButton(label: 'Salvar cadastro offline', icon: Icons.save_outlined, onPressed: _saveLocal),
             const SizedBox(height: 10),
-            AppButton(label: 'Criar cadastro online', icon: Icons.cloud_upload_outlined, onPressed: _busy ? () {} : _signUpOnline),
+            AppButton(label: 'Criar cadastro online', icon: Icons.cloud_upload_outlined, onPressed: _busy ? () {} : _openInstitutional),
             const SizedBox(height: 10),
-            AppButton(label: 'Entrar online', icon: Icons.login, outlined: true, onPressed: _busy ? () {} : _signInOnline),
+            AppButton(label: 'Entrar online', icon: Icons.login, outlined: true, onPressed: _busy ? () {} : _openInstitutional),
             const SizedBox(height: 10),
-            AppButton(label: 'Sair da conta online', icon: Icons.logout, outlined: true, onPressed: _busy ? () {} : _signOut),
+            AppButton(label: 'Sair da conta online', icon: Icons.logout, outlined: true, onPressed: _busy ? () {} : _openInstitutional),
             const SizedBox(height: 10),
             AppButton(label: 'Limpar cadastro local', icon: Icons.delete_outline, outlined: true, onPressed: _clear),
             if (_profile != null || _onlineProfile != null)

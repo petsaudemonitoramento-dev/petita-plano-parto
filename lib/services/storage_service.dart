@@ -1,3 +1,4 @@
+import 'institutional/protected_patient_store.dart';
 import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/birth_plan_answer.dart';
@@ -15,6 +16,18 @@ class LocalPersistenceException extends StateError {
 }
 
 class StorageService {
+  static ProtectedPatientStore? protectedStore;
+  static bool protectionRequired = false;
+  Object? _read(SharedPreferences prefs,String key) {
+    if (!ProtectedPatientStore.patientKeys.contains(key)) return prefs.get(key);
+    if (protectionRequired && protectedStore == null) throw LocalPersistenceException();
+    return protectedStore?.read(key) ?? (protectedStore == null ? prefs.get(key) : null);
+  }
+  Future<void> _protectedWrite(String key,Object? value) async {
+    if(protectedStore==null)throw LocalPersistenceException();
+    try {await protectedStore!.write(key,value);} catch(_){throw LocalPersistenceException();}
+  }
+
   static Future<void>? _pendingMutation;
 
   // One queue across service instances, including reset/revocation operations.
@@ -60,14 +73,17 @@ class StorageService {
   }
 
   Future<void> _putString(SharedPreferences prefs, String key, String value) =>
-      _confirm(prefs, () => prefs.setString(key, value), () => prefs.getString(key) == value);
+      (ProtectedPatientStore.patientKeys.contains(key) && (protectionRequired || protectedStore != null))
+          ? _protectedWrite(key,value) : _confirm(prefs, () => prefs.setString(key, value), () => prefs.getString(key) == value);
 
   Future<void> _putList(SharedPreferences prefs, String key, List<String> value) =>
-      _confirm(prefs, () => prefs.setStringList(key, value),
+      (ProtectedPatientStore.patientKeys.contains(key) && (protectionRequired || protectedStore != null))
+          ? _protectedWrite(key,value) : _confirm(prefs, () => prefs.setStringList(key, value),
           () => jsonEncode(prefs.getStringList(key)) == jsonEncode(value));
 
   Future<void> _remove(SharedPreferences prefs, String key) =>
-      _confirm(prefs, () => prefs.remove(key), () => !prefs.containsKey(key));
+      (ProtectedPatientStore.patientKeys.contains(key) && (protectionRequired || protectedStore != null))
+          ? _protectedWrite(key,null) : _confirm(prefs, () => prefs.remove(key), () => !prefs.containsKey(key));
 
   Future<void> saveAnswers(List<BirthPlanAnswer> answers) => _serialize(() async {
     final prefs = await SharedPreferences.getInstance();
@@ -77,9 +93,9 @@ class StorageService {
   Future<List<BirthPlanAnswer>> loadAnswers() async {
     final prefs = await SharedPreferences.getInstance();
     try {
-      final raw = prefs.getString(_answersKey);
+      final raw = _read(prefs, _answersKey);
       if (raw == null) return [];
-      final data = jsonDecode(raw) as List<dynamic>;
+      final data = jsonDecode(raw as String) as List<dynamic>;
       return data.map((item) => BirthPlanAnswer.fromJson(item as Map<String, dynamic>)).toList();
     } on FormatException {
       return [];
@@ -90,7 +106,7 @@ class StorageService {
 
   Future<Set<String>> loadConsultationPending() async {
     final prefs = await SharedPreferences.getInstance();
-    return (prefs.getStringList(_deferredConsultationKey) ?? <String>[]).toSet();
+    return List<String>.from(_read(prefs, _deferredConsultationKey) as List? ?? []).toSet();
   }
 
   Future<void> deferQuestionForConsultation(String questionId) => _serialize(() async {
@@ -109,7 +125,7 @@ class StorageService {
 
   Future<String> loadConsultationNotes() async {
     final prefs = await SharedPreferences.getInstance();
-    return prefs.getString(_consultationNotesKey) ?? '';
+    return _read(prefs, _consultationNotesKey) as String? ?? '';
   }
 
   Future<void> saveConsultationNotes(String notes) => _serialize(() async {
@@ -127,10 +143,10 @@ class StorageService {
 
   Future<TreatmentPreferences?> loadTreatmentPreferences() async {
     final prefs = await SharedPreferences.getInstance();
-    final raw = prefs.getString(_treatmentKey);
+    final raw = _read(prefs, _treatmentKey);
     if (raw == null) return null;
     try {
-      return TreatmentPreferences.fromJson(jsonDecode(raw) as Map<String, dynamic>);
+      return TreatmentPreferences.fromJson(jsonDecode(raw as String) as Map<String, dynamic>);
     } catch (_) {
       return null;
     }
@@ -148,10 +164,10 @@ class StorageService {
 
   Future<bool> hasConsent() async {
     final prefs = await SharedPreferences.getInstance();
-    final raw = prefs.getString(_consentRecordKey);
+    final raw = _read(prefs, _consentRecordKey);
     if (raw == null) return false;
     try {
-      final record = ConsentRecord.fromJson(jsonDecode(raw) as Map<String, dynamic>);
+      final record = ConsentRecord.fromJson(jsonDecode(raw as String) as Map<String, dynamic>);
       return record.isCurrentAndComplete;
     } catch (_) {
       return false;
@@ -194,9 +210,9 @@ class StorageService {
   Future<UserProfile?> loadProfile() async {
     final prefs = await SharedPreferences.getInstance();
     try {
-      final raw = prefs.getString(_profileKey);
+      final raw = _read(prefs, _profileKey);
       if (raw == null) return null;
-      return UserProfile.fromJson(jsonDecode(raw) as Map<String, dynamic>);
+      return UserProfile.fromJson(jsonDecode(raw as String) as Map<String, dynamic>);
     } on FormatException {
       return null;
     } on TypeError {
@@ -217,9 +233,9 @@ class StorageService {
 
   Future<List<UbsQuestion>> loadUbsQuestions() async {
     final prefs = await SharedPreferences.getInstance();
-    final raw = prefs.getString(_ubsQuestionsKey);
+    final raw = _read(prefs, _ubsQuestionsKey);
     if (raw == null) return [];
-    final data = jsonDecode(raw) as List<dynamic>;
+    final data = jsonDecode(raw as String) as List<dynamic>;
     return data.map((item) => UbsQuestion.fromJson(item as Map<String, dynamic>)).toList();
   }
 
@@ -239,9 +255,9 @@ class StorageService {
 
   Future<List<UbsUnit>> loadCustomUbsUnits() async {
     final prefs = await SharedPreferences.getInstance();
-    final raw = prefs.getString(_customUbsKey);
+    final raw = _read(prefs, _customUbsKey);
     if (raw == null) return [];
-    final data = jsonDecode(raw) as List<dynamic>;
+    final data = jsonDecode(raw as String) as List<dynamic>;
     return data.map((item) => UbsUnit.fromJson(item as Map<String, dynamic>)).toList();
   }
 
@@ -254,9 +270,9 @@ class StorageService {
 
   Future<List<KnowledgeDocument>> loadKnowledgeDocuments() async {
     final prefs = await SharedPreferences.getInstance();
-    final raw = prefs.getString(_documentsKey);
+    final raw = _read(prefs, _documentsKey);
     if (raw == null) return [];
-    final data = jsonDecode(raw) as List<dynamic>;
+    final data = jsonDecode(raw as String) as List<dynamic>;
     return data.map((item) => KnowledgeDocument.fromJson(item as Map<String, dynamic>)).toList();
   }
 

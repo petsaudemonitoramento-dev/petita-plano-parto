@@ -1,3 +1,4 @@
+import 'screens/institutional/account_screen.dart';
 import 'package:flutter/material.dart';
 import 'config/app_routes.dart';
 import 'config/app_theme.dart';
@@ -31,6 +32,7 @@ class PlanoPartoPetSaudeApp extends StatelessWidget {
         AppRoutes.privacy: (_) => const TermsScreen(initialAsset: 'assets/legal/politica_privacidade.md', title: 'Política de Privacidade'),
         AppRoutes.responsibility: (_) => const TermsScreen(initialAsset: 'assets/legal/aviso_responsabilidade.md', title: 'Responsabilidade em Saúde'),
         AppRoutes.about: (_) => const AboutScreen(),
+        AppRoutes.institutional: (_) => const ConsentRequiredScreen(child: InstitutionalAccountScreen()),
         AppRoutes.profile: (_) => const ConsentRequiredScreen(child: ProfileScreen()),
         AppRoutes.ubs: (_) => const UbsTeamScreen(),
         AppRoutes.admin: (_) => const AdminScreen(),
