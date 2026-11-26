@@ -23,10 +23,14 @@ if [[ ! "$duration" =~ ^[0-9]+$ ]] || ((duration < 1 || duration > 1200)); then
   echo "Invalid SECONDS: must be 1..1200" >&2
   exit 2
 fi
-timeout_cmd=timeout
-if ! command -v timeout >/dev/null 2>&1 && command -v gtimeout >/dev/null 2>&1; then timeout_cmd=gtimeout; fi
-if ! command -v "$timeout_cmd" >/dev/null 2>&1; then
-  echo "TIMEOUT_TOOL_UNAVAILABLE. Do NOT run unbounded command; switch to existing CI." >&2
+if command -v timeout >/dev/null 2>&1; then
+  bounder=(timeout --signal=TERM --kill-after=15s "${duration}s")
+elif command -v gtimeout >/dev/null 2>&1; then
+  bounder=(gtimeout --signal=TERM --kill-after=15s "${duration}s")
+elif command -v python3 >/dev/null 2>&1; then
+  bounder=(python3 "$(dirname "${BASH_SOURCE[0]}")/run_with_timeout.py" "$duration")
+else
+  echo "TIMEOUT_TOOL_UNAVAILABLE. Do NOT run unbounded command." >&2
   exit 127
 fi
 umask 077
@@ -35,7 +39,7 @@ mkdir -p "$logdir"
 logfile="$(mktemp "$logdir/${name}.XXXXXX.log")"
 start="$(date +%s)"
 set +e
-"$timeout_cmd" --signal=TERM --kill-after=15s "${duration}s" "$@" >"$logfile" 2>&1
+"${bounder[@]}" "$@" >"$logfile" 2>&1
 status=$?
 set -e
 elapsed="$(( $(date +%s) - start ))"

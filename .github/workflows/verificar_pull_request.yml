@@ -4,12 +4,18 @@ on:
   pull_request:
     branches: [main]
   workflow_dispatch:
+    inputs:
+      ios_only:
+        description: 'Executar somente compatibilidade iOS, sem repetir gates Flutter/Linux'
+        type: boolean
+        default: false
 
 permissions:
   contents: read
 
 jobs:
   flutter-web:
+    if: inputs.ios_only != true
     runs-on: ubuntu-latest
     timeout-minutes: 25
     steps:
@@ -62,3 +68,23 @@ jobs:
           name: petita-web-homologacao-${{ github.sha }}
           path: build/web
           retention-days: 7
+
+  ios-compatibility:
+    if: github.event_name == 'workflow_dispatch' && inputs.ios_only == true
+    runs-on: macos-15
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.44.0'
+          channel: stable
+          cache: true
+      - name: Dependências travadas
+        run: bash tool/run_bounded_audit.sh ios-pub 180 flutter pub get --enforce-lockfile
+      - name: Estrutura iOS isolada e identificador de homologação
+        run: |
+          bash tool/run_bounded_audit.sh ios-scaffold 180 flutter create --platforms=ios --project-name plano_parto_pet_saude --org br.edu.ufcg.petsaude .
+          python3 tool/prepare_homologation_platforms.py ios
+      - name: Compilar para simulador, sem assinatura
+        run: bash tool/run_bounded_audit.sh ios-simulator 900 flutter build ios --simulator --debug --no-codesign --no-pub --dart-define-from-file=config/homologacao.json
