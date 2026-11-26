@@ -17,6 +17,7 @@ class DelayedFixture extends FixtureAuthTransport {
 
 void main() {
   final url = Uri.parse('https://fixture.neon.tech/neondb/auth');
+  final appOrigin = Uri.parse('https://petita.example.invalid');
   http.Response ok(http.Request r, Object? value) =>
       http.Response(jsonEncode(value), 200,
           headers: {'content-type': 'application/json'}, request: r);
@@ -27,6 +28,7 @@ void main() {
     var tokenCalls = 0;
     final client = MockClient((r) async {
       expect(r.followRedirects, false);
+      expect(r.headers['Origin'], appOrigin.origin);
       if (r.url.path.endsWith('/sign-in/email') || r.url.path.endsWith('/sign-up/email'))
         return ok(r, {
           'token': 'opaque-session-fixture',
@@ -44,13 +46,13 @@ void main() {
       tokenCalls++;
       return ok(r, {'token': 'short-lived-api-fixture'});
     });
-    final auth = InstitutionalAuth(NativeNeonAuthTransport(url, vault, client));
+    final auth = InstitutionalAuth(NativeNeonAuthTransport(url, vault, client, appOrigin: appOrigin));
     await auth.signup('Fixture', 'fixture@example.invalid', 'PASSWORD-NEVER-PERSIST');
     await auth.login('fixture@example.invalid', 'PASSWORD-NEVER-PERSIST');
     expect(auth.signedIn, true);
     expect(await auth.token(), 'short-lived-api-fixture');
     final restored =
-        InstitutionalAuth(NativeNeonAuthTransport(url, vault, client));
+        InstitutionalAuth(NativeNeonAuthTransport(url, vault, client, appOrigin: appOrigin));
     await restored.restore();
     expect(restored.subject, 'fixture-a');
     expect(await restored.token(), 'short-lived-api-fixture');
@@ -79,7 +81,7 @@ void main() {
         }
       });
     });
-    final auth = InstitutionalAuth(NativeNeonAuthTransport(url, vault, client));
+    final auth = InstitutionalAuth(NativeNeonAuthTransport(url, vault, client, appOrigin: appOrigin));
     await auth.login('fixture@example.invalid', 'fixture');
     await expectLater(
         auth.logout(), throwsA(isA<InstitutionalAuthException>()));
@@ -93,10 +95,11 @@ void main() {
     final vault = MemoryVault();
     final paths = <String>[];
     final client = MockClient((r) async {
+      expect(r.headers['Origin'], appOrigin.origin);
       paths.add(r.url.path);
       return ok(r, {});
     });
-    final auth = InstitutionalAuth(NativeNeonAuthTransport(url, vault, client));
+    final auth = InstitutionalAuth(NativeNeonAuthTransport(url, vault, client, appOrigin: appOrigin));
     await auth.verify('fixture@example.invalid', '123456');
     await auth.requestReset('fixture@example.invalid');
     await auth.reset('fixture@example.invalid', '654321', 'new-fixture');
@@ -112,7 +115,8 @@ void main() {
         url,
         MemoryVault(),
         MockClient((r) async =>
-            http.Response('sensitive internal fixture', 302, request: r)));
+            http.Response('sensitive internal fixture', 302, request: r)),
+        appOrigin: appOrigin);
     try {
       await auth.call('login',
           {'email': 'fixture@example.invalid', 'password': 'secret-fixture'});
@@ -150,7 +154,7 @@ void main() {
                 'user': {'id': 'fixture-a', 'emailVerified': true},
                 'session': {'expiresAt': '2020-01-01T00:00:00Z'}
               }));
-    final auth = InstitutionalAuth(NativeNeonAuthTransport(url, vault, client));
+    final auth = InstitutionalAuth(NativeNeonAuthTransport(url, vault, client, appOrigin: appOrigin));
     await expectLater(auth.login('fixture@example.invalid', 'fixture-password'),
         throwsA(isA<InstitutionalAuthException>()));
     expect(auth.user, isNull);

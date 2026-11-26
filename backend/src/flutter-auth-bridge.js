@@ -1,4 +1,5 @@
 import {createAuthClient} from '@neon/auth';
+import {sessionAccessToken} from './session-access-token.js';
 let auth, origin;
 const error=status=>({error:{status:Number.isInteger(status)?status:503}});
 // A local generated bundle of the pinned official SDK; no CDN, tokens in
@@ -19,7 +20,7 @@ globalThis.petitaNeonAuthCall=async(action,payload)=>{
       case 'requestReset': result=await auth.emailOtp.requestPasswordReset(body);break;
       case 'reset': result=await auth.emailOtp.resetPassword(body);break;
       case 'session': result=await auth.getSession();break;
-      case 'token': result=await auth.token();break;
+      case 'token': result=await sessionAccessToken(auth);break;
       case 'logout': result=await auth.signOut();break;
       default:return JSON.stringify(error(400));
     }

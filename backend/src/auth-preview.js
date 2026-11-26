@@ -1,4 +1,5 @@
 import {createAuthClient} from '@neon/auth';
+import {sessionAccessToken} from './session-access-token.js';
 const status=document.querySelector('#status');
 const form=document.querySelector('#auth');
 const buttons=[...form.querySelectorAll('button')];
@@ -7,7 +8,7 @@ let auth;
 const show=s=>{status.textContent=s;};
 function requireOk(result){if(result?.error)throw Error('auth');return result?.data;}
 async function profile(){
-  const {data}=await auth.token();
+  const {data}=await sessionAccessToken(auth);
   const token=data?.token;
   if(typeof token!=='string'||!token)throw Error('session');
   const headers={'Authorization':'Bearer '+token,'Content-Type':'application/json'};
@@ -23,7 +24,7 @@ async function action(name){
   const email=get('email').value.trim();
   const password=get('password').value;
   try{
-    if(name==='signup'){requireOk(await auth.signUp.email({name:get('name').value.trim(),email,password}));show('Cadastro solicitado. Verifique o código enviado por e-mail.');}
+    if(name==='signup'){requireOk(await auth.signUp.email({name:get('name').value.trim(),email,password}));show('Cadastro solicitado. Entre com seu e-mail e senha.');}
     else if(name==='login'){requireOk(await auth.signIn.email({email,password}));show('Login realizado. Verifique a sessão e crie o perfil.');}
     else if(name==='resend'){requireOk(await auth.emailOtp.sendVerificationOtp({email,type:'email-verification'}));show('Solicitação de reenvio concluída.');}
     else if(name==='verify'){requireOk(await auth.emailOtp.verifyEmail({email,otp:get('otp').value.trim()}));show('E-mail confirmado. Entre com sua conta para continuar.');}

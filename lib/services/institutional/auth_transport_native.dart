@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
+import '../../config/institutional_config.dart';
 import 'auth_transport.dart';
 import 'secret_vault.dart';
 
@@ -9,18 +10,27 @@ import 'secret_vault.dart';
 // OTP validation before release. Passwords/OTP/JWT are never persisted here.
 AuthTransport createAuthTransport(
         Uri url, SecretVault vault, http.Client client) =>
-    NativeNeonAuthTransport(url, vault, client);
+    NativeNeonAuthTransport(url, vault, client,
+        appOrigin: Uri.parse(InstitutionalConfig.apiUrl));
 
 class NativeNeonAuthTransport implements AuthTransport {
   final Uri base;
   final SecretVault vault;
   final http.Client client;
   final Duration timeout;
+  final Uri appOrigin;
   String? _credential;
   String? _subject;
   int _generation = 0;
   NativeNeonAuthTransport(this.base, this.vault, this.client,
-      {this.timeout = const Duration(seconds: 15)}) {
+      {required this.appOrigin, this.timeout = const Duration(seconds: 15)}) {
+    if (appOrigin.scheme != 'https' ||
+        !appOrigin.hasAuthority || appOrigin.host.isEmpty ||
+        appOrigin.userInfo.isNotEmpty || appOrigin.hasQuery ||
+        appOrigin.hasFragment ||
+        (appOrigin.path.isNotEmpty && appOrigin.path != '/')) {
+      throw ArgumentError('Origem institucional inválida.');
+    }
     if (base.scheme != 'https' ||
         !base.host.endsWith('.neon.tech') ||
         base.userInfo.isNotEmpty ||
@@ -38,7 +48,10 @@ class NativeNeonAuthTransport implements AuthTransport {
       final req = http.Request(method,
           Uri.parse('${base.toString().replaceFirst(RegExp(r'/$'), '')}$path'))
         ..followRedirects = false
-        ..headers['Accept'] = 'application/json';
+        ..headers['Accept'] = 'application/json'
+        // The configured institutional app origin must be registered in Neon.
+        // Native HTTP does not supply an Origin header automatically.
+        ..headers['Origin'] = appOrigin.origin;
       if (credential != null)
         req.headers['Authorization'] = 'Bearer $credential';
       if (data != null) {
