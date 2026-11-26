@@ -27,3 +27,6 @@ Candidata de homologação: migração de @neondatabase/auth 0.6.0-beta para @ne
 
 ### Resultado da correção
 CI 45857790724: @neon/auth 0.8.2, better-auth 1.7.28, zod 4.6.7; 17/17 testes, build do cliente e npm audit com zero vulnerabilidades. Fixada a versão direta do SDK. Lockfile reprodutível ainda deve ser gerado e revisado antes do deploy definitivo. O teste positivo de autenticação, o Flutter integrado e os demais gates continuam pendentes; não publicar produção.
+
+## Consolidação e regressão SQL
+PR #28 agora inclui cópia byte a byte das migrations 001–003 (e downs) da revisão 86cd6a7d12c4d6de31f3717744d0056cbc8e3db7 e seus runners originais. Os documentos de infra anteriores preservam contexto histórico; nesta homologação institucional as versões 001–005 já foram aplicadas, mas a main permanece intacta. Novo runner test_neon_enrollment_sync.py aplica todas as cinco migrations em PostgreSQL descartável e testa cadastro, identidade falsa/não verificada, revogação, consentimento, conflitos e isolamento. O schema neon_auth simulado existe exclusivamente no container de testes; isso não substitui login e OTP reais. Nenhuma migração é executada em banco remoto pelo workflow.
