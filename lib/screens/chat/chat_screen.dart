@@ -54,6 +54,29 @@ class _ChatScreenState extends State<ChatScreen> {
   String _address({required String neutral, required String feminine, required String masculine, required String inclusive}) =>
       _currentTreatment?.address(neutral: neutral, feminine: feminine, masculine: masculine, inclusive: inclusive) ?? neutral;
 
+  // Keep canonical question identifiers and answer values unchanged.
+  // Only the wording shown/read to the person is adapted.
+  String _displayWording(String value) {
+    final choices = <String, List<String>>{
+      'Dados da gestante': ['Seus dados', 'Seus dados', 'Seus dados', 'Seus dados'],
+      'Sentir-me segura': ['Sentir segurança', 'Sentir-me segura', 'Sentir-me seguro', 'Sentir-me segure'],
+      'permanecer acompanhada durante': ['ter companhia durante', 'permanecer acompanhada durante', 'permanecer acompanhado durante', 'ter companhia durante'],
+      'ficar sozinha em alguns momentos': ['ficar sem companhia em alguns momentos', 'ficar sozinha em alguns momentos', 'ficar sozinho em alguns momentos', 'ficar sem companhia em alguns momentos'],
+      'Sentada': ['Posição sentada', 'Sentada', 'Sentado', 'Posição sentada'],
+      'Deitada de lado': ['Posição lateral', 'Deitada de lado', 'Deitado de lado', 'Posição lateral'],
+      'Semi-sentada': ['Posição semissentada', 'Semi-sentada', 'Semi-sentado', 'Posição semissentada'],
+      'Deitada de costas': ['Posição de costas', 'Deitada de costas', 'Deitado de costas', 'Posição de costas'],
+      'Você deseja ser informada antes': ['Você deseja receber informações antes', 'Você deseja ser informada antes', 'Você deseja ser informado antes', 'Você deseja receber informações antes'],
+      'desejo ser informada antes': ['desejo receber informações antes', 'desejo ser informada antes', 'desejo ser informado antes', 'desejo receber informações antes'],
+      'Ser informada': ['Receber informações', 'Ser informada', 'Ser informado', 'Receber informações'],
+      'Quando mãe e bebê estão bem': ['Quando você e o bebê estão bem', 'Quando você e o bebê estão bem', 'Quando você e o bebê estão bem', 'Quando você e o bebê estão bem'],
+    };
+    for (final entry in choices.entries) {
+      value = value.replaceAll(entry.key, _address(neutral: entry.value[0], feminine: entry.value[1], masculine: entry.value[2], inclusive: entry.value[3]));
+    }
+    return value;
+  }
+
   Future<void> _loadTreatment() async {
     final scope = _conversationScope;
     final value = await _storage.loadTreatmentPreferences();
@@ -156,7 +179,7 @@ class _ChatScreenState extends State<ChatScreen> {
 
   String get _currentSectionName {
     if (_currentQuestion < 0 || _questions.isEmpty) return 'Conversa com a Petita';
-    return _questions[_currentQuestion].section;
+    return _displayWording(_questions[_currentQuestion].section);
   }
 
   Future<void> _send([String? override]) async {
@@ -331,10 +354,6 @@ class _ChatScreenState extends State<ChatScreen> {
         isUser: false,
       ));
     });
-    if (_currentTreatment == null && next > 0) {
-      _showPronounsPrompt();
-      return;
-    }
     await _showCurrentQuestion();
   }
 
@@ -900,8 +919,8 @@ class _ChatScreenState extends State<ChatScreen> {
       await _tts.setSpeechRate(0.46);
       final q = _questions[_currentQuestion];
       final text = [
-        q.question,
-        if (q.options.isNotEmpty) 'Alternativas: ${q.options.join('. ')}.',
+        _displayWording(q.question),
+        if (q.options.isNotEmpty) 'Alternativas: ${q.options.map(_displayWording).join('. ')}.',
         if (_showCardExplanation)
           BirthPlanExplanations.forQuestion(q.id) ?? '',
       ].join(' ');
@@ -1051,14 +1070,14 @@ class _ChatScreenState extends State<ChatScreen> {
             Text(_treatmentAcknowledgement!, style: const TextStyle(color: AppColors.petDarkBlue, height: 1.3)),
             const SizedBox(height: 14),
           ],
-          Text(q.section.toUpperCase(),
+          Text(_displayWording(q.section).toUpperCase(),
               style: const TextStyle(
                 color: AppColors.primaryPink,
                 fontWeight: FontWeight.w800,
                 letterSpacing: 0.5,
               )),
           const SizedBox(height: 9),
-          Text(q.question,
+          Text(_displayWording(q.question),
               style: TextStyle(
                 fontSize: compact ? 19 : 21,
                 height: 1.3,
@@ -1087,7 +1106,7 @@ class _ChatScreenState extends State<ChatScreen> {
             return Padding(
               padding: const EdgeInsets.only(bottom: 9),
               child: _ChoicePill(
-                label: option,
+                label: _displayWording(option),
                 icon: isSelected && option == 'Escrever minha resposta'
                     ? Icons.check_circle_rounded
                     : (option == 'Concluir seleção'
