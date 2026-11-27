@@ -9,7 +9,10 @@ assert.equal(api,'https://petita-api-neon-homologacao-petsaudemonitoramento-devs
 assert.equal(auth,'https://ep-calm-night-b61u6bdb.neonauth.c-2.sa-east-1.aws.neon.tech/neondb/auth');
 async function req(base,path,method='GET',body,token,requestOrigin=origin,expected=200){
   const headers={'Accept':'application/json','Origin':requestOrigin};
-  if(token)headers.Authorization='Bearer '+token;
+  if(token) {
+    if(typeof token === 'object') headers.Cookie=token.cookie;
+    else headers.Authorization='Bearer '+token;
+  }
   if(body!==undefined)headers['Content-Type']='application/json';
   const r=await fetch(base+path,{method,headers,body:body===undefined?undefined:JSON.stringify(body),redirect:'manual',signal:AbortSignal.timeout(15000)});
   const raw=await r.text();
@@ -18,7 +21,7 @@ async function req(base,path,method='GET',body,token,requestOrigin=origin,expect
   if(expected===200&&!json)throw Error(path+' expected JSON');
   if(base===api&&expected===200)assert.equal(r.headers.get('access-control-allow-origin'),origin,'CORS');
   console.log('PASS',method,path,r.status);
-  return {json,jwt:r.headers.get('set-auth-jwt')};
+  return {json,jwt:r.headers.get('set-auth-jwt'),cookies:r.headers.getSetCookie()};
 }
 const run=async()=>{
   await req(api,'/api/health');
@@ -34,7 +37,10 @@ const run=async()=>{
     await req(auth,'/sign-up/email','POST',data,undefined,api);
     const login=await req(auth,'/sign-in/email','POST',{email,password},undefined,api);
     assert.ok(typeof login.json.token==='string'&&login.json.token.length>0,'native credential missing');
-    const credential=login.json.token;
+    const cookies=login.cookies.map(v=>v.split(';',1)[0]).filter(v=>/^(?:__Secure-|__Host-)?[A-Za-z0-9_.-]*session_token=/.test(v));
+    console.log('Login cookie names:',login.cookies.map(v=>v.split('=',1)[0]).join(',')||'none');
+    const credential=cookies.length?{cookie:cookies.join('; ')}:login.json.token;
+    console.log('Native session transport:',cookies.length?'cookie':'bearer');
     const session=await req(auth,'/get-session','GET',undefined,credential,api);
     assert.equal(session.json.user?.emailVerified,false);
     const candidate=session.jwt??session.json.session?.token;
