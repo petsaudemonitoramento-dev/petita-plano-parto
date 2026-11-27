@@ -27,6 +27,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   String? _selectedUbsCode;
   bool _manualUbsWarningShown = false;
   bool _loading = true;
+  bool _loadFailed = false;
   bool _busy = false;
   String _onlineMessage = 'Modo offline ativo. Faça login para sincronizar quando houver internet.';
 
@@ -37,8 +38,16 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   Future<void> _load() async {
-    final units = await UbsService().loadOfficialUnits();
-    final profile = await _storage.loadProfile();
+    if (mounted) setState(() { _loading = true; _loadFailed = false; });
+    List<UbsUnit> units;
+    UserProfile? profile;
+    try {
+      units = await UbsService().loadOfficialUnits().timeout(const Duration(seconds: 10));
+      profile = await _storage.loadProfile().timeout(const Duration(seconds: 10));
+    } catch (_) {
+      if (mounted) setState(() { _loading = false; _loadFailed = true; });
+      return;
+    }
     UserProfile? onlineProfile;
     if (!mounted) return;
     final source = onlineProfile ?? profile;
@@ -52,7 +61,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       if (source?.ubsCode == null && source?.ubsName != null) {
         _customUbsController.text = source!.ubsName!;
       }
-      _onlineMessage = 'Você pode manter seu cadastro local offline. A conta institucional possui consentimento e vínculo UBS separados.';
+      _onlineMessage = 'Salve seus dados neste aparelho para usá-los no plano de parto. Criar uma conta online é opcional.';
       _loading = false;
     });
   }
@@ -94,8 +103,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
     return true;
   }
 
-  Future<void> _openInstitutional() async {
-    await Navigator.pushNamed(context,AppRoutes.institutional);
+  Future<void> _openInstitutional(String mode) async {
+    await Navigator.pushNamed(context, AppRoutes.institutional, arguments: mode);
   }
 
   Future<void> _clear() async {
@@ -133,6 +142,16 @@ class _ProfileScreenState extends State<ProfileScreen> {
   @override
   Widget build(BuildContext context) {
     if (_loading) return const Scaffold(body: Center(child: CircularProgressIndicator()));
+    if (_loadFailed) return Scaffold(
+      appBar: AppBar(title: const Text('Meu perfil')),
+      body: Center(child: Padding(padding: const EdgeInsets.all(24), child: Column(
+        mainAxisSize: MainAxisSize.min, children: [
+          const Text('Não conseguimos abrir seu cadastro neste aparelho. Seus dados não foram apagados.'),
+          const SizedBox(height: 16),
+          FilledButton(onPressed: _load, child: const Text('Tentar novamente')),
+        ],
+      ))),
+    );
     return Scaffold(
       appBar: AppBar(title: const Text('Perfil da gestante')),
       body: SafeArea(
@@ -140,7 +159,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           padding: const EdgeInsets.all(20),
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             SectionCard(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              const Text('Cadastro offline-first', style: TextStyle(fontSize: 22, fontWeight: FontWeight.w900, color: AppColors.petDarkBlue)),
+              const Text('Cadastro neste aparelho', style: TextStyle(fontSize: 22, fontWeight: FontWeight.w900, color: AppColors.petDarkBlue)),
               const SizedBox(height: 8),
               Text(_onlineMessage),
               const SizedBox(height: 8),
@@ -151,7 +170,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
               const SizedBox(height: 12),
               TextField(controller: _emailController, keyboardType: TextInputType.emailAddress, decoration: const InputDecoration(labelText: 'E-mail')),
               const SizedBox(height: 12),
-              const Text('O acesso institucional e a verificação de e-mail ficam na área da conta.'),
+              const Text('Você não precisa de uma senha para usar o plano neste aparelho.'),
               const SizedBox(height: 16),
               const Text('UBS de referência oficial', style: TextStyle(fontWeight: FontWeight.w900, color: AppColors.petDarkBlue)),
               const SizedBox(height: 8),
@@ -205,11 +224,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
             ])),
             AppButton(label: 'Salvar cadastro offline', icon: Icons.save_outlined, onPressed: _saveLocal),
             const SizedBox(height: 10),
-            AppButton(label: 'Criar cadastro online', icon: Icons.cloud_upload_outlined, onPressed: _busy ? () {} : _openInstitutional),
+            AppButton(label: 'Criar conta online', icon: Icons.cloud_upload_outlined, onPressed: _busy ? () {} : () => _openInstitutional('signup')),
             const SizedBox(height: 10),
-            AppButton(label: 'Entrar online', icon: Icons.login, outlined: true, onPressed: _busy ? () {} : _openInstitutional),
-            const SizedBox(height: 10),
-            AppButton(label: 'Sair da conta online', icon: Icons.logout, outlined: true, onPressed: _busy ? () {} : _openInstitutional),
+            AppButton(label: 'Entrar / gerenciar minha conta', icon: Icons.login, outlined: true, onPressed: _busy ? () {} : () => _openInstitutional('login')),
             const SizedBox(height: 10),
             AppButton(label: 'Limpar cadastro local', icon: Icons.delete_outline, outlined: true, onPressed: _clear),
             if (_profile != null || _onlineProfile != null)

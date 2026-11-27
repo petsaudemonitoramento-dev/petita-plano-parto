@@ -97,6 +97,21 @@ void main() {
     expect(calls.any((c) => c.contains('/api/admin/')), false);
     expect(tester.takeException(), isNull);
   });
+  testWidgets('login keeps recovery and registration fields separate', (tester) async {
+    final r = runtime('patient', []);
+    await r.auth.logout();
+    await tester.pumpWidget(MaterialApp(home: InstitutionalAccountScreen(runtime: r)));
+    await tester.pumpAndSettle();
+    expect(find.text('Entrar'), findsOneWidget);
+    expect(find.text('Nome da gestante'), findsNothing);
+    expect(find.text('Código recebido por e-mail'), findsNothing);
+    await tester.tap(find.text('Criar conta'));
+    await tester.pumpAndSettle();
+    expect(find.text('Nome da gestante'), findsOneWidget);
+    expect(find.text('Criar minha conta'), findsOneWidget);
+    expect(find.text('Já tenho uma conta'), findsOneWidget);
+    expect(find.text('Código recebido por e-mail'), findsNothing);
+  });
   testWidgets(
       'unconfigured account gives offline availability message without simulated auth',
       (tester) async {
