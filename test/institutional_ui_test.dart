@@ -31,6 +31,7 @@ void main() {
                   'ubs_code': null
                 }
               ],
+            '/api/ubs' => [{'code':'FIXTURE-A','name':'UBS fictícia'}],
             '/api/profile' => [
                 {'id': '00000000-0000-4000-8000-000000000001'}
               ],
@@ -77,12 +78,10 @@ void main() {
     expect(choices.every((c) => c.value == false), true);
     expect(calls, contains('GET /api/consent'));
     expect(calls, isNot(contains('POST /api/consent')));
-    await tester.tap(find.text('Registrar consentimento online'));
-    await finishAction(tester, calls);
+    final primary = tester.widget<FilledButton>(find.widgetWithText(FilledButton, 'Autorizar e sincronizar'));
+    expect(primary.onPressed, isNull);
     expect(calls.contains('POST /api/consent'), false);
-    expect(find.textContaining('Não foi possível concluir a operação.'),
-        findsOneWidget);
-    expect(find.text('Consentimento online registrado.'), findsNothing);
+    expect(find.text('Desativar sincronização'), findsNothing);
     expect(tester.takeException(), isNull);
   });
   testWidgets(
@@ -132,6 +131,25 @@ void main() {
     expect(find.text('Verificação para acesso profissional'), findsNothing);
     expect(find.text('Área profissional e administrativa'), findsNothing);
     expect(find.text('Sincronização online opcional'), findsOneWidget);
+  });
+  testWidgets('unregistered UBS is optional and never sends a fake request', (tester) async {
+    tester.view.physicalSize = const Size(900, 6000);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    final calls = <String>[];
+    final r = runtime('patient', calls);
+    await tester.pumpWidget(MaterialApp(home: InstitutionalAccountScreen(runtime: r)));
+    await finishAction(tester, calls);
+    await tester.tap(find.byType(DropdownButtonFormField<String>));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Minha UBS não está cadastrada').last);
+    await tester.pumpAndSettle();
+    expect(find.textContaining('Você pode salvar e sincronizar seu plano online normalmente.'), findsOneWidget);
+    expect(find.text('Solicitar vínculo à UBS'), findsNothing);
+    expect(find.text('Autorizar e sincronizar'), findsOneWidget);
+    expect(calls, isNot(contains('POST /api/patient/ubs-requests')));
+    expect(tester.takeException(), isNull);
   });
   testWidgets('professional account does not expose patient synchronization', (tester) async {
     tester.view.physicalSize = const Size(900, 6000);

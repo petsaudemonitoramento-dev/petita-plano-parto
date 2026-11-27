@@ -24,6 +24,11 @@ class _InstitutionalAccountScreenState extends State<InstitutionalAccountScreen>
   final _password = TextEditingController(), _otp = TextEditingController();
   final _professionalOtp = TextEditingController();
   final _choices = <String, bool>{};
+  static const _unregisteredUbs = '__not_registered__';
+  bool _consentKnown = false, _ubsKnown = false;
+  bool get _acceptedAll => _choices.length == 6 && _choices.values.every((v) => v);
+  String? get _approvedUbs => _profile?['ubs_code'] as String?;
+  bool get _hasPendingUbs => _requests.any((r) => r['status'] == 'pending');
   InstitutionalRuntime? get _runtime =>
       widget.runtime ?? InstitutionalRuntime.instance;
   Map<String, dynamic>? _profile;
@@ -100,45 +105,132 @@ class _InstitutionalAccountScreenState extends State<InstitutionalAccountScreen>
   Future<void> _load() async {
     final runtime = _runtime;
     if (runtime == null) return;
-    try {
-      await runtime.auth.restore();
-      if (mounted)
-        setState(() {
-          _profile = null;
-          _plans = [];
-          _requests = [];
-          if (_loadedSubject != runtime.auth.subject) {
-            _choices.clear();
-            _ubs = null;
-          }
-          _loadedSubject = runtime.auth.subject;
-        });
-      if (runtime.auth.user != null) {
-        await runtime.api.enrollProfile();
-        final rows = await runtime.api.loadProfile();
-        final units = await runtime.api.listUbs();
-        List<Map<String, dynamic>> plans = [], requests = [];
-        if (rows.single['role'] == 'patient') {
+    await runtime.auth.restore();
+    if (!mounted) return;
+    final subject = runtime.auth.signedIn ? runtime.auth.subject : null;
+    if (_loadedSubject != subject || subject == null) {
+      setState(() {
+        _profile = null;
+        _plans = [];
+        _units = [];
+        _requests = [];
+        _choices.clear();
+        _ubs = null;
+        _consentKnown = false;
+        _ubsKnown = false;
+        _loadedSubject = subject;
+      });
+    }
+    if (subject == null) return;
+    if (_profile == null) await runtime.api.enrollProfile();
+    final rows = await runtime.api.loadProfile();
+    if (!mounted || runtime.auth.subject != subject) return;
+    setState(() => _profile = rows.single);
+    if (rows.single['role'] != 'patient' || widget.professional) return;
+    var failed = false;
+    // Refresh independent sections without clearing the entire account.
+    await Future.wait<void>([
+      () async {
+        try {
           await runtime.sync.refreshConsent();
-          plans = await runtime.api.listPlans();
-          requests = await runtime.api.listMyUbsRequests();
+          if (mounted && runtime.auth.subject == subject) {
+            setState(() => _consentKnown = true);
+          }
+        } catch (_) {
+          failed = true;
+          if (mounted && runtime.auth.subject == subject) {
+            setState(() => _consentKnown = false);
+          }
         }
-        if (mounted)
+      }(),
+      () async {
+        try {
+          final plans = await runtime.api.listPlans();
+          if (mounted && runtime.auth.subject == subject) {
+            setState(() => _plans = plans);
+          }
+        } catch (_) { failed = true; }
+      }(),
+      () async {
+        try {
+          final units = await runtime.api.listUbs();
+          final requests = await runtime.api.listMyUbsRequests();
+          String? preference;
+          try {
+            preference = await runtime.sync.vault.read('petita.ubs.preference:$subject');
+          } catch (_) { /* Local preference is optional. */ }
+          if (!mounted || runtime.auth.subject != subject) return;
           setState(() {
-            _profile = rows.single;
-            _plans = plans;
             _units = units;
             _requests = requests;
-            if (_ubs == null && _localEmail != null &&
-                '${runtime.auth.user?['email']}'.toLowerCase() == _localEmail!.toLowerCase() &&
-                units.any((u) => u['code'] == _localUbs)) {
-              _ubs = _localUbs;
+            _ubsKnown = true;
+            if (_approvedUbs != null) {
+              _ubs = _approvedUbs;
+            } else if (_ubs == null && !_hasPendingUbs) {
+              if (preference == _unregisteredUbs) {
+                _ubs = _unregisteredUbs;
+              } else if (_localEmail != null &&
+                  '${runtime.auth.user?['email']}'.toLowerCase() == _localEmail!.toLowerCase() &&
+                  units.any((u) => u['code'] == _localUbs)) {
+                _ubs = _localUbs;
+              }
             }
+            if (_hasPendingUbs && _ubs == _unregisteredUbs) _ubs = null;
           });
-      }
-    } catch (_) {
-      rethrow;
+        } catch (_) {
+          failed = true;
+          if (mounted && runtime.auth.subject == subject) {
+            setState(() => _ubsKnown = false);
+          }
+        }
+      }(),
+    ]);
+    if (failed) throw const NeonApiException(503);
+  }
+
+  Future<void> _syncPlan(InstitutionalRuntime runtime) async {
+    if (!_consentKnown) {
+      await runtime.sync.refreshConsent();
+      if (mounted) setState(() => _consentKnown = true);
+      return;
     }
+    if (!runtime.sync.consentActive) {
+      if (!_acceptedAll) throw const NeonApiException(400);
+      await runtime.sync.grantConsent(_choices);
+      if (mounted) setState(() => _choices.clear());
+    }
+    final answers = await StorageService().loadAnswers();
+    final hadPending = runtime.sync.pending;
+    if (answers.isNotEmpty || hadPending) {
+      if (answers.isEmpty) {
+        await runtime.sync.retryPending();
+      } else {
+        await runtime.sync.synchronize(answers);
+      }
+      final plans = await runtime.api.listPlans();
+      if (mounted) setState(() => _plans = plans);
+    }
+    if (mounted) {
+      setState(() => _consentKnown = true);
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(
+        answers.isEmpty && !hadPending ? 'Sincronização ativada. Seu plano poderá ser salvo online quando estiver preenchido.' : 'Plano salvo online com sucesso.',
+      )));
+    }
+  }
+
+  Future<void> _chooseUbs(String? value) async {
+    setState(() => _ubs = value);
+    final runtime = _runtime;
+    final subject = runtime?.auth.subject;
+    if (runtime == null || subject == null) return;
+    try {
+      final key = 'petita.ubs.preference:$subject';
+      if (value == _unregisteredUbs) {
+        await runtime.sync.vault.write(key, _unregisteredUbs);
+      } else {
+        await runtime.sync.vault.delete(key);
+      }
+    } catch (_) { /* Selection still works this visit; no fake link is sent. */ }
   }
 
   String _safe(Object error) {
@@ -161,7 +253,12 @@ class _InstitutionalAccountScreenState extends State<InstitutionalAccountScreen>
     } on _ActionCancelled {
       /* No success message for a cancelled operation. */
     } catch (e) {
-      if (mounted) setState(() => _message = _safe(e));
+      if (mounted) {
+        setState(() => _message = _safe(e));
+        if (_profile != null) {
+          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(_safe(e))));
+        }
+      }
     } finally {
       if (mounted) {
         _password.clear();
@@ -347,8 +444,11 @@ class _InstitutionalAccountScreenState extends State<InstitutionalAccountScreen>
                       Text(
                           'UBS aprovada: ${_profile!['ubs_code'] ?? 'ainda sem vínculo'}'),
                     ],
-                    _button(_profile == null ? 'Tentar carregar perfil novamente' : 'Atualizar situação', _load,
-                        success: 'Situação atualizada.'),
+                    if (_profile == null || widget.professional)
+                      _button(_profile == null ? 'Tentar carregar perfil novamente' : 'Atualizar situação', _load,
+                          success: 'Situação atualizada.'),
+                    if (_profile != null && !widget.professional)
+                      TextButton(onPressed: _busy ? null : () => _run(_load, success: 'Situação atualizada.'), child: const Text('Atualizar conta')),
                     _button('Sair da conta', () async {
                       if (!await _confirm('Encerrar sessão?',
                           'A sessão e os tokens deste acesso serão encerrados. O plano offline deste aparelho permanece salvo; para apagá-lo, use a ação de limpeza local.'))
@@ -362,6 +462,11 @@ class _InstitutionalAccountScreenState extends State<InstitutionalAccountScreen>
                             _plans = [];
                             _requests = [];
                             _choices.clear();
+                            _units = [];
+                            _ubs = null;
+                            _loadedSubject = null;
+                            _consentKnown = false;
+                            _ubsKnown = false;
                           });
                       }
                     },
@@ -377,7 +482,7 @@ class _InstitutionalAccountScreenState extends State<InstitutionalAccountScreen>
                         style: TextStyle(fontWeight: FontWeight.bold)),
                     const Text(
                         'Você pode continuar sem sincronizar. O envio pode incluir informações pessoais e de saúde deste plano e ficará associado à conta institucional acima.'),
-                    Material(
+                    if (_consentKnown && !runtime.sync.consentActive) Material(
                       type: MaterialType.transparency,
                       child: Column(children: [
                         for (final item in (const {
@@ -400,45 +505,51 @@ class _InstitutionalAccountScreenState extends State<InstitutionalAccountScreen>
                               title: Text(item.value)),
                       ]),
                     ),
-                    TextButton(
-                        onPressed: () =>
-                            Navigator.pushNamed(context, AppRoutes.privacy),
+                    if (_consentKnown && !runtime.sync.consentActive)
+                      TextButton(
+                        onPressed: () => Navigator.pushNamed(context, AppRoutes.privacy),
                         child: const Text('Ler documentos de privacidade')),
-                    _button('Registrar consentimento online', () async {
-                      await runtime.sync.grantConsent(_choices);
-                      await _load();
-                    }, success: 'Consentimento online registrado.'),
-                    Text(
-                        'Consentimento no servidor: ${runtime.sync.consentActive ? 'ativo' : 'não ativo'}'),
-                    _button('Salvar e sincronizar meu plano', () async {
-                      await runtime.sync
-                          .synchronize(await StorageService().loadAnswers());
-                      await _load();
-                    },
-                        success:
-                            'Plano salvo e sincronizado. Revisão confirmada pelo servidor.'),
-                    _button('Tentar envio pendente novamente', () async {
-                      await runtime.sync.retryPending();
-                      await _load();
-                    },
-                        success:
-                            'Envio pendente verificado. Confira a lista de planos.'),
-                    _button('Retirar consentimento online', () async {
-                      if (!await _confirm('Retirar consentimento online?',
-                          'Novos envios serão bloqueados. Isso não apaga automaticamente os registros já enviados.'))
-                        throw _ActionCancelled();
-                      await runtime.sync.withdrawConsent();
-                      await _load();
-                    }, success: 'Consentimento online retirado.'),
-                    if (runtime.sync.pending)
-                      const Text(
-                          'Há um envio pendente. Seus dados locais permanecem salvos.'),
+                    const SizedBox(height: 8),
+                    Text(!_consentKnown
+                        ? 'Não foi possível confirmar a situação online.'
+                        : runtime.sync.consentActive
+                            ? 'Sincronização ativada'
+                            : 'Sincronização desativada',
+                        style: const TextStyle(fontWeight: FontWeight.w600)),
+                    if (_consentKnown && !runtime.sync.consentActive && !_acceptedAll)
+                      const Text('Marque todos os itens para autorizar a sincronização.'),
+                    if (runtime.sync.pending && _consentKnown && runtime.sync.consentActive)
+                      const Text('Há um envio pendente. Seus dados continuam salvos neste aparelho.'),
+                    const SizedBox(height: 8),
+                    FilledButton(
+                      onPressed: _busy || (_consentKnown && !runtime.sync.consentActive && !_acceptedAll)
+                          ? null
+                          : () => _run(() => _syncPlan(runtime)),
+                      child: Text(!_consentKnown
+                          ? 'Verificar conexão'
+                          : !runtime.sync.consentActive
+                              ? 'Autorizar e sincronizar'
+                              : runtime.sync.pending
+                                  ? 'Tentar sincronizar novamente'
+                                  : 'Sincronizar meu plano')),
+                    if (_consentKnown && runtime.sync.consentActive)
+                      OutlinedButton(
+                        onPressed: _busy ? null : () => _run(() async {
+                          if (!await _confirm('Desativar sincronização?',
+                              'Novos envios serão bloqueados. Isso não apaga automaticamente os registros já enviados.')) {
+                            throw _ActionCancelled();
+                          }
+                          await runtime.sync.withdrawConsent();
+                          if (mounted) setState(() => _choices.clear());
+                        }, success: 'Sincronização desativada.'),
+                        child: const Text('Desativar sincronização')),
                   ])),
               SectionCard(
                   child: Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
-                    const Text('Planos da sua conta'),
+                    const Text('Planos da sua conta', style: TextStyle(fontWeight: FontWeight.bold)),
+                    if (_plans.isEmpty) const Text('Nenhum plano online disponível.'),
                     for (final plan in _plans)
                       _button('Recuperar plano — revisão ${plan['revision']}',
                           () async {
@@ -455,32 +566,54 @@ class _InstitutionalAccountScreenState extends State<InstitutionalAccountScreen>
                   child: Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
-                    const Text(
-                        'Sua UBS de referência'),
-                    const Text('Confira a UBS e solicite o vínculo. A equipe precisa aprovar antes de receber suas dúvidas.'),
-                    DropdownButtonFormField<String>(
+                    const Text('Sua UBS de referência', style: TextStyle(fontWeight: FontWeight.bold)),
+                    const SizedBox(height: 8),
+                    if (!_ubsKnown)
+                      const Text('Não foi possível verificar sua UBS. Atualize a conta.')
+                    else if (_approvedUbs != null)
+                      Text('Vínculo aprovado: ${_units.where((u) => u['code'] == _approvedUbs).map((u) => u['name']).firstOrNull ?? _approvedUbs}')
+                    else if (_hasPendingUbs)
+                      const Text('Seu vínculo está em análise. Você pode sincronizar o plano, mas só poderá enviar dúvidas após a aprovação.')
+                    else ...[
+                      const Text('Escolha sua UBS para solicitar acesso ao envio de dúvidas. Esta escolha é opcional.'),
+                      const SizedBox(height: 12),
+                      DropdownButtonFormField<String>(
                         key: ValueKey(_ubs),
-                        initialValue: _units.any((u) => u['code'] == _ubs) ? _ubs : null,
-                        decoration:
-                            const InputDecoration(labelText: 'UBS solicitada'),
-                        items: _units
-                            .map((u) => DropdownMenuItem(
-                                value: u['code'] as String,
-                                child: Text('${u['name']}')))
-                            .toList(),
-                        onChanged:
-                            _busy ? null : (v) => setState(() => _ubs = v)),
-                    _button('Solicitar vínculo à UBS', () async {
-                      if (_ubs == null) throw const NeonApiException(400);
-                      await runtime.api
-                          .requestPatientUbs(_ubs!, newOperationId());
-                      await _load();
-                    },
-                        success:
-                            'Solicitação enviada. A escolha não concede vínculo automaticamente.'),
+                        isExpanded: true,
+                        initialValue: _ubs == _unregisteredUbs || _units.any((u) => u['code'] == _ubs) ? _ubs : null,
+                        decoration: const InputDecoration(labelText: 'Selecione sua UBS'),
+                        items: [
+                          ..._units.map((u) => DropdownMenuItem(
+                              value: u['code'] as String,
+                              child: Text('${u['name']}', overflow: TextOverflow.ellipsis))),
+                          const DropdownMenuItem(value: _unregisteredUbs, child: Text('Minha UBS não está cadastrada', overflow: TextOverflow.ellipsis)),
+                        ],
+                        onChanged: _busy ? null : _chooseUbs),
+                      if (_ubs == _unregisteredUbs)
+                        Padding(
+                          padding: const EdgeInsets.only(top: 12),
+                          child: Container(
+                            padding: const EdgeInsets.all(12),
+                            decoration: BoxDecoration(
+                              color: Theme.of(context).colorScheme.secondaryContainer,
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: const Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                              Icon(Icons.info_outline),
+                              SizedBox(width: 10),
+                              Expanded(child: Text('Você pode salvar e sincronizar seu plano online normalmente. O envio de dúvidas à equipe ficará indisponível até que sua UBS esteja cadastrada e seu vínculo seja aprovado.')),
+                            ]),
+                          ),
+                        )
+                      else if (_units.any((u) => u['code'] == _ubs))
+                        _button('Solicitar vínculo à UBS', () async {
+                          if (!_units.any((u) => u['code'] == _ubs)) throw const NeonApiException(400);
+                          await runtime.api.requestPatientUbs(_ubs!, newOperationId());
+                          await _load();
+                        }, success: 'Solicitação enviada. Aguarde a aprovação do vínculo.'),
+                    ],
                     for (final request in _requests)
-                      Text(
-                          'Solicitação ${request['ubs_code']}: ${request['status']}'),
+                      Text('Solicitação ${request['ubs_code']}: ${request['status']}'),
                   ])),
             ],
             if (widget.professional && runtime.auth.signedIn && _profile != null)
