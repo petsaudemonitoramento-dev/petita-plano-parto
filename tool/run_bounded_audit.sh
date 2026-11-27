@@ -49,6 +49,11 @@ case "$status" in
   124|137) echo "AUDIT_TIMEOUT label=$name. Record as blocked; do not retry without a concrete change." >&2 ;;
   *) echo "AUDIT_FAILURE label=$name. Investigate or move to next priority." >&2 ;;
 esac
+if [[ "$name" == "ci-tests" && "$status" -ne 0 ]]; then
+  echo "--- Flutter test failure details (synthetic offline suite only) ---"
+  # Keep the failing test names and their exception context, not just the final pass count.
+  tr '\r' '\n' < "$logfile" | grep -a -E -B 4 -A 14 '\[E\]|EXCEPTION CAUGHT|Expected:|Actual:|Test failed|Error:|❌|✗' | tail -n 240 || true
+fi
 echo "--- Last 35 lines of command output ---"
 tail -n 35 "$logfile"
 echo "--- End of output ---"

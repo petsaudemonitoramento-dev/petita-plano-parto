@@ -108,9 +108,8 @@ void main() {
     await tapChoice(tester, 'Concluir seleção');
     expect(
         find.textContaining('Selecione pelo menos uma opção'), findsOneWidget);
-    expect(find.widgetWithText(InkWell, questions[5].options.first),
-        findsOneWidget);
-    await tapChoice(tester, questions[5].options.first);
+    expect(find.widgetWithText(InkWell, 'Sentir segurança'), findsOneWidget);
+    await tapChoice(tester, 'Sentir segurança');
     await tapChoice(tester, 'Concluir seleção');
     expect((await StorageService().loadAnswers()).last.values,
         [questions[5].options.first]);
@@ -120,7 +119,7 @@ void main() {
       (tester) async {
     final questions = await BirthPlanFlowService().loadQuestions();
     await reachPriorities(tester);
-    await tapChoice(tester, questions[5].options.first);
+    await tapChoice(tester, 'Sentir segurança');
     await tapChoice(tester, 'Escrever minha resposta');
     await sendText(tester, 'Preferencia sintetica adicional');
     expect((await StorageService().loadAnswers()).last.values,
@@ -227,6 +226,22 @@ void main() {
     expect(find.text('Minha prioridade escrita sintética'), findsNothing);
     expect((await StorageService().loadAnswers()).last.values,
         ['Minha prioridade escrita sintética']);
+  });
+
+  testWidgets('explicit masculine treatment applies immediately and canonical values persist', (tester) async {
+    final questions = await BirthPlanFlowService().loadQuestions();
+    await openChat(tester);
+    await sendText(tester, 'Alex Sintetico');
+    await tapChoice(tester, 'Ele/dele');
+    expect(find.textContaining('se sinta acolhido'), findsOneWidget);
+    expect((await StorageService().loadTreatmentPreferences())!.pronouns, 'Ele/dele');
+    await sendText(tester, testDpp());
+    for (final q in questions.skip(3).take(2)) {
+      await tapChoice(tester, q.options.first);
+    }
+    await tapChoice(tester, 'Sentir-me seguro');
+    await tapChoice(tester, 'Concluir seleção');
+    expect((await StorageService().loadAnswers()).last.values, ['Sentir-me segura']);
   });
 
   testWidgets('blank input does not advance or persist an answer',
