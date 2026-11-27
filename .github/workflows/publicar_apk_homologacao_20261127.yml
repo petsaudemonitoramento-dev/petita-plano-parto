@@ -1,0 +1,36 @@
+name: Publicar APK aprovado de homologação 27-11-2026
+on:
+  push:
+    branches: [feat/neon-enrollment-20261126]
+    paths:
+      - '.github/workflows/publicar_apk_homologacao_20261127.yml'
+permissions:
+  actions: read
+  contents: write
+concurrency:
+  group: petita-homologacao-20261127
+  cancel-in-progress: false
+jobs:
+  publicar:
+    if: github.repository == 'petsaudemonitoramento-dev/petita-plano-parto'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: petsaudemonitoramento-dev/petita-plano-parto
+    steps:
+      - name: Recuperar somente o artefato aprovado
+        run: |
+          set -euo pipefail
+          test "$(gh api repos/$GH_REPO/actions/runs/45992192757 --jq .conclusion)" = success
+          test "$(gh api repos/$GH_REPO/actions/artifacts/15194721626 --jq .workflow_run.id)" = 45992192757
+          mkdir -p /tmp/petita-release
+          gh run download 45992192757 --name petita-apk-homologacao-52951a493c47fa196fe62d18d01e7607ed0db34d --dir /tmp/petita-release
+          cd /tmp/petita-release
+          echo '1b6d126b07444c5ae982bf30f927c22edf510150400d53ff14d449b2f77018f5  app-debug.apk' | sha256sum -c -
+          mv app-debug.apk Petita-Android-Homologacao-2026-11-27.apk
+      - name: Publicar pré-release de homologação sem promover produção
+        run: |
+          set -euo pipefail
+          gh release create petita-homologacao-20261127 --target 0e679925dfbe9b6a386302ba235f9ab9b8e815d6 --prerelease --title 'Petita — homologação Android 27/11/2026' --notes 'APK de homologação, compilação debug aprovada em CI. Inclui novo chat e correção da faixa visual de depuração. Exclusivamente para testes com dados fictícios; não destinado ao uso assistencial. Não possui assinatura institucional de produção. Pode exigir instalação separada de versões anteriores.' /tmp/petita-release/Petita-Android-Homologacao-2026-11-27.apk
+          gh release view petita-homologacao-20261127 --json tagName,isPrerelease,assets --jq '{tagName,isPrerelease,assets:[.assets[]|{name,size}]}'
