@@ -14,6 +14,15 @@ class InstitutionalAuth extends ChangeNotifier {
         {'name': name.trim(), 'email': email.trim(), 'password': password});
   }
 
+  Future<void> googleLogin() async {
+    if (!kIsWeb) throw const InstitutionalAuthException(403);
+    _generation++;
+    user = null;
+    locallySignedOut = true;
+    notifyListeners();
+    await transport.call('googleStart', {});
+  }
+
   Future<void> login(String email, String password) async {
     final generation = ++_generation;
     user = null;

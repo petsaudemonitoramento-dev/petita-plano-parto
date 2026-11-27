@@ -35,7 +35,7 @@ class PlanoPartoPetSaudeApp extends StatelessWidget {
         AppRoutes.professionalAccount: (_) => const InstitutionalAccountScreen(professional: true),
         AppRoutes.profile: (_) => const ConsentRequiredScreen(child: ProfileScreen()),
         AppRoutes.ubs: (_) => const InstitutionalAreaScreen(),
-        AppRoutes.admin: (_) => const InstitutionalAreaScreen(),
+        AppRoutes.admin: (_) => const InstitutionalAreaScreen(adminOnly: true),
         AppRoutes.myQuestions: (_) => const ConsentRequiredScreen(child: InstitutionalAreaScreen(myQuestions:true)),
       },
     );

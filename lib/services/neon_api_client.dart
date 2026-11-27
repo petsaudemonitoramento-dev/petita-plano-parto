@@ -204,6 +204,14 @@ class NeonApiClient {
   });
   Future<List<Map<String, dynamic>>> listUbs() =>
       _request('GET', '/api/ubs', isPublic: true);
+  Future<List<Map<String, dynamic>>> enrollAdminCandidate() =>
+      _request('POST', '/api/admin-candidate/profile', body: {});
+  Future<List<Map<String, dynamic>>> myAdminRequest() =>
+      _request('GET', '/api/admin-candidate/request');
+  Future<List<Map<String, dynamic>>> listAdminRequests() =>
+      _request('GET', '/api/admin/admin-requests');
+  Future<List<Map<String, dynamic>>> decideAdminRequest(String id, bool approve) =>
+      _request('POST', '/api/admin/admin-requests/${_id(id)}/${approve ? "approve" : "reject"}', body: {});
   Future<List<Map<String, dynamic>>> enrollProfessionalProfile() =>
       _request('POST', '/api/professional/profile', body: {});
   Future<List<Map<String, dynamic>>> listMyProfessionalRequests() =>

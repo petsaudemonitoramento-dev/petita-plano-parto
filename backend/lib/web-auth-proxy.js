@@ -10,7 +10,9 @@ const actions={
  reset:['POST','/email-otp/reset-password',['email','otp','password']],
  session:['GET','/get-session',[]],
  token:['GET','/get-session',[]],
- logout:['POST','/sign-out',[]]
+ logout:['POST','/sign-out',[]],
+ googleStart:['POST','/sign-in/social',[]],
+ googleFinish:['GET','/get-session',['verifier']]
 };
 const validCookie=v=>typeof v==='string'&&v.length>0&&v.length<=4096&&/^[\x21-\x3A\x3C-\x7E]+$/.test(v)&&!v.includes(',');
 const cookieValue=(header,name)=>{
@@ -21,6 +23,12 @@ const cookieValue=(header,name)=>{
 function setLocal(res,value,age) {
  res.setHeader('Set-Cookie',localName+'='+(value??'')+'; Path=/petita-auth; Secure; HttpOnly; SameSite=Strict'+(age===null?'':'; Max-Age='+age));
 }
+const challengeNames=['__Secure-neon-auth.session_challenge','__Secure-neon-auth.session_challange'];
+const localChallenges=['__Secure-petita-oauth','__Secure-petita-oauth-legacy'];
+const cookieLine=(name,value,age)=>name+'='+value+'; Path=/petita-auth; Secure; HttpOnly; SameSite=Strict; Max-Age='+age;
+const sessionClear=()=>cookieLine(localName,'',0);
+const clearChallenges=()=>localChallenges.map(n=>cookieLine(n,'',0));
+function oauthCookies(res,cookies){res.setHeader('Set-Cookie',cookies);}
 export async function webAuthProxy(req,res,action,body,env=process.env,fetcher=fetch) {
  const fail=status=>res.status(status).json({error:{status}});
  const ok=data=>res.status(200).json({data});
@@ -31,6 +39,49 @@ export async function webAuthProxy(req,res,action,body,env=process.env,fetcher=f
  if(!body||Array.isArray(body)||Object.keys(body).some(k=>!fields.includes(k))||fields.some(k=>typeof body[k]!=='string'||!body[k].length||body[k].length>512))return fail(400);
  let base;
  try {base=new URL(env.NEON_AUTH_BASE_URL);if(base.protocol!=='https:'||!base.hostname.endsWith('.neon.tech')||base.username||base.password||base.search||base.hash||base.pathname.replace(/\/$/,'')!=='/neondb/auth')return fail(503);}catch{return fail(503);}
+ if(action==='googleStart'||action==='googleFinish'){
+  const clear=()=>oauthCookies(res,[sessionClear(),...clearChallenges()]);
+  try {
+   const headers={Accept:'application/json',Origin:env.PETITA_WEB_ORIGIN};
+   if(action==='googleStart'){
+    clear();
+    headers['Content-Type']='application/json';
+    const r=await fetcher(base.href.replace(/\/$/,'')+'/sign-in/social',{method:'POST',headers,body:JSON.stringify({provider:'google',callbackURL:env.PETITA_WEB_ORIGIN+'/',disableRedirect:true}),redirect:'error',signal:AbortSignal.timeout(12000)});
+    if(!r.ok)return fail(503);
+    const data=await r.json(),url=new URL(data.url);
+    if(url.protocol!=='https:'||url.username||url.password||!(url.origin==='https://accounts.google.com'||url.origin===base.origin))return fail(503);
+    const challenges=[];
+    for(const raw of r.headers.getSetCookie()){
+     const first=raw.split(';',1)[0],i=challengeNames.findIndex(n=>first.startsWith(n+'='));
+     if(i<0)continue;
+     const v=first.slice(challengeNames[i].length+1);
+     if(validCookie(v))challenges.push(cookieLine(localChallenges[i],v,300));
+    }
+    if(challenges.length!==1)return fail(503);
+    oauthCookies(res,[sessionClear(),...clearChallenges().filter(x=>!x.startsWith(challenges[0].split('=')[0]+'=')),...challenges]);
+    return ok({url:url.href});
+   }
+   clear();
+   const verifier=body.verifier;
+   if(!/^[A-Za-z0-9._~%-]{1,512}$/.test(verifier))return fail(400);
+   const matches=localChallenges.map((name,i)=>({name:challengeNames[i],value:cookieValue(req.headers.cookie,name)})).filter(c=>c.value);
+   if(matches.length!==1)return fail(401);
+   headers.Cookie=matches[0].name+'='+matches[0].value;
+   const endpoint=new URL(base.href.replace(/\/$/,'')+'/get-session');
+   endpoint.searchParams.set('neon_auth_session_verifier',verifier);
+   const r=await fetcher(endpoint.href,{method:'GET',headers,redirect:'error',signal:AbortSignal.timeout(12000)});
+   if(!r.ok)return fail(401);
+   const data=await r.json();
+   const u=data?.user;
+   if(typeof u?.id!=='string'||u.emailVerified!==true)return fail(401);
+   const sessions=r.headers.getSetCookie().map(x=>x.split(';',1)[0]).filter(x=>x.startsWith(upstreamName+'='));
+   if(sessions.length!==1)return fail(401);
+   const value=sessions[0].slice(upstreamName.length+1);
+   if(!validCookie(value))return fail(401);
+   oauthCookies(res,[cookieLine(localName,value,3600),...clearChallenges()]);
+   return ok({user:{id:u.id,name:u.name,email:u.email,emailVerified:true},session:{expiresAt:data.session?.expiresAt}});
+  }catch{clear();return fail(503);}
+ }
  let credential=cookieValue(req.headers.cookie,localName);
  const call=async(m,p,b)=>{
   const headers={Accept:'application/json',Origin:env.PETITA_WEB_ORIGIN};

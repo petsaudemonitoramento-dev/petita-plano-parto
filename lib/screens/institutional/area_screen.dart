@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import '../../config/app_routes.dart';
 import '../../services/institutional/runtime.dart';
 import '../../services/institutional/plan_sync_controller.dart';
@@ -9,10 +10,10 @@ import '../../widgets/account_header_menu.dart';
 class _Cancelled implements Exception {}
 
 class InstitutionalAreaScreen extends StatefulWidget {
-  final bool myQuestions;
+  final bool myQuestions, adminOnly;
   final InstitutionalRuntime? runtime;
   const InstitutionalAreaScreen(
-      {super.key, this.myQuestions = false, this.runtime});
+      {super.key, this.myQuestions = false, this.adminOnly = false, this.runtime});
   @override
   State<InstitutionalAreaScreen> createState() =>
       _InstitutionalAreaScreenState();
@@ -26,6 +27,8 @@ class _InstitutionalAreaScreenState extends State<InstitutionalAreaScreen> {
       _team = [],
       _patients = [],
       _ubs = [];
+  List<Map<String,dynamic>> _adminRequests = [];
+  String? _adminRequestStatus;
   final _member = TextEditingController(), _reason = TextEditingController();
   final _category = TextEditingController(), _question = TextEditingController(), _keywords = TextEditingController(), _educationalAnswer = TextEditingController();
   final Map<String, String> _operations = {};
@@ -44,7 +47,7 @@ class _InstitutionalAreaScreenState extends State<InstitutionalAreaScreen> {
   void _authChanged() {
     if (!mounted) return;
     if (runtime?.auth.signedIn != true || (_subject != null && runtime?.auth.subject != _subject)) {
-      setState(() { _profile = null; _questions = []; _team = []; _patients = []; _ubs = []; _subject = null; });
+      setState(() { _profile = null; _questions = []; _team = []; _patients = []; _adminRequests = []; _adminRequestStatus = null; _ubs = []; _subject = null; });
     } else {
       setState(() {});
     }
@@ -68,7 +71,7 @@ class _InstitutionalAreaScreenState extends State<InstitutionalAreaScreen> {
     await r.auth.restore();
     if (!mounted) return;
     if (!r.auth.signedIn) {
-      if (mounted) setState(() { _profile = null; _questions = []; _team = []; _patients = []; _ubs = []; _code = null; _subject = null; _requestSent = false; });
+      if (mounted) setState(() { _profile = null; _questions = []; _team = []; _patients = []; _adminRequests = []; _adminRequestStatus = null; _ubs = []; _code = null; _subject = null; _requestSent = false; });
       return;
     }
     if (_subject != r.auth.subject) {
@@ -78,12 +81,17 @@ class _InstitutionalAreaScreenState extends State<InstitutionalAreaScreen> {
       _operations.clear();
     }
     final subject = r.auth.subject;
+    if (widget.adminOnly && kIsWeb) {
+      await r.api.enrollAdminCandidate();
+    }
     final profile = (await r.api.loadProfile()).single;
     if (!mounted || !r.auth.signedIn || r.auth.subject != subject) return;
     // Clear old privileged content before the next request, including role changes.
     if (mounted)
       setState(() {
         _profile = profile;
+        _adminRequests = [];
+        _adminRequestStatus = null;
         _questions = [];
         _team = [];
         _patients = [];
@@ -92,11 +100,17 @@ class _InstitutionalAreaScreenState extends State<InstitutionalAreaScreen> {
         team = [],
         patients = [],
         ubs = [];
+    List<Map<String,dynamic>> adminRequests = [];
+    String? adminStatus;
     if (widget.myQuestions) {
       questions = await r.api.listMyQuestions();
     } else if (profile['role'] == 'admin') {
       team = await r.api.listProfessionalApprovals();
       patients = await r.api.listPatientUbsRequests();
+      if (kIsWeb && widget.adminOnly) adminRequests = await r.api.listAdminRequests();
+    } else if (widget.adminOnly && profile['role'] == 'admin_pending') {
+      final own = await r.api.myAdminRequest();
+      adminStatus = own.firstOrNull?['status'] as String?;
     } else if (profile['role'] == 'ubs_team') {
       questions = await r.api.listTeamQueue();
     } else if (profile['role'] == 'professional_pending') {
@@ -110,6 +124,8 @@ class _InstitutionalAreaScreenState extends State<InstitutionalAreaScreen> {
         _team = team;
         _patients = patients;
         _ubs = ubs;
+        _adminRequests = adminRequests;
+        _adminRequestStatus = adminStatus;
       });
   }
 
@@ -130,6 +146,8 @@ class _InstitutionalAreaScreenState extends State<InstitutionalAreaScreen> {
           _questions = [];
           _team = [];
           _patients = [];
+          _adminRequests = [];
+          _adminRequestStatus = null;
         });
     } finally {
       if (mounted) setState(() => _busy = false);
@@ -254,7 +272,7 @@ class _InstitutionalAreaScreenState extends State<InstitutionalAreaScreen> {
       appBar: AppBar(
           title: Text(widget.myQuestions
               ? 'Minhas dúvidas'
-              : _profile?['role'] == 'admin' ? 'Administração' : 'Equipe UBS'),
+              : widget.adminOnly || _profile?['role'] == 'admin' ? 'Administração' : 'Equipe UBS'),
           actions: [
             if (runtime?.auth.signedIn == true) ...[
               IconButton(tooltip: 'Atualizar painel', onPressed: _busy ? null : () => _run(_load), icon: const Icon(Icons.refresh)),
@@ -271,7 +289,26 @@ class _InstitutionalAreaScreenState extends State<InstitutionalAreaScreen> {
         if (_busy) const LinearProgressIndicator(),
         if (_message != null)
           Semantics(liveRegion: true, child: Text(_message!)),
-        if (!widget.myQuestions && (_profile == null || _profile?['role'] == 'patient'))
+        if (widget.adminOnly && kIsWeb && _profile?['role'] != 'admin' && _profile?['role'] != 'admin_pending')
+          SectionCard(child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+            const Text('Acesso administrativo', style: TextStyle(fontSize:20,fontWeight:FontWeight.bold)),
+            const Text('Entre com a conta Google institucional. Um administrador ativo deve aprovar a solicitação antes de liberar o painel.'),
+            button('Entrar com Google', () async {
+              if (runtime == null) throw const NeonApiException(503);
+              await runtime!.auth.googleLogin();
+            }),
+            button('Entrar com e-mail e senha', () async {
+              await Navigator.pushNamed(context, AppRoutes.professionalAccount, arguments: 'login');
+              if(mounted) await _load();
+            }),
+          ])),
+        if (widget.adminOnly && kIsWeb && _profile?['role'] == 'admin_pending')
+          SectionCard(child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+            Text(_adminRequestStatus == 'rejected' ? 'Solicitação recusada' : 'Solicitação administrativa em análise', style: const TextStyle(fontSize:20,fontWeight:FontWeight.bold)),
+            const Text('Apenas outro administrador autorizado pode aprovar o seu acesso. Nenhuma permissão foi concedida automaticamente.'),
+            button('Consultar situação', _load),
+          ])),
+        if (!widget.myQuestions && !(widget.adminOnly && kIsWeb) && (_profile == null || _profile?['role'] == 'patient'))
           SectionCard(child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
             Text(_profile == null ? 'Acesso da equipe de saúde' : 'Conta de gestante', style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
             const SizedBox(height: 8),
@@ -288,7 +325,7 @@ class _InstitutionalAreaScreenState extends State<InstitutionalAreaScreen> {
                 if (mounted) await _load();
               }), child: const Text('Criar perfil profissional')),
           ])),
-        if (!widget.myQuestions && _profile?['role'] == 'ubs_team')
+        if (!widget.myQuestions && !(widget.adminOnly && kIsWeb) && _profile?['role'] == 'ubs_team')
           const SectionCard(child: Text('Equipe UBS • Responda às dúvidas encaminhadas à sua unidade de saúde.')),
         for (final q in _questions)
           SectionCard(
@@ -303,7 +340,7 @@ class _InstitutionalAreaScreenState extends State<InstitutionalAreaScreen> {
                 else
                   button('Responder ${q['public_code']}', () => _answer(q)),
               ])),
-        if (!widget.myQuestions && _profile?['role'] == 'professional_pending')
+        if (!widget.myQuestions && !(widget.adminOnly && kIsWeb) && _profile?['role'] == 'professional_pending')
           SectionCard(
               child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -342,6 +379,7 @@ class _InstitutionalAreaScreenState extends State<InstitutionalAreaScreen> {
             final columns = constraints.maxWidth >= 720 ? 4 : 2;
             final width = (constraints.maxWidth - (columns - 1) * 10) / columns;
             return Wrap(spacing: 10, runSpacing: 10, children: [
+              if (widget.adminOnly && kIsWeb) _adminTile('admins', 'Aprovar administradores', 'Solicitações Google', Icons.admin_panel_settings_outlined, width, count: _adminRequests.length),
               _adminTile('professionals', 'Aprovar profissionais', 'Solicitações de acesso', Icons.badge_outlined, width, count: _team.length),
               _adminTile('patients', 'Vínculos de gestantes', 'Solicitações de UBS', Icons.link, width, count: _patients.length),
               _adminTile('knowledge', 'Base educativa', 'Conteúdo do chat', Icons.menu_book_outlined, width),
@@ -349,6 +387,24 @@ class _InstitutionalAreaScreenState extends State<InstitutionalAreaScreen> {
             ]);
           }),
           const SizedBox(height: 22),
+          if (_adminSection == 'admins' && widget.adminOnly && kIsWeb) ...[
+            const Text('Solicitações administrativas pendentes', style: TextStyle(fontWeight:FontWeight.bold,fontSize:18)),
+            if (_adminRequests.isEmpty) _emptyQueue('Nenhuma solicitação administrativa pendente.'),
+            for (final request in _adminRequests)
+              SectionCard(child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+                Text('${request['display_name']} • ${request['email']}'),
+                button('Aprovar administrador', () async {
+                  if (!await _confirm('Conceder acesso administrativo a esta conta?')) throw _Cancelled();
+                  await runtime!.api.decideAdminRequest(request['requester_id'] as String,true);
+                  await _load();
+                }),
+                button('Recusar solicitação administrativa', () async {
+                  if (!await _confirm('Recusar solicitação administrativa?')) throw _Cancelled();
+                  await runtime!.api.decideAdminRequest(request['requester_id'] as String,false);
+                  await _load();
+                }),
+              ])),
+          ],
           if (_adminSection == 'knowledge') SectionCard(child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
             const Text('Base educativa da Petita', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
             const Text('Publique apenas orientações educativas revisadas pela equipe, sem informações pessoais de gestantes. As respostas são exibidas no chat.'),
