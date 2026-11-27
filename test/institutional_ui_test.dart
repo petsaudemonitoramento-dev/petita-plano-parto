@@ -85,11 +85,11 @@ void main() {
     expect(tester.takeException(), isNull);
   });
   testWidgets(
-      'patient can request professional access but never sees admin approvals and no admin endpoint is called',
+      'pending professional can request access but never sees admin approvals',
       (tester) async {
     final calls = <String>[];
     await tester.pumpWidget(MaterialApp(
-        home: InstitutionalAreaScreen(runtime: runtime('patient', calls, verified: true))));
+        home: InstitutionalAreaScreen(runtime: runtime('professional_pending', calls))));
     await finishAction(tester, calls);
     expect(find.text('Solicitar acesso profissional'), findsOneWidget);
     expect(find.textContaining('Canal não urgente.'), findsNothing);
@@ -99,11 +99,11 @@ void main() {
     expect(calls.any((c) => c.contains('/api/admin/')), false);
     expect(tester.takeException(), isNull);
   });
-  testWidgets('unverified user sees verification guidance, not patient warning or UBS request', (tester) async {
+  testWidgets('patient cannot request professional access from patient account', (tester) async {
     final calls = <String>[];
     await tester.pumpWidget(MaterialApp(home: InstitutionalAreaScreen(runtime: runtime('patient', calls))));
     await finishAction(tester, calls);
-    expect(find.text('Confirme seu e-mail'), findsOneWidget);
+    expect(find.text('Conta de gestante'), findsOneWidget);
     expect(find.textContaining('Canal não urgente.'), findsNothing);
     expect(find.text('Solicitar acesso profissional'), findsNothing);
     expect(calls.any((c) => c.contains('/api/admin/')), false);
@@ -172,13 +172,13 @@ void main() {
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);
     final calls = <String>[];
-    await tester.pumpWidget(MaterialApp(home: InstitutionalAccountScreen(professional: true, runtime: runtime('patient', calls))));
+    await tester.pumpWidget(MaterialApp(home: InstitutionalAccountScreen(professional: true, runtime: runtime('professional_pending', calls))));
     await finishAction(tester, calls);
     expect(find.text('Acesso profissional'), findsOneWidget);
     expect(find.text('Editar meus dados'), findsNothing);
-    expect(find.text('Etapa 2 de 3 • Verificação de e-mail'), findsOneWidget);
+    expect(find.text('Etapa 2 de 2 • Solicitar acesso à UBS'), findsOneWidget);
     expect(find.text('Código recebido'), findsNothing);
-    expect(find.text('Escolher minha UBS'), findsNothing);
+    expect(find.text('Escolher minha UBS'), findsOneWidget);
     expect(find.text('Sincronização online opcional'), findsNothing);
   });
   testWidgets('local profile is accessible without online runtime or login', (tester) async {

@@ -22,7 +22,6 @@ class _InstitutionalAccountScreenState extends State<InstitutionalAccountScreen>
     with WidgetsBindingObserver {
   final _name = TextEditingController(), _email = TextEditingController();
   final _password = TextEditingController(), _otp = TextEditingController();
-  final _professionalOtp = TextEditingController();
   final _choices = <String, bool>{};
   static const _unregisteredUbs = '__not_registered__';
   bool _consentKnown = false, _ubsKnown = false, _ubsChoiceSaved = false;
@@ -35,7 +34,7 @@ class _InstitutionalAccountScreenState extends State<InstitutionalAccountScreen>
   List<Map<String, dynamic>> _plans = [], _units = [], _requests = [];
   bool _busy = false;
   String _mode = 'login';
-  bool _routeRead = false, _resetRequested = false, _verificationSent = false;
+  bool _routeRead = false, _resetRequested = false;
   String? _localEmail, _localUbs;
   bool _localPrefill = false;
   String? _message, _ubs, _loadedSubject;
@@ -86,7 +85,6 @@ class _InstitutionalAccountScreenState extends State<InstitutionalAccountScreen>
     _email.dispose();
     _password.dispose();
     _otp.dispose();
-    _professionalOtp.dispose();
     super.dispose();
   }
 
@@ -123,7 +121,10 @@ class _InstitutionalAccountScreenState extends State<InstitutionalAccountScreen>
       });
     }
     if (subject == null) return;
-    if (_profile == null) await runtime.api.enrollProfile();
+    if (_profile == null) {
+      if (widget.professional) { await runtime.api.enrollProfessionalProfile(); }
+      else { await runtime.api.enrollProfile(); }
+    }
     final rows = await runtime.api.loadProfile();
     if (!mounted || runtime.auth.subject != subject) return;
     setState(() => _profile = rows.single);
@@ -368,7 +369,6 @@ class _InstitutionalAccountScreenState extends State<InstitutionalAccountScreen>
       if (mounted) {
         _password.clear();
         _otp.clear();
-        _professionalOtp.clear();
         setState(() => _busy = false);
       }
     }
@@ -434,12 +434,12 @@ class _InstitutionalAccountScreenState extends State<InstitutionalAccountScreen>
               SectionCard(
                 child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
                   Text(
-                    _mode == 'signup' ? (widget.professional ? 'Etapa 1 de 3 • Criar conta profissional' : 'Crie sua conta') : _mode == 'reset' ? 'Recupere sua senha' : 'Entre na sua conta',
+                    _mode == 'signup' ? (widget.professional ? 'Etapa 1 de 2 • Criar conta profissional' : 'Crie sua conta') : _mode == 'reset' ? 'Recupere sua senha' : 'Entre na sua conta',
                     style: Theme.of(context).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold),
                   ),
                   const SizedBox(height: 8),
                   Text(_mode == 'signup'
-                      ? (widget.professional ? 'Crie sua conta profissional. Depois, confirme seu e-mail e solicite acesso à sua UBS. A instituição precisa aprovar a solicitação.' : 'Crie uma conta para guardar uma cópia online do seu plano e enviar dúvidas à UBS. É opcional e precisa de internet.')
+                      ? (widget.professional ? 'Crie sua conta profissional e escolha a UBS onde atua. A administração precisa aprovar sua solicitação.' : 'Crie uma conta para guardar uma cópia online do seu plano e enviar dúvidas à UBS. É opcional e precisa de internet.')
                       : _mode == 'reset'
                           ? 'Informe o e-mail da sua conta para receber um código de recuperação.'
                           : (widget.professional ? 'Entre com seu e-mail e senha. O acesso à equipe depende da aprovação institucional.' : 'Use o e-mail e a senha da sua conta online. Seu plano salvo neste aparelho continua disponível.')),
@@ -490,7 +490,7 @@ class _InstitutionalAccountScreenState extends State<InstitutionalAccountScreen>
                         throw _ActionCancelled();
                       }
                       await _finishLogin();
-                    }, success: widget.professional ? 'Conta criada. Confirme seu e-mail para continuar.' : 'Conta criada e perfil carregado. Bem-vinda à Petita!'),
+                    }, success: widget.professional ? 'Conta criada. Escolha sua UBS para solicitar acesso.' : 'Conta criada e perfil carregado. Bem-vinda à Petita!'),
                     TextButton(onPressed: _busy ? null : () => _switchMode('login'),
                         child: const Text('Já tenho uma conta')),
                   ] else if (_mode == 'login') ...[
@@ -540,43 +540,17 @@ class _InstitutionalAccountScreenState extends State<InstitutionalAccountScreen>
                     Text('Conta: ${runtime.auth.user!['email'] ?? ''}'),
                     if (_profile == null)
                       Text(widget.professional ? 'Ainda não foi possível confirmar suas permissões.' : 'O perfil online ainda não foi carregado. Você pode usar o plano neste aparelho normalmente.'),
-                    if (widget.professional && runtime.auth.user?['emailVerified'] != true) ...[
-                      const SizedBox(height: 16),
-                      const Text('Etapa 2 de 3 • Verificação de e-mail', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
-                      const SizedBox(height: 8),
-                      const Text('Para solicitar acesso à equipe de saúde, confirme que este e-mail pertence a você.'),
-                      if (!_verificationSent)
-                        _button('Enviar código para meu e-mail', () async {
-                          await runtime.auth.resend(runtime.auth.user!['email'] as String);
-                          if (mounted) setState(() => _verificationSent = true);
-                        }, success: 'Código solicitado. Confira sua caixa de entrada.')
-                      else ...[
-                        const SizedBox(height: 12),
-                        const Text('Digite o código que recebeu por e-mail. Confira também a pasta de spam.'),
-                        TextField(controller: _professionalOtp, keyboardType: TextInputType.number,
-                            autocorrect: false, enableSuggestions: false,
-                            decoration: const InputDecoration(labelText: 'Código recebido')),
-                        _button('Confirmar e-mail', () async {
-                          if (_professionalOtp.text.trim().isEmpty) {
-                            setState(() => _message = 'Informe o código recebido por e-mail.');
-                            throw _ActionCancelled();
-                          }
-                          await runtime.auth.verify(runtime.auth.user!['email'] as String, _professionalOtp.text);
-                          await _load();
-                          if (runtime.auth.user?['emailVerified'] != true) throw const NeonApiException(503);
-                        }, success: 'E-mail confirmado.'),
-                        TextButton(onPressed: _busy ? null : () => _run(() => runtime.auth.resend(runtime.auth.user!['email'] as String), success: 'Novo código solicitado.'), child: const Text('Reenviar código')),
-                      ],
-                    ],
-                    if (widget.professional && runtime.auth.user?['emailVerified'] == true && _profile != null) ...[
+                    if (widget.professional && _profile != null) ...[
                       const SizedBox(height: 12),
-                      Text(_profile?['role'] == 'admin' ? 'Acesso administrativo liberado' : _profile?['role'] == 'ubs_team' ? 'Acesso profissional liberado' : 'Etapa 3 de 3 • Solicitar acesso à UBS', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
+                      Text(_profile?['role'] == 'admin' ? 'Acesso administrativo liberado' : _profile?['role'] == 'ubs_team' ? 'Acesso profissional liberado' : _profile?['role'] == 'professional_pending' ? 'Etapa 2 de 2 • Solicitar acesso à UBS' : 'Esta conta é de gestante', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
+                      if (_profile?['role'] == 'professional_pending')
+                        const Text('Escolha sua UBS. A administração precisa aprovar seu cadastro antes de liberar o acesso às dúvidas.'),
                       if (_profile?['role'] == 'patient')
-                        const Text('Seu e-mail foi confirmado. A administração precisa aprovar seu vínculo profissional antes de liberar o acesso às dúvidas.'),
+                        const Text('Saia desta conta e crie uma conta profissional com outro e-mail.'),
                     ],
                     if (!widget.professional && _profile != null)
                       Text('UBS aprovada: ${_profile!['ubs_code'] ?? 'ainda sem vínculo'}'),
-                    if (_profile == null || (widget.professional && runtime.auth.user?['emailVerified'] == true))
+                    if (_profile == null || widget.professional)
                       _button(_profile == null ? 'Tentar carregar perfil novamente' : 'Atualizar situação', _load,
                           success: 'Situação atualizada.'),
                     if (!widget.professional && _profile?['role'] == 'patient')
@@ -602,7 +576,6 @@ class _InstitutionalAccountScreenState extends State<InstitutionalAccountScreen>
                             _consentKnown = false;
                             _ubsKnown = false;
                             _ubsChoiceSaved = false;
-                            _verificationSent = false;
                           });
                       }
                     },
@@ -758,7 +731,7 @@ class _InstitutionalAccountScreenState extends State<InstitutionalAccountScreen>
                       Text('Solicitação ${request['ubs_code']}: ${request['status']}'),
                   ])),
             ],
-            if (widget.professional && runtime.auth.signedIn && runtime.auth.user?['emailVerified'] == true && _profile != null)
+            if (widget.professional && runtime.auth.signedIn && ['admin','ubs_team','professional_pending'].contains(_profile?['role']))
               _button(_profile?['role'] == 'admin' ? 'Abrir administração' : _profile?['role'] == 'ubs_team' ? 'Abrir painel da equipe' : 'Escolher minha UBS', () async {
                 await Navigator.pushNamed(context, _profile?['role'] == 'admin' ? AppRoutes.admin : AppRoutes.ubs);
               }),

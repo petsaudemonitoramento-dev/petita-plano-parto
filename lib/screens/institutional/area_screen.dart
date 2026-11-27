@@ -32,7 +32,6 @@ class _InstitutionalAreaScreenState extends State<InstitutionalAreaScreen> {
   bool _busy = false;
   bool _requestSent = false;
   String? _subject;
-  bool get _verified => runtime?.auth.user?['emailVerified'] == true;
   @override
   void initState() {
     super.initState();
@@ -80,12 +79,14 @@ class _InstitutionalAreaScreenState extends State<InstitutionalAreaScreen> {
     if (widget.myQuestions) {
       questions = await r.api.listMyQuestions();
     } else if (profile['role'] == 'admin') {
-      team = await r.api.listTeamRequests();
+      team = await r.api.listProfessionalApprovals();
       patients = await r.api.listPatientUbsRequests();
     } else if (profile['role'] == 'ubs_team') {
       questions = await r.api.listTeamQueue();
-    } else if (_verified) {
+    } else if (profile['role'] == 'professional_pending') {
       ubs = await r.api.listUbs();
+      final own = await r.api.listMyProfessionalRequests();
+      if (mounted) setState(() => _requestSent = own.any((r) => r['status'] == 'pending'));
     }
     if (mounted)
       setState(() {
@@ -189,14 +190,14 @@ class _InstitutionalAreaScreenState extends State<InstitutionalAreaScreen> {
         if (_busy) const LinearProgressIndicator(),
         if (_message != null)
           Semantics(liveRegion: true, child: Text(_message!)),
-        if (!widget.myQuestions && (_profile == null || (_profile?['role'] == 'patient' && !_verified)))
+        if (!widget.myQuestions && (_profile == null || _profile?['role'] == 'patient'))
           SectionCard(child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-            Text(_profile == null ? 'Acesso da equipe de saúde' : 'Confirme seu e-mail', style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+            Text(_profile == null ? 'Acesso da equipe de saúde' : 'Conta de gestante', style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
             const SizedBox(height: 8),
             Text(_profile == null
                 ? 'Entre com sua conta profissional ou crie uma para solicitar acesso à sua UBS.'
-                : 'Esta conta ainda não possui acesso profissional. Se você faz parte de uma equipe de saúde, confirme seu e-mail para solicitar acesso.'),
-            button(_profile == null ? 'Entrar ou criar conta profissional' : 'Verificar e-mail ou trocar de conta', () async {
+                : 'Esta conta pertence à área da gestante. Entre com uma conta profissional ou crie uma conta específica.'),
+            button(_profile == null ? 'Entrar ou criar conta profissional' : 'Trocar de conta', () async {
               await Navigator.pushNamed(context, AppRoutes.professionalAccount);
               await _load();
             }),
@@ -225,12 +226,12 @@ class _InstitutionalAreaScreenState extends State<InstitutionalAreaScreen> {
                 else
                   button('Responder ${q['public_code']}', () => _answer(q)),
               ])),
-        if (!widget.myQuestions && _profile?['role'] == 'patient' && _verified)
+        if (!widget.myQuestions && _profile?['role'] == 'professional_pending')
           SectionCard(
               child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                const Text('Etapa 3 de 3 • Acesso à UBS', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
+                const Text('Etapa 2 de 2 • Acesso à UBS', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
                 const SizedBox(height: 8),
                 Text(_requestSent ? 'Solicitação enviada. Aguarde a aprovação da administração do PET Saúde.' : 'Informe a UBS onde você trabalha. A administração do PET Saúde analisará sua solicitação antes de liberar o acesso às dúvidas.'),
                 if (!_requestSent) ...[
@@ -251,7 +252,7 @@ class _InstitutionalAreaScreenState extends State<InstitutionalAreaScreen> {
                   final op =
                       _operations.putIfAbsent('team:$_code', newOperationId);
                   await runtime!.api.requestTeamAccess(_code!, op);
-                  if (mounted) setState(() => _requestSent = true);
+                  await _load();
                 }),
                 ],
                 TextButton(onPressed: _busy ? null : () => _run(() async {
@@ -284,7 +285,7 @@ class _InstitutionalAreaScreenState extends State<InstitutionalAreaScreen> {
             SectionCard(
                 child: Column(children: [
               Text(
-                  'Perfil ${request['requester_id']} • UBS ${request['requested_ubs_code']}'),
+                  '${request['display_name'] ?? request['requester_id']} • UBS ${request['requested_ubs_code']}'),
               button('Aprovar profissional', () async {
                 if (await _confirm('Aprovar acesso profissional?')) {
                   await runtime!.api

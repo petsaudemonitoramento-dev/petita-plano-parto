@@ -68,6 +68,9 @@ export function route(method, path, body = {}) {
     return q('insert into petita.knowledge_base(category,question,keywords,answer) values($1,$2,$3::text[],$4) returning id',[category,question,keywords,answer]);
   }
   if (method === 'GET' && path === '/api/ubs') { noBody(body); return q('select code,name,city,state from petita.ubs where active order by name', [], true); }
+  if (method === 'POST' && path === '/api/professional/profile') { noBody(body); return {...q('select petita.ensure_professional_profile() as id'), enrollment:true}; }
+  if (method === 'GET' && path === '/api/team/my-requests') { noBody(body); return q('select * from petita.list_my_professional_requests()'); }
+  if (method === 'GET' && path === '/api/admin/professional-approvals') { noBody(body); return q('select * from petita.list_professional_approvals()'); }
   if (method === 'POST' && path === '/api/profile') { noBody(body); return {...q('select petita.ensure_patient_profile() as id'), enrollment:true}; }
   if (method === 'GET' && path === '/api/me') { noBody(body); return q('select id,display_name,role,ubs_code from petita.profiles where id=petita_private.actor_id()'); }
   if (method === 'GET' && path === '/api/questions/mine') { noBody(body); return q('select * from petita.list_my_patient_questions(50,null,null)'); }

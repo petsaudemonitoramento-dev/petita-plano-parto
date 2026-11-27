@@ -42,3 +42,5 @@ test('educational knowledge is read-only for anonymous clients; publishing is au
 });
 
 test('optional UBS preference is authenticated and actor-scoped',()=>{const get=route('GET','/api/patient/ubs-preference');const post=route('POST','/api/patient/ubs-preference',{});assert.equal(get.isPublic,false);assert.equal(post.isPublic,false);assert.match(post.sql,/actor_id\(\)/);assert.throws(()=>route('POST','/api/patient/ubs-preference',{patient_id:'other'}),{status:400});});
+
+test('professional enrollment has its own route and cannot assign privileged roles',()=>{const r=route('POST','/api/professional/profile',{});assert.equal(r.enrollment,true);assert.match(r.sql,/ensure_professional_profile/);assert.throws(()=>route('POST','/api/professional/profile',{role:'admin'}),{status:400});assert.equal(route('GET','/api/admin/professional-approvals').isPublic,false);});
