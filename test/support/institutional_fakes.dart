@@ -23,6 +23,7 @@ class FixtureAuthTransport implements AuthTransport {
   String subject;
   bool signedIn = true;
   bool emailVerified = false;
+  bool allowLogin = false;
   FixtureAuthTransport([this.subject = 'fixture-a']);
   @override
   Future<Map<String, dynamic>> call(
@@ -31,6 +32,7 @@ class FixtureAuthTransport implements AuthTransport {
       signedIn = false;
       return {};
     }
+    if (action == 'login' && allowLogin) { signedIn = true; return {}; }
     if (!signedIn) throw const InstitutionalAuthException(401);
     if (action == 'session')
       return {

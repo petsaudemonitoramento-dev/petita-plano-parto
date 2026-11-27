@@ -6,6 +6,7 @@ import 'package:http/testing.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:plano_parto_pet_saude/screens/institutional/account_screen.dart';
 import 'package:plano_parto_pet_saude/screens/institutional/area_screen.dart';
+import 'package:plano_parto_pet_saude/widgets/account_header_menu.dart';
 import 'package:plano_parto_pet_saude/services/neon_api_client.dart';
 import 'package:plano_parto_pet_saude/services/institutional/institutional_auth.dart';
 import 'package:plano_parto_pet_saude/services/institutional/plan_sync_controller.dart';
@@ -124,6 +125,53 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('Vínculos de gestantes pendentes'), findsOneWidget);
     expect(find.text('Solicitações profissionais pendentes'), findsNothing);
+  });
+  testWidgets('successful admin login opens administration directly', (tester) async {
+    tester.view.physicalSize = const Size(900, 1600);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    final calls = <String>[];
+    final r = runtime('admin', calls);
+    await r.auth.logout();
+    (r.auth.transport as FixtureAuthTransport).allowLogin = true;
+    await tester.pumpWidget(MaterialApp(
+      home: Builder(builder: (context) => Scaffold(body: TextButton(
+        onPressed: () => Navigator.pushNamed(context, '/professional-account'),
+        child: const Text('Abrir login profissional'),
+      ))),
+      routes: {
+        '/professional-account': (_) => InstitutionalAccountScreen(runtime: r, professional: true),
+        '/admin': (_) => const Scaffold(body: Text('Destino administração')),
+      },
+    ));
+    await tester.tap(find.text('Abrir login profissional'));
+    await tester.pumpAndSettle();
+    await finishAction(tester, calls);
+    await tester.enterText(find.byType(TextField).at(0), 'fixture@example.invalid');
+    await tester.enterText(find.byType(TextField).at(1), 'synthetic-password');
+    await tester.tap(find.text('Entrar'));
+    await tester.pump();
+    await finishAction(tester, calls);
+    await tester.pumpAndSettle();
+    expect(find.text('Destino administração'), findsOneWidget);
+    expect(find.text('Abrir administração'), findsNothing);
+    expect(tester.takeException(), isNull);
+  });
+  testWidgets('header account menu shows current identity and logout options', (tester) async {
+    final r = runtime('admin', []);
+    await r.auth.restore();
+    await tester.pumpWidget(MaterialApp(home: Scaffold(
+      appBar: AppBar(actions: [AccountHeaderMenu(auth: r.auth, professional: true, roleLabel: 'Administração PET Saúde')]),
+    )));
+    await tester.tap(find.byTooltip('Minha conta'));
+    await tester.pumpAndSettle();
+    expect(find.text('fixture@example.invalid'), findsOneWidget);
+    expect(find.text('Administração PET Saúde'), findsOneWidget);
+    expect(find.text('Configurações da conta'), findsOneWidget);
+    expect(find.text('Sair da conta'), findsOneWidget);
+    expect(find.text('Editar perfil'), findsNothing);
+    expect(tester.takeException(), isNull);
   });
   testWidgets('login keeps recovery and registration fields separate', (tester) async {
     tester.view.physicalSize = const Size(900, 1600);
