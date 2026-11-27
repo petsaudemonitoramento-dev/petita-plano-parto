@@ -1,0 +1,81 @@
+name: Validar APK release otimizado (sem publicar)
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'lib/**'
+      - 'assets/**'
+      - 'pubspec.yaml'
+      - 'pubspec.lock'
+      - 'config/**'
+      - 'tool/prepare_homologation_platforms.py'
+      - 'tool/prepare_android_tts_manifest.py'
+      - 'tool/verify_optimized_apks.py'
+      - '.github/workflows/validar_apk_otimizado.yml'
+permissions:
+  contents: read
+  actions: read
+jobs:
+  apk-release:
+    name: APK release (${{ matrix.variant }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    strategy:
+      fail-fast: false
+      matrix:
+        variant: [universal, split]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.44.0'
+          channel: stable
+          cache: true
+      - name: Resolver dependências travadas
+        run: bash tool/run_bounded_audit.sh release-pub 180 flutter pub get --enforce-lockfile
+      - name: Preparar estrutura Android isolada
+        run: |
+          bash tool/run_bounded_audit.sh release-scaffold 180 flutter create --platforms=android --project-name plano_parto_pet_saude --org br.edu.ufcg.petsaude .
+          rm -f test/widget_test.dart
+          if grep -q 'package:flutter_lints/flutter.yaml' analysis_options.yaml 2>/dev/null; then
+            rm -f analysis_options.yaml
+          fi
+          python3 tool/prepare_android_tts_manifest.py
+          python3 tool/prepare_homologation_platforms.py android
+      - name: Analisar código
+        run: bash tool/run_bounded_audit.sh release-analyze 180 flutter analyze --no-pub
+      - name: Testar funcionalidades originais
+        if: matrix.variant == 'universal'
+        run: bash tool/run_bounded_audit.sh ci-tests 480 flutter test --no-pub
+      - name: Compilar Flutter release otimizado sem alterar recursos
+        env:
+          VARIANT: ${{ matrix.variant }}
+        run: |
+          set -euo pipefail
+          args=()
+          if [ "$VARIANT" = split ]; then args+=(--split-per-abi); fi
+          bash tool/run_bounded_audit.sh release-apk 1200 flutter build apk --release --no-pub --dart-define-from-file=config/homologacao.json "${args[@]}"
+      - name: Comparar recursos e inspecionar APKs
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: petsaudemonitoramento-dev/petita-plano-parto
+          VARIANT: ${{ matrix.variant }}
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/petita-baseline
+          gh run download 45992192757 --name petita-apk-homologacao-52951a493c47fa196fe62d18d01e7607ed0db34d --dir /tmp/petita-baseline
+          cd /tmp/petita-baseline
+          echo '1b6d126b07444c5ae982bf30f927c22edf510150400d53ff14d449b2f77018f5  app-debug.apk' | sha256sum -c -
+          cd "$GITHUB_WORKSPACE"
+          tools_dir="$(find "$ANDROID_HOME/build-tools" -mindepth 1 -maxdepth 1 -type d | sort -V | tail -n 1)"
+          python3 tool/verify_optimized_apks.py --baseline /tmp/petita-baseline/app-debug.apk --variant "$VARIANT" --build-tools "$tools_dir" --apk-dir build/app/outputs/flutter-apk --report apk-size-report.json
+          cat apk-size-report.json >> "$GITHUB_STEP_SUMMARY"
+      - name: Guardar candidatos e relatório (não publicar)
+        uses: actions/upload-artifact@v4
+        with:
+          name: petita-release-${{ matrix.variant }}-${{ github.sha }}
+          path: |
+            build/app/outputs/flutter-apk/*release.apk
+            apk-size-report.json
+          if-no-files-found: error
+          retention-days: 7
