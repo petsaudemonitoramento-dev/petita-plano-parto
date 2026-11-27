@@ -1126,33 +1126,19 @@ class _ChatScreenState extends State<ChatScreen> {
                   color: AppColors.petOrange, fontWeight: FontWeight.bold)),
             ),
           if (_writingModeSelected)
-            Semantics(
+            const Semantics(
               liveRegion: true,
-              child: Container(
-                key: const Key('petita_writing_confirmation'),
-                margin: const EdgeInsets.only(bottom: 12),
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 11),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFF3EBFF),
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: AppColors.primaryPink.withAlpha(95)),
-                ),
-                child: const Row(
-                  children: [
-                    Icon(Icons.check_circle, color: AppColors.primaryPink, size: 20),
-                    SizedBox(width: 9),
-                    Expanded(
-                      child: Text(
-                        'Modo escrita ativado. Digite abaixo e toque em enviar.',
-                        style: TextStyle(
-                          color: AppColors.petDarkBlue,
-                          fontSize: 13,
-                          height: 1.3,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ),
-                  ],
+              child: Padding(
+                padding: EdgeInsets.fromLTRB(6, 0, 6, 10),
+                child: Text(
+                  'Modo escrita ativado. Digite sua resposta abaixo.',
+                  key: Key('petita_writing_confirmation'),
+                  style: TextStyle(
+                    color: Color(0xFF625772),
+                    fontSize: 13,
+                    height: 1.4,
+                    fontWeight: FontWeight.w400,
+                  ),
                 ),
               ),
             ),

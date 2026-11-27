@@ -113,6 +113,10 @@ void main() {
     expect(find.byKey(const Key('petita_writing_confirmation')),
         findsOneWidget);
     expect(find.textContaining('Modo escrita ativado'), findsOneWidget);
+    final notice = find.byKey(const Key('petita_writing_confirmation'));
+    expect(tester.widget(notice), isA<Text>());
+    expect(find.ancestor(of: notice, matching: find.byType(InkWell)), findsNothing);
+    expect(tester.widget<Text>(notice).style?.fontWeight, FontWeight.w400);
     final pill = tester.widget<AnimatedContainer>(
       find.ancestor(of: option, matching: find.byType(AnimatedContainer)).first,
     );
