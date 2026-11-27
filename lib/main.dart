@@ -52,6 +52,7 @@ class _ProtectionBootstrapState extends State<_ProtectionBootstrap> {
         if (snapshot.connectionState == ConnectionState.done &&
             !snapshot.hasError) return const PlanoPartoPetSaudeApp();
         return MaterialApp(
+            debugShowCheckedModeBanner: false,
             home: Scaffold(
                 body: SafeArea(
                     child: Center(
