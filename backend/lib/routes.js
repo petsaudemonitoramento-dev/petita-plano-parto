@@ -25,6 +25,11 @@ function isoDate(v) {
   return v;
 }
 export function route(method, path, body = {}) {
+  if(method==='POST' && path==='/api/admin-candidate/profile'){noBody(body);return {...q('select petita.ensure_admin_candidate() as id'),enrollment:true};}
+  if(method==='GET' && path==='/api/admin-candidate/request'){noBody(body);return q('select * from petita.my_admin_request()');}
+  if(method==='GET' && path==='/api/admin/admin-requests'){noBody(body);return q('select * from petita.list_admin_requests()');}
+  const adminDecision=path.match(/^\/api\/admin\/admin-requests\/([^/]+)\/(approve|reject)$/);
+  if(method==='POST' && adminDecision){noBody(body);return q('select petita.decide_admin_request($1::uuid,$2::boolean) as result',[uuid(adminDecision[1]),adminDecision[2]==='approve']);}
   if(method==='GET' && path==='/api/patient/ubs-preference') {noBody(body);return q('select patient_id from petita.patient_no_ubs_preference where patient_id=petita_private.actor_id()');}
   if(method==='POST' && path==='/api/patient/ubs-preference') {noBody(body);return q('insert into petita.patient_no_ubs_preference(patient_id) values(petita_private.actor_id()) on conflict(patient_id) do nothing returning patient_id');}
   if(method==='GET' && path==='/api/patient/ubs-requests') {noBody(body);return q('select * from petita.list_my_ubs_requests()');}

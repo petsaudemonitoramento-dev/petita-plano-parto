@@ -32,3 +32,33 @@ test('logout clears local cookie even when upstream fails',async()=>{
  const res=response();await webAuthProxy(req({cookie:'__Secure-petita-session=signedvalue'}),res,'logout',{},env,async()=>{throw Error('network');});
  assert.equal(res.code,503);assert.match(res.headers['Set-Cookie'],/Max-Age=0$/);
 });
+
+test('Google uses fixed callback and a first-party HttpOnly challenge',async()=>{
+ const res=response();
+ await webAuthProxy(req(),res,'googleStart',{},env,async(u,o)=>{
+  assert.equal(u,env.NEON_AUTH_BASE_URL+'/sign-in/social');
+  assert.deepEqual(JSON.parse(o.body),{provider:'google',callbackURL:env.PETITA_WEB_ORIGIN+'/',disableRedirect:true});
+  return new Response(JSON.stringify({url:'https://accounts.google.com/o/oauth2/auth'}),{headers:{'Set-Cookie':'__Secure-neon-auth.session_challenge=testchallenge; Secure; Partitioned'}});
+ });
+ assert.equal(res.code,200);
+ assert.ok(res.headers['Set-Cookie'].some(x=>x.includes('__Secure-petita-oauth=testchallenge')&&x.includes('HttpOnly')));
+ assert.ok(res.headers['Set-Cookie'].some(x=>x.includes('__Secure-petita-session=;')));
+});
+test('Google finish rejects a verifier without a challenge',async()=>{
+ const res=response();await webAuthProxy(req(),res,'googleFinish',{verifier:'fake'},env,async()=>{throw Error('must not fetch')});
+ assert.equal(res.code,401);
+});
+test('Google finish exchanges challenge and returns no raw session token',async()=>{
+ const res=response();
+ await webAuthProxy(req({cookie:'__Secure-petita-oauth=challenge'}),res,'googleFinish',{verifier:'test-verifier'},env,async(u,o)=>{
+  assert.equal(new URL(u).searchParams.get('neon_auth_session_verifier'),'test-verifier');
+  assert.equal(o.headers.Cookie,'__Secure-neon-auth.session_challenge=challenge');
+  return new Response(JSON.stringify({user:{id:'x',emailVerified:true},session:{token:'hidden'}}),{headers:{'Set-Cookie':'__Secure-neon-auth.session_token=signedvalue; Secure'}});
+ });
+ assert.equal(res.code,200);assert.equal(res.value.data.session.token,undefined);
+ assert.ok(res.headers['Set-Cookie'].some(x=>x.includes('__Secure-petita-session=signedvalue')));
+});
+test('Google rejects a supplied callback or foreign redirect',async()=>{
+ let res=response();await webAuthProxy(req(),res,'googleStart',{callbackURL:'https://evil.example'},env,()=>{throw Error('must not fetch')});assert.equal(res.code,400);
+ res=response();await webAuthProxy(req(),res,'googleStart',{},env,async()=>new Response(JSON.stringify({url:'https://evil.example'})));assert.equal(res.code,503);
+});
