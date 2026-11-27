@@ -1,0 +1,16 @@
+name: Validar aprovação administrativa Google isolada
+on:
+  pull_request:
+    branches: [main, feat/neon-enrollment-20261126]
+  push:
+    branches: [feat/web-google-admin-approval-20261127]
+permissions:
+  contents: read
+jobs:
+  postgres-admin-approval:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - run: python3 -m py_compile tools/test_neon_admin_approval.py
+      - run: bash tool/run_bounded_audit.sh postgres-admin-approval 180 python3 tools/test_neon_admin_approval.py
