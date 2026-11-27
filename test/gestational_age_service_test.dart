@@ -2,6 +2,14 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:plano_parto_pet_saude/services/gestational_age_service.dart';
 
 void main() {
+  test('normaliza oito dígitos sem aceitar datas impossíveis', () {
+    expect(GestationalAgeService.normalizeDpp('17112026'), '17/11/2026');
+    expect(GestationalAgeService.normalizeDpp('17/11/2026'), '17/11/2026');
+    expect(GestationalAgeService.normalizeDpp('31022026'), isNull);
+    expect(GestationalAgeService.normalizeDpp('1711202'), isNull);
+    expect(GestationalAgeService.normalizeDpp('17a112026'), isNull);
+    expect(GestationalAgeService.normalizeDpp(''), isNull);
+  });
   test('calcula estimativa de 37 semanas com DPP em 18/11/2026', () {
     expect(
       GestationalAgeService.estimate(

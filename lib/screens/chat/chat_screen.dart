@@ -2,6 +2,7 @@ import '../../widgets/local_persistence_feedback.dart';
 import '../../widgets/account_header_menu.dart';
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_tts/flutter_tts.dart';
 import '../../config/app_routes.dart';
@@ -99,6 +100,9 @@ class _ChatScreenState extends State<ChatScreen> {
   bool _showCardExplanation = false;
   bool _writingModeSelected = false;
   String? _cardFeedback;
+  String? _dppError;
+  bool get _isDppInput => !_awaitingPronouns && _currentQuestion >= 0 &&
+      _currentQuestion < _questions.length && _questions[_currentQuestion].id == 'dpp';
   final FlutterTts _tts = FlutterTts();
   bool _readingVoice = false;
   int _typingDots = 1;
@@ -186,9 +190,19 @@ class _ChatScreenState extends State<ChatScreen> {
 
   Future<void> _send([String? override]) async {
     if (_petitaSearching || _answering) return;
-    final text = (override ?? _controller.text).trim();
-    if (text.isEmpty) return;
+    var text = (override ?? _controller.text).trim();
     if (!_textInputEnabled && override == null) return;
+    if (_isDppInput) {
+      final normalized = GestationalAgeService.normalizeDpp(text);
+      if (normalized == null) {
+        setState(() => _dppError = 'Informe uma data válida no formato DD/MM/AAAA.');
+        return;
+      }
+      text = normalized;
+      setState(() => _dppError = null);
+      _inputFocusNode.unfocus();
+    }
+    if (text.isEmpty) return;
     _controller.clear();
 
     if (_awaitingPronouns) {
@@ -198,16 +212,6 @@ class _ChatScreenState extends State<ChatScreen> {
     }
 
     if (_currentQuestion >= 0) {
-      final question = _questions[_currentQuestion];
-      if (question.id == 'dpp' && GestationalAgeService.parseDpp(text) == null) {
-        _controller.text = text;
-        setState(() => _messages.add(const ChatMessage(
-          text: 'Essa data não parece válida. Digite sua DPP no formato dia/mês/ano, por exemplo 18/11/2026.',
-          isUser: false,
-        )));
-        _scrollToBottom();
-        return;
-      }
       final q = _questions[_currentQuestion];
       if (q.multiple) {
         final values = {..._multiSelection, text}.toList();
@@ -369,6 +373,7 @@ class _ChatScreenState extends State<ChatScreen> {
     _multiSelection.clear();
     _showCardExplanation = false;
     _cardFeedback = null;
+    _dppError = null;
     _writingModeSelected = false;
     if (_readingVoice) {
       try { await _tts.stop(); } catch (_) { /* Voice playback is optional. */ }
@@ -1269,6 +1274,9 @@ class _ChatScreenState extends State<ChatScreen> {
                 controller: _controller,
                 focusNode: _inputFocusNode,
                 enabled: _textInputEnabled,
+                dateInput: _isDppInput,
+                errorText: _isDppInput ? _dppError : null,
+                onChanged: (_) { if (_dppError != null) setState(() => _dppError = null); },
                 onSend: () => _send(),
               ),
           ],
@@ -1488,12 +1496,39 @@ class _ChoicePill extends StatelessWidget {
   }
 }
 
+class _DppInputFormatter extends TextInputFormatter {
+  const _DppInputFormatter();
+  @override
+  TextEditingValue formatEditUpdate(TextEditingValue oldValue, TextEditingValue newValue) {
+    if (!newValue.composing.isCollapsed) return newValue;
+    if (!RegExp(r'^[0-9/]*$').hasMatch(newValue.text)) return oldValue;
+    final digits = newValue.text.replaceAll('/', '');
+    if (digits.length > 8) return oldValue;
+    String formatted = digits;
+    if (digits.length > 4) {
+      formatted = '${digits.substring(0, 2)}/${digits.substring(2, 4)}/${digits.substring(4)}';
+    } else if (digits.length > 2) {
+      formatted = '${digits.substring(0, 2)}/${digits.substring(2)}';
+    }
+    final offset = newValue.selection.extentOffset;
+    final before = offset < 0 ? digits.length : newValue.text.substring(0, offset.clamp(0, newValue.text.length).toInt()).replaceAll('/', '').length;
+    var caret = before;
+    if (before > 2) caret++;
+    if (before > 4) caret++;
+    return TextEditingValue(text: formatted, selection: TextSelection.collapsed(offset: caret.clamp(0, formatted.length).toInt()));
+  }
+}
+
 class _ChatInput extends StatelessWidget {
-  const _ChatInput({required this.controller, required this.focusNode, required this.enabled, required this.onSend});
+  const _ChatInput({required this.controller, required this.focusNode, required this.enabled, required this.onSend,
+    required this.dateInput, required this.errorText, required this.onChanged});
   final TextEditingController controller;
   final FocusNode focusNode;
   final bool enabled;
   final VoidCallback onSend;
+  final bool dateInput;
+  final String? errorText;
+  final ValueChanged<String> onChanged;
 
   @override
   Widget build(BuildContext context) {
@@ -1513,12 +1548,19 @@ class _ChatInput extends StatelessWidget {
                 focusNode: focusNode,
                 enabled: enabled,
                 minLines: 1,
-                maxLines: 3,
+                maxLines: dateInput ? 1 : 3,
+                keyboardType: dateInput ? TextInputType.number : null,
+                inputFormatters: dateInput ? const [_DppInputFormatter()] : null,
+                autocorrect: !dateInput,
+                enableSuggestions: !dateInput,
+                onChanged: onChanged,
                 textInputAction: TextInputAction.send,
                 decoration: InputDecoration(
                   hintText: enabled
-                      ? 'Digite sua resposta...'
+                      ? (dateInput ? 'DD/MM/AAAA' : 'Digite sua resposta...')
                       : 'Escolha uma alternativa acima',
+                  errorText: errorText,
+                  errorMaxLines: 2,
                   isDense: true,
                   contentPadding: const EdgeInsets.symmetric(
                       horizontal: 12, vertical: 12),

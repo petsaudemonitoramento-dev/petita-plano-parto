@@ -39,6 +39,40 @@ void main() {
     }
   }
 
+  testWidgets('DPP formats digits, shows invalid date visibly and sends by button', (tester) async {
+    await openChat(tester);
+    await sendText(tester, 'Gestante Sintetica');
+    await tapChoice(tester, 'Prefiro não informar');
+    final field = find.byType(TextField).first;
+    expect(tester.widget<TextField>(field).keyboardType, TextInputType.number);
+    await tester.enterText(field, '31022026');
+    expect(tester.widget<TextField>(field).controller!.text, '31/02/2026');
+    await tester.tap(find.byIcon(Icons.send));
+    await tester.pumpAndSettle();
+    expect(find.text('Informe uma data válida no formato DD/MM/AAAA.'), findsOneWidget);
+    expect((await StorageService().loadAnswers()), hasLength(1));
+    final date = testDpp();
+    await tester.enterText(field, date.replaceAll('/', ''));
+    expect(tester.widget<TextField>(field).controller!.text, date);
+    await tester.tap(find.byIcon(Icons.send));
+    await advanceChat(tester);
+    final saved = await StorageService().loadAnswers();
+    expect(saved.singleWhere((a) => a.questionId == 'dpp').values, [date]);
+    expect(find.textContaining('Escolha sua UBS de referência'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('DPP sends using keyboard action', (tester) async {
+    await openChat(tester);
+    await sendText(tester, 'Gestante Sintetica');
+    await tapChoice(tester, 'Prefiro não informar');
+    final date = testDpp();
+    await tester.enterText(find.byType(TextField).first, date.replaceAll('/', ''));
+    await tester.testTextInput.receiveAction(TextInputAction.send);
+    await advanceChat(tester);
+    expect((await StorageService().loadAnswers()).singleWhere((a) => a.questionId == 'dpp').values, [date]);
+  });
+
   testWidgets('31 canonical answers persist with DPP and optional pronouns',
       (tester) async {
     final questions = await BirthPlanFlowService().loadQuestions();
@@ -165,7 +199,7 @@ void main() {
     expect(find.text('Etapa 2 de 31'), findsOneWidget);
     expect((await StorageService().loadAnswers()).single.values,
         ['Gestante Sintetica']);
-    await sendText(tester, '01/12/2026');
+    await sendText(tester, testDpp());
     expect(await StorageService().loadAnswers(), hasLength(3));
   });
 
