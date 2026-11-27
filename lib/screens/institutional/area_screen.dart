@@ -172,8 +172,8 @@ class _InstitutionalAreaScreenState extends State<InstitutionalAreaScreen> {
         if (_busy) const LinearProgressIndicator(),
         if (_message != null)
           Semantics(liveRegion: true, child: Text(_message!)),
-        button('Abrir conta institucional', () async {
-          await Navigator.pushNamed(context, AppRoutes.institutional);
+        button(widget.myQuestions ? 'Abrir minha conta' : 'Entrar ou criar conta profissional', () async {
+          await Navigator.pushNamed(context, widget.myQuestions ? AppRoutes.institutional : AppRoutes.professionalAccount);
           await _load();
         }),
         button('Atualizar', _load),

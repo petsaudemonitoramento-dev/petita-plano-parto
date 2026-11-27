@@ -11,7 +11,8 @@ class _ActionCancelled implements Exception {}
 
 class InstitutionalAccountScreen extends StatefulWidget {
   final InstitutionalRuntime? runtime;
-  const InstitutionalAccountScreen({super.key, this.runtime});
+  final bool professional;
+  const InstitutionalAccountScreen({super.key, this.runtime, this.professional = false});
   @override
   State<InstitutionalAccountScreen> createState() =>
       _InstitutionalAccountScreenState();
@@ -39,7 +40,7 @@ class _InstitutionalAccountScreenState extends State<InstitutionalAccountScreen>
     WidgetsBinding.instance.addObserver(this);
     _run(() async {
       try {
-        final local = await StorageService().loadProfile().timeout(const Duration(seconds: 5));
+        final local = widget.professional ? null : await StorageService().loadProfile().timeout(const Duration(seconds: 5));
         if (mounted && local != null) {
           _name.text = local.name;
           _email.text = local.email;
@@ -195,7 +196,7 @@ class _InstitutionalAccountScreenState extends State<InstitutionalAccountScreen>
   Widget build(BuildContext context) {
     final runtime = _runtime;
     return Scaffold(
-        appBar: AppBar(title: const Text('Minha conta')),
+        appBar: AppBar(title: Text(widget.professional ? 'Acesso profissional' : 'Minha conta')),
         body: SafeArea(
             child: ListView(padding: const EdgeInsets.all(20), children: [
           if (runtime == null)
@@ -218,10 +219,10 @@ class _InstitutionalAccountScreenState extends State<InstitutionalAccountScreen>
                   ),
                   const SizedBox(height: 8),
                   Text(_mode == 'signup'
-                      ? 'Crie uma conta para guardar uma cópia online do seu plano e enviar dúvidas à UBS. É opcional e precisa de internet.'
+                      ? (widget.professional ? 'Crie sua conta profissional. Depois, confirme seu e-mail e solicite acesso à sua UBS. A instituição precisa aprovar a solicitação.' : 'Crie uma conta para guardar uma cópia online do seu plano e enviar dúvidas à UBS. É opcional e precisa de internet.')
                       : _mode == 'reset'
                           ? 'Informe o e-mail da sua conta para receber um código de recuperação.'
-                          : 'Use o e-mail e a senha da sua conta online. Seu plano salvo neste aparelho continua disponível.'),
+                          : (widget.professional ? 'Entre com seu e-mail e senha. O acesso à equipe depende da aprovação institucional.' : 'Use o e-mail e a senha da sua conta online. Seu plano salvo neste aparelho continua disponível.')),
                   if (_localPrefill && _mode == 'signup') ...[
                     const SizedBox(height: 12),
                     const Text('Aproveitamos seu nome e e-mail do cadastro neste aparelho. Confira se estão corretos.'),
@@ -229,7 +230,7 @@ class _InstitutionalAccountScreenState extends State<InstitutionalAccountScreen>
                   const SizedBox(height: 16),
                   if (_mode == 'signup') ...[
                     TextField(controller: _name, textCapitalization: TextCapitalization.words,
-                        decoration: const InputDecoration(labelText: 'Nome da gestante')),
+                        decoration: InputDecoration(labelText: widget.professional ? 'Nome do profissional' : 'Nome da gestante')),
                     const SizedBox(height: 12),
                   ],
                   TextField(controller: _email, keyboardType: TextInputType.emailAddress,
@@ -269,7 +270,7 @@ class _InstitutionalAccountScreenState extends State<InstitutionalAccountScreen>
                         throw _ActionCancelled();
                       }
                       await _load();
-                    }, success: 'Conta criada e perfil carregado. Bem-vinda à Petita!'),
+                    }, success: widget.professional ? 'Conta criada. Confira a verificação e solicite seu acesso profissional.' : 'Conta criada e perfil carregado. Bem-vinda à Petita!'),
                     TextButton(onPressed: _busy ? null : () => _switchMode('login'),
                         child: const Text('Já tenho uma conta')),
                   ] else if (_mode == 'login') ...[
@@ -316,12 +317,12 @@ class _InstitutionalAccountScreenState extends State<InstitutionalAccountScreen>
                   child: Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
-                    const Text('Você está conectada', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 20)),
+                    Text(widget.professional ? 'Sessão profissional iniciada' : 'Você está conectada', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 20)),
                     const SizedBox(height: 8),
                     Text('Conta: ${runtime.auth.user!['email'] ?? ''}'),
                     if (_profile == null)
                       const Text('O perfil online ainda não foi carregado. Você pode usar o plano neste aparelho normalmente.'),
-                    if (runtime.auth.user?['emailVerified'] != true)
+                    if (widget.professional && runtime.auth.user?['emailVerified'] != true)
                       Material(
                         type: MaterialType.transparency,
                         child: ExpansionTile(
@@ -367,7 +368,7 @@ class _InstitutionalAccountScreenState extends State<InstitutionalAccountScreen>
                         success:
                             'Sessão encerrada. O plano offline permanece neste aparelho.'),
                   ])),
-            if (_profile?['role'] == 'patient' && runtime.auth.signedIn) ...[
+            if (!widget.professional && _profile?['role'] == 'patient' && runtime.auth.signedIn) ...[
               SectionCard(
                   child: Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -482,7 +483,7 @@ class _InstitutionalAccountScreenState extends State<InstitutionalAccountScreen>
                           'Solicitação ${request['ubs_code']}: ${request['status']}'),
                   ])),
             ],
-            if (runtime.auth.signedIn && _profile != null)
+            if (widget.professional && runtime.auth.signedIn && _profile != null)
               _button('Área profissional e administrativa', () async {
                 await Navigator.pushNamed(context, AppRoutes.ubs);
               }),

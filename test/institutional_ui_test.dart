@@ -121,6 +121,30 @@ void main() {
     expect(find.text('Já tenho uma conta'), findsOneWidget);
     expect(find.text('Código recebido por e-mail'), findsNothing);
   });
+  testWidgets('patient account does not show professional verification or access button', (tester) async {
+    tester.view.physicalSize = const Size(900, 6000);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    final calls = <String>[];
+    await tester.pumpWidget(MaterialApp(home: InstitutionalAccountScreen(runtime: runtime('patient', calls))));
+    await finishAction(tester, calls);
+    expect(find.text('Verificação para acesso profissional'), findsNothing);
+    expect(find.text('Área profissional e administrativa'), findsNothing);
+    expect(find.text('Sincronização online opcional'), findsOneWidget);
+  });
+  testWidgets('professional account does not expose patient synchronization', (tester) async {
+    tester.view.physicalSize = const Size(900, 6000);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    final calls = <String>[];
+    await tester.pumpWidget(MaterialApp(home: InstitutionalAccountScreen(professional: true, runtime: runtime('patient', calls))));
+    await finishAction(tester, calls);
+    expect(find.text('Acesso profissional'), findsOneWidget);
+    expect(find.text('Verificação para acesso profissional'), findsOneWidget);
+    expect(find.text('Sincronização online opcional'), findsNothing);
+  });
   testWidgets(
       'unconfigured account gives offline availability message without simulated auth',
       (tester) async {
