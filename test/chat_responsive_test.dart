@@ -42,6 +42,11 @@ void main() {
     await tester.tap(resume);
     await advanceChat(tester);
     expect(find.byKey(const Key('petita_cards_scroll')), findsOneWidget);
+    expect(find.byKey(const Key('petita_question_avatar')), findsOneWidget);
+    expect(find.byKey(const Key('petita_question_bubble')), findsOneWidget);
+    expect(find.byKey(const Key('petita_speech_tail')), findsOneWidget);
+    expect(find.descendant(of: find.byKey(const Key('petita_cards_scroll')), matching: find.byKey(const Key('petita_scroll_header'))), findsOneWidget);
+    expect(find.byType(Image), findsOneWidget);
     expect(find.byType(TextField), findsNothing);
     expect(tester.takeException(), isNull);
   }

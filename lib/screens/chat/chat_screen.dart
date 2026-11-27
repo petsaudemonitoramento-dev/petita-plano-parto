@@ -983,42 +983,51 @@ class _ChatScreenState extends State<ChatScreen> {
 
 
 
-  // Um unico painel centralizado, com margens que diminuem nos celulares
-  // estreitos. O conteudo cresce verticalmente e rola: nunca e comprimido
-  // a uma altura fixa nem cortado quando o tamanho da fonte aumenta.
-  Widget _buildAdaptivePanel({required Widget child}) {
+  Widget _navigationHeader() => _ChatHeader(
+    auth: _auth, progress: _progress, currentSection: _currentSectionName,
+    inPlanFlow: _currentQuestion >= 0,
+    currentStep: _visibleCurrentStep, totalSteps: _visibleTotalSteps,
+  );
+
+  // Single portrait per question; the navigation header scrolls with the card.
+  Widget _buildAdaptivePanel({required Widget child, required String section}) {
     return LayoutBuilder(builder: (context, constraints) {
       final width = constraints.maxWidth;
-      final compact = width < 360;
-      final lowHeight = MediaQuery.sizeOf(context).height < 700;
-      final outer = compact ? 8.0 : width < 430 ? 12.0 : 20.0;
-      final inner = compact ? 12.0 : width < 430 ? 16.0 : 24.0;
+      final outer = width < 360 ? 8.0 : width < 430 ? 12.0 : 20.0;
       return SingleChildScrollView(
         key: const Key('petita_cards_scroll'),
         controller: _cardScrollController,
         keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
-        padding: EdgeInsets.fromLTRB(
-          outer, lowHeight ? 8 : 16, outer, 20,
-        ),
-        child: Center(
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 660),
-            child: Material(
-              color: Colors.white,
-              elevation: 1.5,
-              borderRadius: BorderRadius.circular(compact ? 18 : 24),
-              child: Container(
-                width: double.infinity,
-                padding: EdgeInsets.all(inner),
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(compact ? 18 : 24),
-                  border: Border.all(color: const Color(0xFFEDE3F8)),
-                ),
-                child: child,
-              ),
+        padding: EdgeInsets.fromLTRB(outer, 4, outer, 20),
+        child: Center(child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 660),
+          child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+            _navigationHeader(),
+            Padding(
+              padding: const EdgeInsets.only(top: 5, bottom: 14),
+              child: Row(children: [
+                Flexible(child: Text(section.toUpperCase(), style: const TextStyle(
+                  color: AppColors.primaryPink, fontSize: 12, fontWeight: FontWeight.w800, letterSpacing: .6))),
+                const SizedBox(width: 9),
+                const Expanded(child: Divider(color: AppColors.softGray)),
+              ]),
             ),
-          ),
-        ),
+            if (_petitaSearching)
+              _PetitaTypingBubble(dotCount: _typingDots, preparingQuestion: true)
+            else
+              Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                _PetitaPortrait(size: width < 360 ? 38 : 50, key: const Key('petita_question_avatar')),
+                const SizedBox(width: 12),
+                Expanded(child: _PetitaSpeechSurface(
+                  key: const Key('petita_question_bubble'),
+                  padding: EdgeInsets.all(width < 360 ? 11 : 15),
+                  child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+                    const _PetitaSpeaker(), const SizedBox(height: 7), child,
+                  ]),
+                )),
+              ]),
+          ]),
+        )),
       );
     });
   }
@@ -1033,11 +1042,8 @@ class _ChatScreenState extends State<ChatScreen> {
       'Prefiro não informar',
     ];
     return _buildAdaptivePanel(
+      section: 'Preferência de tratamento',
       child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-        const Text('COMO PREFERE QUE EU ME REFIRA A VOCÊ?', style: TextStyle(
-          fontWeight: FontWeight.bold, color: AppColors.primaryPink,
-        )),
-        const SizedBox(height: 10),
         const Text('Antes de continuar, como prefere que a Petita e a equipe se refiram a você?',
             style: TextStyle(fontSize: 19, height: 1.3, fontWeight: FontWeight.bold)),
         const SizedBox(height: 10),
@@ -1069,7 +1075,11 @@ class _ChatScreenState extends State<ChatScreen> {
     ];
     final explanation = BirthPlanExplanations.forQuestion(q.id);
     final compact = MediaQuery.sizeOf(context).width < 360;
+    final isSectionStart = _currentQuestion == 0 || _questions[_currentQuestion - 1].section != q.section;
+    final introduction = isSectionStart || q.id == 'ubs_referencia' ? _introForQuestion(q) : '';
+    final intro = ChatMessage(text: introduction, isUser: false, addressByName: true).textForAccount(signedIn: _auth?.signedIn == true, accountName: _auth?.user?['name']);
     return _buildAdaptivePanel(
+      section: _displayWording(q.section),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
@@ -1077,16 +1087,13 @@ class _ChatScreenState extends State<ChatScreen> {
             Text(_treatmentAcknowledgement!, style: const TextStyle(color: AppColors.petDarkBlue, height: 1.3)),
             const SizedBox(height: 14),
           ],
-          Text(_displayWording(q.section).toUpperCase(),
-              style: const TextStyle(
-                color: AppColors.primaryPink,
-                fontWeight: FontWeight.w800,
-                letterSpacing: 0.5,
-              )),
-          const SizedBox(height: 9),
+          if (introduction.isNotEmpty) ...[
+            Text(intro, style: const TextStyle(color: Color(0xFF6F617F), height: 1.4, fontSize: 14)),
+            const SizedBox(height: 9),
+          ],
           Text(_displayWording(q.question),
               style: TextStyle(
-                fontSize: compact ? 19 : 21,
+                fontSize: compact ? 17 : 19,
                 height: 1.3,
                 fontWeight: FontWeight.w800,
                 color: AppColors.petDarkBlue,
@@ -1132,9 +1139,9 @@ class _ChatScreenState extends State<ChatScreen> {
                   color: AppColors.petOrange, fontWeight: FontWeight.bold)),
             ),
           if (_writingModeSelected)
-            const Semantics(
+            Semantics(
               liveRegion: true,
-              child: Padding(
+              child: const Padding(
                 padding: EdgeInsets.fromLTRB(6, 0, 6, 10),
                 child: Text(
                   'Modo escrita ativado. Digite sua resposta abaixo.',
@@ -1201,26 +1208,6 @@ class _ChatScreenState extends State<ChatScreen> {
       body: SafeArea(
         child: Column(
           children: [
-            _ChatHeader(
-              auth: _auth,
-              progress: _progress,
-              currentSection: _currentSectionName,
-              inPlanFlow: _currentQuestion >= 0,
-              currentStep: _visibleCurrentStep,
-              totalSteps: _visibleTotalSteps,
-            ),
-            if (!_awaitingPronouns && _currentQuestion < 0)
-              Align(
-                alignment: Alignment.centerRight,
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 14),
-                  child: TextButton.icon(
-                    onPressed: () => Navigator.pushNamed(context, AppRoutes.planSync),
-                    icon: const Icon(Icons.cloud_upload_outlined, size: 19),
-                    label: const Text('Sincronizar meu plano'),
-                  ),
-                ),
-              ),
             Expanded(
               child: _awaitingPronouns
                   ? _buildPronounsCard()
@@ -1229,8 +1216,17 @@ class _ChatScreenState extends State<ChatScreen> {
                       : ListView.builder(
                 controller: _scrollController,
                 padding: const EdgeInsets.fromLTRB(14, 14, 14, 14),
-                itemCount: _messages.length + (_petitaSearching ? 1 : 0),
-                itemBuilder: (context, index) {
+                itemCount: 1 + _messages.length + (_petitaSearching ? 1 : 0),
+                itemBuilder: (context, itemIndex) {
+                   if (itemIndex == 0) return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+                     _navigationHeader(),
+                     Align(alignment: Alignment.centerRight, child: TextButton.icon(
+                       onPressed: () => Navigator.pushNamed(context, AppRoutes.planSync),
+                       icon: const Icon(Icons.cloud_upload_outlined, size: 19),
+                       label: const Text('Sincronizar meu plano'),
+                     )),
+                   ]);
+                   final index = itemIndex - 1;
                   if (_petitaSearching && index == _messages.length) {
                     return _PetitaTypingBubble(dotCount: _typingDots);
                   }
@@ -1239,7 +1235,7 @@ class _ChatScreenState extends State<ChatScreen> {
                     _PetitaChatBubble(text: msg.textForAccount(signedIn: _auth?.signedIn == true, accountName: _auth?.user?['name']), isUser: msg.isUser),
                     if (!msg.isUser && msg.options.isNotEmpty && index == activeOptionsIndex)
                       Padding(
-                        padding: const EdgeInsets.only(left: 10, top: 8, bottom: 14),
+                        padding: const EdgeInsets.only(left: 46, top: 8, bottom: 14),
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.stretch,
                           children: msg.options.map((o) {
@@ -1297,221 +1293,149 @@ class _ChatScreenState extends State<ChatScreen> {
 }
 
 class _ChatHeader extends StatelessWidget {
-  const _ChatHeader({
-    required this.auth,
-    required this.progress,
-    required this.currentSection,
-    required this.inPlanFlow,
-    required this.currentStep,
-    required this.totalSteps,
-  });
-
+  const _ChatHeader({required this.auth, required this.progress,
+    required this.currentSection, required this.inPlanFlow,
+    required this.currentStep, required this.totalSteps});
   final InstitutionalAuth? auth;
   final double progress;
   final String currentSection;
   final bool inPlanFlow;
-  final int currentStep;
-  final int totalSteps;
+  final int currentStep, totalSteps;
 
   @override
   Widget build(BuildContext context) {
-    final size = MediaQuery.sizeOf(context);
-    final narrow = size.width < 370;
-    final short = size.height < 700;
+    final short = MediaQuery.sizeOf(context).height < 700;
     final keyboardVisible = MediaQuery.viewInsetsOf(context).bottom > 0;
-    return Container(
-      padding: EdgeInsets.fromLTRB(
-        narrow ? 8 : 16,
-        short ? 6 : 12,
-        narrow ? 8 : 16,
-        short ? 8 : 16,
-      ),
-      decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          colors: [Color(0xFF6332AB), Color(0xFFAB53D8), Color(0xFFE56BAC)],
-        ),
-        boxShadow: [
-          BoxShadow(color: Colors.black.withAlpha(10),
-              blurRadius: 12, offset: const Offset(0, 5)),
-        ],
-      ),
+    return Padding(
+      key: const Key('petita_scroll_header'),
+      padding: EdgeInsets.only(bottom: short ? 9 : 14),
       child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
         Row(children: [
-          IconButton(
-            tooltip: 'Voltar',
-            visualDensity: VisualDensity.compact,
-            onPressed: () => Navigator.pop(context),
-            icon: const Icon(Icons.arrow_back, color: Colors.white),
-          ),
-          Container(
-            padding: const EdgeInsets.all(3),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(14),
-            ),
-            child: CircleAvatar(
-              radius: narrow ? 16 : 19,
-              backgroundColor: AppColors.softPink,
-              child: ClipOval(child: Image.asset(
-                  'assets/images/petita.png', fit: BoxFit.cover)),
-            ),
-          ),
-          const SizedBox(width: 9),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text('Petita',
-                    style: TextStyle(
-                        fontWeight: FontWeight.w900,
-                        color: Colors.white, fontSize: 19)),
-                if (!short && !narrow)
-                  const Text('Com você em cada escolha 💗',
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(color: Colors.white, fontSize: 12)),
-              ],
-            ),
-          ),
-          if (inPlanFlow) IconButton(
-            tooltip: 'Sincronizar meu plano',
-            visualDensity: VisualDensity.compact,
+          IconButton(tooltip: 'Voltar', onPressed: () => Navigator.pop(context),
+            icon: const Icon(Icons.arrow_back, color: AppColors.petDarkBlue)),
+          Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            const Text('Petita', style: TextStyle(color: AppColors.petDarkBlue, fontSize: 19, fontWeight: FontWeight.w800)),
+            if (!short && !keyboardVisible) const Text('Seu plano de parto, com carinho.',
+              style: TextStyle(color: Color(0xFF736681), fontSize: 11)),
+          ])),
+          if (inPlanFlow) IconButton(tooltip: 'Sincronizar meu plano',
             onPressed: () => Navigator.pushNamed(context, AppRoutes.planSync),
-            icon: const Icon(Icons.cloud_upload_outlined, color: Colors.white),
-          ),
-          AccountHeaderMenu(auth: auth, color: Colors.white, roleLabel: 'Plano de parto'),
+            icon: const Icon(Icons.cloud_upload_outlined, color: AppColors.petDarkBlue)),
+          AccountHeaderMenu(auth: auth, color: AppColors.petDarkBlue, roleLabel: 'Plano de parto'),
         ]),
         if (inPlanFlow && !keyboardVisible) ...[
-          SizedBox(height: short ? 5 : 10),
-          if (narrow)
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(currentSection, maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                        fontWeight: FontWeight.w800, color: Colors.white)),
-                Text('Etapa $currentStep de $totalSteps',
-                    style: const TextStyle(
-                        fontSize: 12, color: Colors.white,
-                        fontWeight: FontWeight.w800)),
-              ],
-            )
-          else
-            Row(children: [
-              Expanded(
-                child: Text(currentSection, maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                        fontWeight: FontWeight.w800, color: Colors.white)),
-              ),
-              const SizedBox(width: 10),
-              Text('Etapa $currentStep de $totalSteps',
-                  style: const TextStyle(
-                      fontSize: 12, color: Colors.white,
-                      fontWeight: FontWeight.w800)),
-            ]),
-          SizedBox(height: short ? 5 : 8),
-          ClipRRect(
-            borderRadius: BorderRadius.circular(999),
-            child: LinearProgressIndicator(
-              value: progress,
-              minHeight: short ? 5 : 8,
-              backgroundColor: Colors.white24,
-              valueColor: const AlwaysStoppedAnimation<Color>(Colors.white),
-            ),
-          ),
+          const SizedBox(height: 4),
+          Semantics(label: currentSection, child: Text('Etapa $currentStep de $totalSteps',
+            style: const TextStyle(color: Color(0xFF736681), fontSize: 12, fontWeight: FontWeight.w700))),
+          const SizedBox(height: 6),
+          ClipRRect(borderRadius: BorderRadius.circular(999),
+            child: LinearProgressIndicator(value: progress, minHeight: 5,
+              backgroundColor: AppColors.softGray,
+              valueColor: const AlwaysStoppedAnimation<Color>(AppColors.primaryPink))),
         ],
       ]),
     );
   }
+}
+
+class _PetitaPortrait extends StatelessWidget {
+  const _PetitaPortrait({super.key, required this.size});
+  final double size;
+  @override
+  Widget build(BuildContext context) => Semantics(
+    label: 'Petita, personagem do aplicativo', image: true,
+    child: Container(
+      width: size, height: size, padding: const EdgeInsets.all(2),
+      decoration: BoxDecoration(shape: BoxShape.circle, color: Colors.white,
+        boxShadow: [BoxShadow(color: AppColors.primaryPink.withAlpha(28), blurRadius: 7, offset: const Offset(0, 2))]),
+      child: ClipOval(child: ColoredBox(color: AppColors.softPink,
+        child: Image.asset('assets/images/petita.png', fit: BoxFit.cover, excludeFromSemantics: true))),
+    ),
+  );
+}
+
+class _PetitaSpeaker extends StatelessWidget {
+  const _PetitaSpeaker();
+  @override
+  Widget build(BuildContext context) => const Text.rich(TextSpan(
+    text: 'Petita', style: TextStyle(fontSize: 12, color: Color(0xFF8B49BF), fontWeight: FontWeight.w800),
+    children: [TextSpan(text: '  • sua guia', style: TextStyle(fontSize: 11, color: Color(0xFF736681), fontWeight: FontWeight.w400))],
+  ));
+}
+
+class _PetitaSpeechSurface extends StatelessWidget {
+  const _PetitaSpeechSurface({super.key, required this.child, this.padding = const EdgeInsets.all(14)});
+  final Widget child;
+  final EdgeInsets padding;
+  @override
+  Widget build(BuildContext context) => Stack(clipBehavior: Clip.none, children: [
+    Container(
+      padding: padding,
+      decoration: BoxDecoration(color: Colors.white, border: Border.all(color: const Color(0xFFE7DCF2)),
+        borderRadius: const BorderRadius.only(topLeft: Radius.circular(20), topRight: Radius.circular(20), bottomLeft: Radius.circular(8), bottomRight: Radius.circular(20)),
+        boxShadow: [BoxShadow(color: Colors.black.withAlpha(9), blurRadius: 9, offset: const Offset(0, 3))]),
+      child: child,
+    ),
+    Positioned(left: -11, top: 13, child: IgnorePointer(
+      child: CustomPaint(key: const Key('petita_speech_tail'), size: const Size(12, 21), painter: _SpeechTailPainter()),
+    )),
+  ]);
+}
+
+class _SpeechTailPainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    final path = Path()..moveTo(size.width, 0)..lineTo(1, size.height / 2)..lineTo(size.width, size.height);
+    canvas.drawPath(path, Paint()..color = Colors.white..style = PaintingStyle.fill);
+    canvas.drawPath(path, Paint()..color = const Color(0xFFE7DCF2)..style = PaintingStyle.stroke..strokeWidth = 1);
+  }
+  @override
+  bool shouldRepaint(covariant _SpeechTailPainter oldDelegate) => false;
 }
 
 class _PetitaChatBubble extends StatelessWidget {
   const _PetitaChatBubble({required this.text, required this.isUser});
   final String text;
   final bool isUser;
-
   @override
   Widget build(BuildContext context) {
-    final bubble = Container(
-      constraints: const BoxConstraints(maxWidth: 360),
-      padding: const EdgeInsets.symmetric(horizontal: 17, vertical: 16),
-      decoration: BoxDecoration(
-        color: isUser ? const Color(0xFF8741C6) : Colors.white,
-        borderRadius: BorderRadius.only(
-          topLeft: const Radius.circular(20),
-          topRight: const Radius.circular(20),
-          bottomLeft: Radius.circular(isUser ? 20 : 6),
-          bottomRight: Radius.circular(isUser ? 6 : 20),
-        ),
-        border: isUser ? null : Border.all(color: const Color(0xFFEDE3F8)),
-        boxShadow: [BoxShadow(color: Colors.black.withAlpha((255 * 0.04).round()), blurRadius: 8, offset: const Offset(0, 3))],
-      ),
-      child: Text(text, style: TextStyle(color: isUser ? Colors.white : AppColors.textPrimary, height: 1.28, fontWeight: isUser ? FontWeight.w700 : FontWeight.w500)),
-    );
-
+    final content = Text(text, style: TextStyle(color: isUser ? Colors.white : AppColors.textPrimary,
+      height: 1.35, fontWeight: isUser ? FontWeight.w600 : FontWeight.w400));
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 7),
-      child: Row(
-        mainAxisAlignment: isUser ? MainAxisAlignment.end : MainAxisAlignment.start,
-        crossAxisAlignment: CrossAxisAlignment.end,
-        children: [
-          if (!isUser) ...[
-            CircleAvatar(radius: 17, backgroundColor: AppColors.softPink, child: ClipOval(child: Image.asset('assets/images/petita.png', fit: BoxFit.cover))),
-            const SizedBox(width: 8),
-          ],
-          Flexible(child: bubble),
-        ],
-      ),
+      child: Row(mainAxisAlignment: isUser ? MainAxisAlignment.end : MainAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.start, children: [
+          if (!isUser) ...[const _PetitaPortrait(size: 40), const SizedBox(width: 12)],
+          Flexible(child: ConstrainedBox(constraints: const BoxConstraints(maxWidth: 540),
+            child: isUser ? Container(padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 12),
+              decoration: const BoxDecoration(color: Color(0xFF8741C6), borderRadius: BorderRadius.only(
+                topLeft: Radius.circular(20), topRight: Radius.circular(6), bottomLeft: Radius.circular(20), bottomRight: Radius.circular(20))),
+              child: content) : _PetitaSpeechSurface(child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min,
+                children: [const _PetitaSpeaker(), const SizedBox(height: 6), content])),
+          )),
+        ]),
     );
   }
 }
 
 class _PetitaTypingBubble extends StatelessWidget {
-  const _PetitaTypingBubble({required this.dotCount});
-
+  const _PetitaTypingBubble({required this.dotCount, this.preparingQuestion = false});
   final int dotCount;
-
+  final bool preparingQuestion;
   @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 7),
-      child: Row(crossAxisAlignment: CrossAxisAlignment.end, children: [
-        CircleAvatar(
-          radius: 17,
-          backgroundColor: AppColors.softPink,
-          child: ClipOval(child: Image.asset('assets/images/petita.png', fit: BoxFit.cover)),
-        ),
-        const SizedBox(width: 8),
-        Flexible(
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: const BorderRadius.only(
-                topLeft: Radius.circular(20),
-                topRight: Radius.circular(20),
-                bottomLeft: Radius.circular(6),
-                bottomRight: Radius.circular(20),
-              ),
-              border: Border.all(color: AppColors.softPink),
-            ),
-            child: Text.rich(
-              TextSpan(children: [
-                const TextSpan(text: 'Petita está buscando uma resposta', style: TextStyle(fontWeight: FontWeight.w600)),
-                TextSpan(
-                  text: List.filled(dotCount, '.').join(),
-                  style: const TextStyle(fontWeight: FontWeight.w900, color: AppColors.primaryPink),
-                ),
-              ]),
-              softWrap: true,
-            ),
-          ),
-        ),
-      ]),
-    );
-  }
+  Widget build(BuildContext context) => Padding(
+    padding: const EdgeInsets.symmetric(vertical: 7),
+    child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      const _PetitaPortrait(size: 40), const SizedBox(width: 12),
+      Flexible(child: _PetitaSpeechSurface(child: Text.rich(TextSpan(children: [
+        TextSpan(text: preparingQuestion ? 'Petita está preparando a próxima pergunta' : 'Petita está buscando uma resposta',
+          style: const TextStyle(fontWeight: FontWeight.w500, color: AppColors.textPrimary)),
+        TextSpan(text: List.filled(dotCount, '.').join(),
+          style: const TextStyle(fontWeight: FontWeight.w900, color: AppColors.primaryPink)),
+      ])))),
+    ]),
+  );
 }
 
 class _ChoicePill extends StatelessWidget {
