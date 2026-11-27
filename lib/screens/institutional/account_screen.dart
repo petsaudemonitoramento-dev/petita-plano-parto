@@ -218,6 +218,36 @@ class _InstitutionalAccountScreenState extends State<InstitutionalAccountScreen>
     }
   }
 
+  Future<void> _openLocalProfile() async {
+    final user = _runtime?.auth.user;
+    final data = <String, String>{};
+    if (_profile?['role'] == 'patient' && user != null) {
+      if (user['name'] is String) data['name'] = user['name'] as String;
+      if (user['email'] is String) data['email'] = user['email'] as String;
+      if (_approvedUbs != null) data['ubsCode'] = _approvedUbs!;
+    }
+    await Navigator.pushNamed(context, AppRoutes.profile, arguments: data);
+    if (!mounted) return;
+    try {
+      final local = await StorageService().loadProfile().timeout(const Duration(seconds: 5));
+      if (!mounted) return;
+      setState(() {
+        _localEmail = local?.email;
+        _localUbs = local?.ubsCode;
+        _localPrefill = local != null;
+        if (local != null && _runtime?.auth.signedIn != true) {
+          _name.text = local.name;
+          _email.text = local.email;
+        }
+        if (_approvedUbs == null && !_hasPendingUbs && _ubs != _unregisteredUbs &&
+            local != null && local.email.toLowerCase() == '${_runtime?.auth.user?['email']}'.toLowerCase() &&
+            _units.any((u) => u['code'] == local.ubsCode)) {
+          _ubs = local.ubsCode;
+        }
+      });
+    } catch (_) { /* Local editing remains accessible without a network connection. */ }
+  }
+
   Future<void> _chooseUbs(String? value) async {
     setState(() => _ubs = value);
     final runtime = _runtime;
@@ -296,6 +326,20 @@ class _InstitutionalAccountScreenState extends State<InstitutionalAccountScreen>
         appBar: AppBar(title: Text(widget.professional ? 'Acesso profissional' : 'Minha conta')),
         body: SafeArea(
             child: ListView(padding: const EdgeInsets.all(20), children: [
+          if (!widget.professional)
+            SectionCard(child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                const Text('Meus dados', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+                const SizedBox(height: 6),
+                const Text('Edite seu perfil e sua UBS para o plano de parto, mesmo sem internet. Não é necessário criar uma conta.'),
+                const SizedBox(height: 8),
+                OutlinedButton.icon(
+                  onPressed: _openLocalProfile,
+                  icon: const Icon(Icons.edit_outlined),
+                  label: const Text('Editar meus dados')),
+              ],
+            )),
           if (runtime == null)
             const SectionCard(
                 child: Text(
@@ -406,8 +450,6 @@ class _InstitutionalAccountScreenState extends State<InstitutionalAccountScreen>
                     TextButton(onPressed: _busy ? null : () => _switchMode('login'),
                         child: const Text('Voltar para entrar')),
                   ],
-                  TextButton(onPressed: _busy ? null : () => Navigator.maybePop(context),
-                      child: const Text('Continuar sem conta online')),
                 ])),
             if (runtime.auth.user != null)
               SectionCard(

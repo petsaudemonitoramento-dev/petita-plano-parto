@@ -131,6 +131,7 @@ void main() {
     expect(find.text('Verificação para acesso profissional'), findsNothing);
     expect(find.text('Área profissional e administrativa'), findsNothing);
     expect(find.text('Sincronização online opcional'), findsOneWidget);
+    expect(find.text('Editar meus dados'), findsOneWidget);
   });
   testWidgets('unregistered UBS is optional and never sends a fake request', (tester) async {
     tester.view.physicalSize = const Size(900, 6000);
@@ -160,8 +161,20 @@ void main() {
     await tester.pumpWidget(MaterialApp(home: InstitutionalAccountScreen(professional: true, runtime: runtime('patient', calls))));
     await finishAction(tester, calls);
     expect(find.text('Acesso profissional'), findsOneWidget);
+    expect(find.text('Editar meus dados'), findsNothing);
     expect(find.text('Verificação para acesso profissional'), findsOneWidget);
     expect(find.text('Sincronização online opcional'), findsNothing);
+  });
+  testWidgets('local profile is accessible without online runtime or login', (tester) async {
+    await tester.pumpWidget(MaterialApp(
+      home: const InstitutionalAccountScreen(),
+      routes: {'/profile': (_) => const Scaffold(body: Text('Editor local'))},
+    ));
+    await tester.pumpAndSettle();
+    expect(find.text('Editar meus dados'), findsOneWidget);
+    await tester.tap(find.text('Editar meus dados'));
+    await tester.pumpAndSettle();
+    expect(find.text('Editor local'), findsOneWidget);
   });
   testWidgets(
       'unconfigured account gives offline availability message without simulated auth',

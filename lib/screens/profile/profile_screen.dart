@@ -1,4 +1,3 @@
-import '../../config/app_routes.dart';
 import '../../widgets/local_persistence_feedback.dart';
 import 'package:flutter/material.dart';
 import '../../config/app_theme.dart';
@@ -23,12 +22,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
   final _customUbsController = TextEditingController();
   List<UbsUnit> _officialUnits = [];
   UserProfile? _profile;
-  UserProfile? _onlineProfile;
   String? _selectedUbsCode;
   bool _manualUbsWarningShown = false;
   bool _loading = true;
   bool _loadFailed = false;
-  String _onlineMessage = 'Modo offline ativo. Faça login para sincronizar quando houver internet.';
 
   @override
   void initState() {
@@ -47,20 +44,22 @@ class _ProfileScreenState extends State<ProfileScreen> {
       if (mounted) setState(() { _loading = false; _loadFailed = true; });
       return;
     }
-    UserProfile? onlineProfile;
     if (!mounted) return;
-    final source = onlineProfile ?? profile;
+    final source = profile;
+    final account = ModalRoute.of(context)?.settings.arguments;
+    final accountData = account is Map<String, String> ? account : const <String, String>{};
     setState(() {
       _officialUnits = units;
       _profile = profile;
-      _onlineProfile = onlineProfile;
       _selectedUbsCode = source?.ubsCode;
-      _nameController.text = source?.name ?? '';
-      _emailController.text = source?.email ?? '';
+      _nameController.text = source?.name ?? accountData['name'] ?? '';
+      _emailController.text = source?.email ?? accountData['email'] ?? '';
+      if (source == null && units.any((u) => u.code == accountData['ubsCode'])) {
+        _selectedUbsCode = accountData['ubsCode'];
+      }
       if (source?.ubsCode == null && source?.ubsName != null) {
         _customUbsController.text = source!.ubsName!;
       }
-      _onlineMessage = 'Salve seus dados neste aparelho para usá-los no plano de parto. Criar uma conta online é opcional.';
       _loading = false;
     });
   }
@@ -100,10 +99,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
     setState(() => _profile = profile);
     ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Cadastro local salvo.')));
     return true;
-  }
-
-  Future<void> _openInstitutional() async {
-    await Navigator.pushNamed(context, AppRoutes.institutional, arguments: 'login');
   }
 
   Future<void> _clear() async {
@@ -152,20 +147,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
       ))),
     );
     return Scaffold(
-      appBar: AppBar(title: const Text('Meu perfil neste aparelho')),
+      appBar: AppBar(title: const Text('Meus dados')),
       body: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(20),
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            AppButton(label: 'Entrar / minha conta', icon: Icons.account_circle_outlined,
-                outlined: true, onPressed: _openInstitutional),
-            const SizedBox(height: 12),
             SectionCard(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              const Text('Cadastro neste aparelho', style: TextStyle(fontSize: 22, fontWeight: FontWeight.w900, color: AppColors.petDarkBlue)),
+              const Text('Dados do meu plano de parto', style: TextStyle(fontSize: 22, fontWeight: FontWeight.w900, color: AppColors.petDarkBlue)),
               const SizedBox(height: 8),
-              Text(_onlineMessage),
-              const SizedBox(height: 8),
-              const Text('Você pode montar, editar e gerar seu plano de parto sem internet. Para acessar sua conta online, use o botão Minha conta, sem precisar preencher este formulário.'),
+              const Text('Edite seu nome, e-mail de contato e UBS para o plano de parto. Estes dados ficam neste aparelho e podem ser usados sem internet. Alterar este e-mail não modifica o e-mail de login da conta online.'),
             ])),
             SectionCard(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
               TextField(controller: _nameController, decoration: const InputDecoration(labelText: 'Nome da gestante')),
@@ -227,14 +217,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
             AppButton(label: 'Salvar cadastro offline', icon: Icons.save_outlined, onPressed: _saveLocal),
             const SizedBox(height: 10),
             AppButton(label: 'Limpar cadastro local', icon: Icons.delete_outline, outlined: true, onPressed: _clear),
-            if (_profile != null || _onlineProfile != null)
+            if (_profile != null)
               SectionCard(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                 const Text('Perfil ativo', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900, color: AppColors.primaryPink)),
                 const SizedBox(height: 8),
-                Text('Nome: ${(_onlineProfile ?? _profile)!.name}'),
-                Text('E-mail: ${(_onlineProfile ?? _profile)!.email}'),
-                Text('Perfil: ${(_onlineProfile ?? _profile)!.role}'),
-                Text('UBS: ${(_onlineProfile ?? _profile)!.ubsName ?? (_onlineProfile ?? _profile)!.ubsCode ?? 'Não informada'}'),
+                Text('Nome: ${_profile!.name}'),
+                Text('E-mail: ${_profile!.email}'),
+                Text('UBS: ${_profile!.ubsName ?? _profile!.ubsCode ?? 'Não informada'}'),
               ])),
           ]),
         ),
