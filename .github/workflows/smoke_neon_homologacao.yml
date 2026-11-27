@@ -21,7 +21,7 @@ jobs:
       - run: node tool/smoke_neon_homologacao.mjs
   browser:
     if: github.event.pull_request.head.repo.full_name == github.repository && github.event.pull_request.head.ref == 'feat/neon-enrollment-20261126'
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 8
     steps:
       - uses: actions/checkout@v4
