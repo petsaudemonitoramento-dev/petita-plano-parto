@@ -18,11 +18,13 @@ class DelayedFixture extends FixtureAuthTransport {
 void main() {
   final url = Uri.parse('https://fixture.neon.tech/neondb/auth');
   final appOrigin = Uri.parse('https://petita.example.invalid');
-  http.Response ok(http.Request r, Object? value) =>
+  const cookie = '__Secure-neon-auth.session_token=signed-fixture';
+  const jwt = 'fixture.header.signature';
+  http.Response ok(http.Request r, Object? value, {bool sessionCookie = false, String? accessJwt}) =>
       http.Response(jsonEncode(value), 200,
-          headers: {'content-type': 'application/json'}, request: r);
+          headers: {'content-type': 'application/json', if (sessionCookie) 'set-cookie': '$cookie; Secure; HttpOnly; Path=/', if (accessJwt != null) 'set-auth-jwt': accessJwt}, request: r);
   test(
-      'native signs in, restores bearer session from vault and obtains fresh JWT without persisting password/JWT',
+      'native signs in, restores signed cookie from vault and obtains fresh JWT without persisting password/JWT',
       () async {
     final vault = MemoryVault();
     var tokenCalls = 0;
@@ -33,8 +35,9 @@ void main() {
         return ok(r, {
           'token': 'opaque-session-fixture',
           'user': {'id': 'fixture-a'}
-        });
-      expect(r.headers['Authorization'], 'Bearer opaque-session-fixture');
+        }, sessionCookie: true);
+      expect(r.headers['Cookie'], cookie);
+      expect(r.headers['Authorization'], isNull);
       if (r.url.path.endsWith('/get-session'))
         return ok(r, {
           'user': {'id': 'fixture-a', 'emailVerified': false},
@@ -44,22 +47,39 @@ void main() {
           }
         });
       tokenCalls++;
-      return ok(r, {'token': 'short-lived-api-fixture'});
+      return ok(r, {'token': 'fixture.header.signature'});
     });
     final auth = InstitutionalAuth(NativeNeonAuthTransport(url, vault, client, appOrigin: appOrigin));
     await auth.signup('Fixture', 'fixture@example.invalid', 'PASSWORD-NEVER-PERSIST');
     await auth.login('fixture@example.invalid', 'PASSWORD-NEVER-PERSIST');
     expect(auth.signedIn, true);
-    expect(await auth.token(), 'short-lived-api-fixture');
+    expect(await auth.token(), 'fixture.header.signature');
     final restored =
         InstitutionalAuth(NativeNeonAuthTransport(url, vault, client, appOrigin: appOrigin));
     await restored.restore();
     expect(restored.subject, 'fixture-a');
-    expect(await restored.token(), 'short-lived-api-fixture');
+    expect(await restored.token(), 'fixture.header.signature');
     expect(tokenCalls, 2);
+    expect(jsonEncode(vault.values), contains(cookie));
+    expect(jsonEncode(vault.values), isNot(contains('opaque-session-fixture')));
     expect(jsonEncode(vault.values), isNot(contains('PASSWORD-NEVER-PERSIST')));
     expect(
-        jsonEncode(vault.values), isNot(contains('short-lived-api-fixture')));
+        jsonEncode(vault.values), isNot(contains('fixture.header.signature')));
+  });
+  test('native uses the JWT issued in get-session header and not the opaque session token', () async {
+    final vault = MemoryVault();
+    final client = MockClient((r) async {
+      if (r.url.path.endsWith('/sign-in/email')) {
+        return ok(r, {'token':'opaque-fixture','user':{'id':'fixture-a'}}, sessionCookie:true);
+      }
+      expect(r.headers['Cookie'], cookie);
+      expect(r.url.path, endsWith('/get-session'));
+      return ok(r, {'user': {'id':'fixture-a'}, 'session': {'expiresAt': DateTime.now().add(const Duration(hours:1)).toIso8601String(), 'token':'opaque'}}, accessJwt:jwt);
+    });
+    final auth = InstitutionalAuth(NativeNeonAuthTransport(url,vault,client,appOrigin:appOrigin));
+    await auth.login('fixture@example.invalid','fixture-password');
+    expect(await auth.token(),jwt);
+    expect(jsonEncode(vault.values),isNot(contains(jwt)));
   });
   test(
       'logout clears native secret and gates token even when server logout fails',
@@ -70,7 +90,7 @@ void main() {
         return ok(r, {
           'token': 'opaque-fixture',
           'user': {'id': 'fixture-a'}
-        });
+        }, sessionCookie: true);
       if (r.url.path.endsWith('/sign-out'))
         return http.Response('internal fixture', 503, request: r);
       return ok(r, {
@@ -153,7 +173,7 @@ void main() {
             : {
                 'user': {'id': 'fixture-a', 'emailVerified': true},
                 'session': {'expiresAt': '2020-01-01T00:00:00Z'}
-              }));
+              }, sessionCookie: r.url.path.endsWith('/sign-in/email')));
     final auth = InstitutionalAuth(NativeNeonAuthTransport(url, vault, client, appOrigin: appOrigin));
     await expectLater(auth.login('fixture@example.invalid', 'fixture-password'),
         throwsA(isA<InstitutionalAuthException>()));

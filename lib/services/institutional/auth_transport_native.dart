@@ -5,9 +5,10 @@ import '../../config/institutional_config.dart';
 import 'auth_transport.dart';
 import 'secret_vault.dart';
 
-// Uses the branch's published Better Auth OpenAPI REST contract, never Google
-// tokens or the JWT anonymous endpoint. Native bearer support needs real-device
-// OTP validation before release. Passwords/OTP/JWT are never persisted here.
+// Neon issues a signed session cookie to the native HTTP client. Only this
+// origin-scoped cookie is stored in the secure vault. The short-lived JWT is
+// retrieved from the authenticated session and never persisted.
+typedef _AuthResponse = ({Map<String, dynamic> data, String? cookie, String? jwt});
 AuthTransport createAuthTransport(
         Uri url, SecretVault vault, http.Client client) =>
     NativeNeonAuthTransport(url, vault, client,
@@ -41,7 +42,18 @@ class NativeNeonAuthTransport implements AuthTransport {
   }
   String get _key => 'petita.auth.session.v1:${base.toString()}';
 
-  Future<Map<String, dynamic>> _performRequest(
+  static const _cookieName = '__Secure-neon-auth.session_token';
+  String? _sessionCookie(String? header) {
+    if (header == null || header.length > 32768) return null;
+    final match = RegExp(r'(?:^|,\s*)__Secure-neon-auth\.session_token=([^;,\s]+)').firstMatch(header);
+    final value = match?.group(1);
+    if (value == null || value.isEmpty || value.length > 8192) return null;
+    return '$_cookieName=$value';
+  }
+  bool _validCookie(String value) => value.length <= 8250 && RegExp(r'^__Secure-neon-auth\.session_token=[^;,\s]+$').hasMatch(value);
+  bool _isJwt(Object? value) => value is String && value.length <= 16384 && RegExp(r'^[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$').hasMatch(value);
+
+  Future<_AuthResponse> _performRequest(
       String method, String path, Map<String, dynamic>? data,
       {String? credential}) async {
     try {
@@ -52,8 +64,10 @@ class NativeNeonAuthTransport implements AuthTransport {
         // The configured institutional app origin must be registered in Neon.
         // Native HTTP does not supply an Origin header automatically.
         ..headers['Origin'] = appOrigin.origin;
-      if (credential != null)
-        req.headers['Authorization'] = 'Bearer $credential';
+      if (credential != null) {
+        if (!_validCookie(credential)) throw const InstitutionalAuthException(401);
+        req.headers['Cookie'] = credential;
+      }
       if (data != null) {
         req.headers['Content-Type'] = 'application/json';
         req.body = jsonEncode(data);
@@ -75,10 +89,11 @@ class NativeNeonAuthTransport implements AuthTransport {
         bytes.addAll(part);
       }
       final decoded = jsonDecode(utf8.decode(bytes));
-      if (decoded == null) return {};
-      if (decoded is! Map<String, dynamic>)
+      if (decoded != null && decoded is! Map<String, dynamic>)
         throw const InstitutionalAuthException(503);
-      return decoded;
+      return (data: (decoded as Map<String, dynamic>?) ?? {},
+          cookie: _sessionCookie(response.headers['set-cookie']),
+          jwt: response.headers['set-auth-jwt']);
     } on InstitutionalAuthException {
       rethrow;
     } catch (_) {
@@ -86,7 +101,7 @@ class NativeNeonAuthTransport implements AuthTransport {
     }
   }
 
-  Future<Map<String, dynamic>> _request(
+  Future<_AuthResponse> _request(
       String method, String path, Map<String, dynamic>? body,
       {String? credential}) async {
     try {
@@ -111,8 +126,15 @@ class NativeNeonAuthTransport implements AuthTransport {
       final raw = await vault.read(_key);
       if (raw == null) return;
       final data = jsonDecode(raw) as Map;
-      _credential = data['credential'] as String;
-      _subject = data['subject'] as String;
+      final cookie = data['credential'];
+      final subject = data['subject'];
+      if (cookie is! String || !_validCookie(cookie) || subject is! String || subject.isEmpty) {
+        // Old builds stored an opaque token, which Neon does not accept here.
+        await vault.delete(_key);
+        return;
+      }
+      _credential = cookie;
+      _subject = subject;
     } catch (_) {
       throw const InstitutionalAuthException(503);
     }
@@ -134,8 +156,10 @@ class NativeNeonAuthTransport implements AuthTransport {
     }
     if (action == 'session' || action == 'token') {
       if (_credential == null) throw const InstitutionalAuthException(401);
-      final session =
-          await _request('GET', '/get-session', null, credential: _credential);
+      final epoch = _generation;
+      final response = await _request('GET', '/get-session', null, credential: _credential);
+      if (epoch != _generation) throw const InstitutionalAuthException(401);
+      final session = response.data;
       final user = session['user'];
       final expires =
           DateTime.tryParse('${(session['session'] as Map?)?['expiresAt']}');
@@ -149,8 +173,12 @@ class NativeNeonAuthTransport implements AuthTransport {
         throw const InstitutionalAuthException(401);
       }
       if (action == 'session') return session;
-      // Fetch a fresh short-lived JWT via the session; no anonymous fallback.
-      return _request('GET', '/token', null, credential: _credential);
+      final candidate = response.jwt ?? (session['session'] as Map?)?['token'];
+      if (_isJwt(candidate)) return {'token': candidate};
+      final token = (await _request('GET', '/token', null, credential: _credential)).data['token'];
+      if (epoch != _generation) throw const InstitutionalAuthException(401);
+      if (!_isJwt(token)) throw const InstitutionalAuthException(503);
+      return {'token': token};
     }
     final routes = {
       'signup': '/sign-up/email',
@@ -163,16 +191,20 @@ class NativeNeonAuthTransport implements AuthTransport {
     final path = routes[action];
     if (path == null) throw const InstitutionalAuthException(400);
     final epoch = _generation;
-    final result = await _request('POST', path, body);
+    final response = await _request('POST', path, body);
     if (epoch != _generation) throw const InstitutionalAuthException(401);
-    if (result['token'] is String && result['user'] is Map) {
+    final result = response.data;
+    if (response.cookie != null && result['user'] is Map) {
       final subject = (result['user'] as Map)['id'];
       if (subject is! String || subject.isEmpty)
         throw const InstitutionalAuthException(503);
       await vault.write(_key,
-          jsonEncode({'credential': result['token'], 'subject': subject}));
-      _credential = result['token'] as String;
+          jsonEncode({'credential': response.cookie, 'subject': subject}));
+      if (epoch != _generation) { await vault.delete(_key); throw const InstitutionalAuthException(401); }
+      _credential = response.cookie;
       _subject = subject;
+    } else if (action == 'login') {
+      throw const InstitutionalAuthException(503);
     }
     return result;
   }
