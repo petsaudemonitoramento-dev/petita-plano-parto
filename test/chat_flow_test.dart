@@ -115,6 +115,28 @@ void main() {
         [questions[5].options.first]);
   });
 
+  testWidgets('finish selection is pink before confirmation, purple while saving, then advances', (tester) async {
+    await reachPriorities(tester);
+    final finish = find.widgetWithText(InkWell, 'Concluir seleção');
+    Color? fill() => (tester.widget<AnimatedContainer>(
+      find.descendant(of: finish, matching: find.byType(AnimatedContainer)).first
+    ).decoration as BoxDecoration).color;
+    await tester.ensureVisible(finish);
+    await tester.pumpAndSettle();
+    expect(fill(), const Color(0xFFC23880));
+    await tapChoice(tester, 'Sentir segurança');
+    expect(fill(), const Color(0xFFC23880));
+    await tester.ensureVisible(finish);
+    await tester.tap(finish);
+    await tester.pump();
+    expect(fill(), const Color(0xFF9B4DE0));
+    await advanceChat(tester);
+    expect((await StorageService().loadAnswers()).last.questionId, 'prioridade_parto');
+    expect((await StorageService().loadAnswers()).last.values, ['Sentir-me segura']);
+    expect(finish, findsNothing);
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('multiple choices and typed complement are both preserved',
       (tester) async {
     final questions = await BirthPlanFlowService().loadQuestions();

@@ -91,6 +91,7 @@ class _ChatScreenState extends State<ChatScreen> {
   int _currentQuestion = -1;
   bool _loading = true;
   bool _answering = false;
+  bool _confirmingSelection = false;
   bool _textInputEnabled = true;
   bool _awaitingPronouns = false;
   bool _pronounCustomInput = false;
@@ -453,12 +454,13 @@ class _ChatScreenState extends State<ChatScreen> {
     await _showCurrentQuestion();
   }
 
-  Future<void> _answerCurrentQuestion(List<String> values) async {
+  Future<void> _answerCurrentQuestion(List<String> values, {bool confirmSelection = false}) async {
     if (_answering || _currentQuestion < 0) return;
     final q = _questions[_currentQuestion];
     final cleaned = values.map((e) => e.trim()).where((e) => e.isNotEmpty).toList();
     if (cleaned.isEmpty) return;
     _answering = true;
+    if (confirmSelection) setState(() { _confirmingSelection = true; _cardFeedback = null; });
     final previousAnswers = List<BirthPlanAnswer>.from(_answers);
     try {
       _answers.removeWhere((a) => a.questionId == q.id);
@@ -477,7 +479,10 @@ class _ChatScreenState extends State<ChatScreen> {
       await _storage.saveAnswers(_answers);
       await _storage.resolveQuestionForConsultation(q.id);
       if (!mounted) return;
-
+      // Allow the confirmation color to be visible before leaving the card.
+      if (confirmSelection) await Future<void>.delayed(const Duration(milliseconds: 240));
+      if (!mounted) return;
+      _confirmingSelection = false;
       _treatmentAcknowledgement = null;
       _currentQuestion++;
       if (q.id == 'dpp' && gestationalEstimate != null &&
@@ -509,6 +514,7 @@ class _ChatScreenState extends State<ChatScreen> {
       if (mounted) showLocalPersistenceError(context);
     } finally {
       _answering = false;
+      if (_confirmingSelection && mounted) setState(() => _confirmingSelection = false);
     }
   }
 
@@ -825,7 +831,7 @@ class _ChatScreenState extends State<ChatScreen> {
           return;
         }
         setState(() => _messages.add(ChatMessage(text: _multiSelection.join(', '), isUser: true)));
-        _answerCurrentQuestion(_multiSelection.toList());
+        await _answerCurrentQuestion(_multiSelection.toList(), confirmSelection: true);
         return;
       }
       setState(() {
@@ -1112,7 +1118,7 @@ class _ChatScreenState extends State<ChatScreen> {
                     ? Icons.check_circle_rounded
                     : (option == 'Concluir seleção'
                         ? Icons.check_circle_outline : _optionIcon(option)),
-                selected: isSelected,
+                selected: isSelected || (option == 'Concluir seleção' && _confirmingSelection),
                 primary: option == 'Concluir seleção',
                 help: false,
                 onTap: () => _handleOption(option),
@@ -1245,7 +1251,7 @@ class _ChatScreenState extends State<ChatScreen> {
                               child: _ChoicePill(
                                 label: o,
                                 icon: isHelp ? Icons.lightbulb_outline_rounded : (isFinish ? Icons.check_circle_outline : _optionIcon(o)),
-                                selected: isSelected,
+                                selected: isSelected || (isFinish && _confirmingSelection),
                                 primary: isFinish,
                                 help: isHelp,
                                 onTap: () => _handleOption(o),
@@ -1520,6 +1526,7 @@ class _ChoicePill extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final filled = selected || primary;
+    final fillColor = selected ? AppColors.primaryPink : (primary ? const Color(0xFFC23880) : (help ? const Color(0xFFFFF0DC) : Colors.white));
     return InkWell(
       borderRadius: BorderRadius.circular(18),
       onTap: onTap,
@@ -1527,9 +1534,9 @@ class _ChoicePill extends StatelessWidget {
         duration: const Duration(milliseconds: 160),
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 15),
         decoration: BoxDecoration(
-          color: filled ? AppColors.primaryPink : (help ? const Color(0xFFFFF0DC) : Colors.white),
+          color: fillColor,
           borderRadius: BorderRadius.circular(18),
-          border: Border.all(color: help ? const Color(0xFFE6A34E) : AppColors.primaryPink.withAlpha((255 * 0.7).round())),
+          border: Border.all(color: filled ? fillColor : (help ? const Color(0xFFE6A34E) : AppColors.primaryPink.withAlpha((255 * 0.7).round()))),
           boxShadow: [BoxShadow(color: Colors.black.withAlpha((255 * 0.025).round()), blurRadius: 6, offset: const Offset(0, 3))],
         ),
         constraints: const BoxConstraints(minHeight: 54),
