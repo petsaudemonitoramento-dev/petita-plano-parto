@@ -11,6 +11,7 @@ import 'package:plano_parto_pet_saude/models/user_profile.dart';
 import 'package:plano_parto_pet_saude/screens/admin/admin_screen.dart';
 import 'package:plano_parto_pet_saude/screens/ubs/ubs_team_screen.dart';
 import 'package:plano_parto_pet_saude/services/faq_search_service.dart';
+import 'package:plano_parto_pet_saude/services/neon_api_client.dart';
 import 'package:plano_parto_pet_saude/services/storage_service.dart';
 import 'package:plano_parto_pet_saude/services/supabase_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -86,18 +87,28 @@ void main() {
     // This is intentionally a malicious/misconfigured fake server, not a finding of live leakage.
   });
 
-  test('bundled FAQ returns within network budget when curated HTTP stalls', () async {
+  test('bundled FAQ works without touching the retired Supabase', () async {
+    final service = FaqSearchService();
+    final items = await service.loadFaq();
+    expect(await service.search(items.first.question), isNotNull);
+    expect(requests, isEmpty);
+  });
+
+  test('bundled FAQ returns within network budget when Neon HTTP stalls', () async {
     final stalled = Completer<http.Response>();
-    respond = (_) => stalled.future;
-    final service = FaqSearchService(onlineBudget: const Duration(milliseconds: 20));
+    final neonRequests = <http.Request>[];
+    final api = NeonApiClient(origin: Uri.parse('https://neon-fixture.invalid'),
+        client: MockClient((request) { neonRequests.add(request); return stalled.future; }),
+        tokenProvider: () async => null);
+    final service = FaqSearchService(api: api, onlineBudget: const Duration(milliseconds: 20));
     final items = await service.loadFaq();
     final result = service.search(items.first.question);
     try {
       expect(await result.timeout(const Duration(milliseconds: 200)), isNotNull);
-      expect(requests.single.url.path, '/rest/v1/knowledge_base');
+      expect(neonRequests.single.url.path, '/api/knowledge');
+      expect(requests, isEmpty);
     } finally {
-      stalled.complete(http.Response('[]', 200, request: requests.single));
+      stalled.complete(http.Response('{"data":[]}', 200, headers: {'content-type':'application/json'}, request: neonRequests.single));
     }
-    expect(await result, isNotNull);
   });
 }

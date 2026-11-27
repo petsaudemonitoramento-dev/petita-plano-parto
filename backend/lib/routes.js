@@ -51,6 +51,20 @@ export function route(method, path, body = {}) {
     if(rev===0) return {...q('insert into petita.birth_plans(id,patient_id,ubs_code,patient_name,dpp,companion,answers_json) values($1::uuid,petita_private.actor_id(),petita_private.actor_ubs(),$2,$3::date,$4,$5::jsonb) on conflict(id) do nothing returning id,revision,updated_at',params), requireRow:true, actorLock:true};
     return {...q('update petita.birth_plans set patient_name=$2,dpp=$3::date,companion=$4,answers_json=$5::jsonb,ubs_code=petita_private.actor_ubs(),revision=revision+1 where id=$1::uuid and revision=$6 returning id,revision,updated_at',[...params,rev]),requireRow:true,actorLock:true};
   }
+  if (method === 'GET' && path === '/api/knowledge') { noBody(body); return q('select id,category,question,keywords,answer,risk_level from petita.knowledge_base order by created_at desc limit 200',[],true); }
+  if (method === 'GET' && path === '/api/knowledge/categories') { noBody(body); return q('select name from petita.knowledge_categories order by name',[],true); }
+  if (method === 'POST' && path === '/api/admin/knowledge/categories') {
+    only(body,['name']);
+    return q('insert into petita.knowledge_categories(name) values($1) returning name',[text(body.name,2,80)]);
+  }
+  if (method === 'POST' && path === '/api/admin/knowledge') {
+    only(body,['category','question','keywords','answer']);
+    const category=text(body.category,2,80),question=text(body.question,3,240),answer=text(body.answer,10,6000);
+    if(!Array.isArray(body.keywords)||body.keywords.length<1||body.keywords.length>24) invalid();
+    const keywords=body.keywords.map(k=>text(k,2,80));
+    if(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i.test(question+' '+answer)||/\b\d{3}\.?\d{3}\.?\d{3}-?\d{2}\b/.test(question+' '+answer)) invalid();
+    return q('insert into petita.knowledge_base(category,question,keywords,answer) values($1,$2,$3::text[],$4) returning id',[category,question,keywords,answer]);
+  }
   if (method === 'GET' && path === '/api/ubs') { noBody(body); return q('select code,name,city,state from petita.ubs where active order by name', [], true); }
   if (method === 'POST' && path === '/api/profile') { noBody(body); return {...q('select petita.ensure_patient_profile() as id'), enrollment:true}; }
   if (method === 'GET' && path === '/api/me') { noBody(body); return q('select id,display_name,role,ubs_code from petita.profiles where id=petita_private.actor_id()'); }

@@ -33,12 +33,14 @@ class InstitutionalQuestionService {
         createdAt: DateTime.fromMillisecondsSinceEpoch(0));
   }
 
-  Future<List<({String name})>> listKnowledgeCategories() async =>
-      (await FaqSearchService().loadFaq())
-          .map((f) => f.category)
-          .toSet()
-          .map((name) => (name: name))
-          .toList();
+  Future<List<({String name})>> listKnowledgeCategories() async {
+    final names = (await FaqSearchService().loadFaq()).map((f) => f.category).toSet();
+    try {
+      final remote = await runtime?.api.listKnowledgeCategories().timeout(const Duration(milliseconds: 600));
+      if (remote != null) names.addAll(remote.map((r) => r['name']).whereType<String>());
+    } catch (_) { /* Preserve bundled categories offline. */ }
+    return names.map((name) => (name: name)).toList();
+  }
   final Map<String, String> _operations = {};
   Future<Map<String, dynamic>> submitPatientQuestion(
       {required String ubsCode,

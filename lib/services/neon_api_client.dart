@@ -187,6 +187,17 @@ class NeonApiClient {
       _request(
           'POST', '/api/admin/patient-ubs-members/${_id(patientId)}/revoke',
           body: {'reason': reason});
+  Future<List<Map<String, dynamic>>> listKnowledge() =>
+      _request('GET', '/api/knowledge', isPublic: true);
+  Future<List<Map<String, dynamic>>> listKnowledgeCategories() =>
+      _request('GET', '/api/knowledge/categories', isPublic: true);
+  Future<List<Map<String, dynamic>>> addKnowledgeCategory(String name) =>
+      _request('POST', '/api/admin/knowledge/categories', body: {'name': name});
+  Future<List<Map<String, dynamic>>> addKnowledgeItem({
+    required String category, required String question, required List<String> keywords, required String answer,
+  }) => _request('POST', '/api/admin/knowledge', body: {
+    'category': category, 'question': question, 'keywords': keywords, 'answer': answer,
+  });
   Future<List<Map<String, dynamic>>> listUbs() =>
       _request('GET', '/api/ubs', isPublic: true);
   Future<List<Map<String, dynamic>>> enrollProfile() =>

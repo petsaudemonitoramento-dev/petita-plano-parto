@@ -31,3 +31,12 @@ test('vinculação da gestante usa funções restritas e nunca aceita identidade
     ['POST',`/api/admin/patient-ubs-members/${id}/revoke`,{reason:'Synthetic revocation'},'revoke_patient_ubs'],
   ]){const op=route(method,path,b);assert.equal(op.isPublic,false);assert.ok(op.sql.includes(fn));}
 });
+
+test('educational knowledge is read-only for anonymous clients; publishing is authenticated and parameterized',()=>{
+ assert.equal(route('GET','/api/knowledge').isPublic,true);
+ assert.equal(route('GET','/api/knowledge/categories').isPublic,true);
+ const r=route('POST','/api/admin/knowledge',{category:'Teste',question:'Pergunta sintética',keywords:['teste'],answer:'Resposta sintética para teste'});
+ assert.equal(r.isPublic,false);assert.equal(r.params[1],'Pergunta sintética');assert.match(r.sql,/petita\.knowledge_base/);
+ assert.equal(route('POST','/api/admin/knowledge/categories',{name:'Teste'}).isPublic,false);
+ assert.throws(()=>route('POST','/api/admin/knowledge',{category:'Teste',question:'Pergunta',keywords:[],answer:'Resposta sintética'}),{status:400});
+});

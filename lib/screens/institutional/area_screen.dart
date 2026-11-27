@@ -26,6 +26,7 @@ class _InstitutionalAreaScreenState extends State<InstitutionalAreaScreen> {
       _patients = [],
       _ubs = [];
   final _member = TextEditingController(), _reason = TextEditingController();
+  final _category = TextEditingController(), _question = TextEditingController(), _keywords = TextEditingController(), _educationalAnswer = TextEditingController();
   final Map<String, String> _operations = {};
   String? _message, _code;
   bool _busy = false;
@@ -39,6 +40,10 @@ class _InstitutionalAreaScreenState extends State<InstitutionalAreaScreen> {
   void dispose() {
     _member.dispose();
     _reason.dispose();
+    _category.dispose();
+    _question.dispose();
+    _keywords.dispose();
+    _educationalAnswer.dispose();
     super.dispose();
   }
 
@@ -219,6 +224,25 @@ class _InstitutionalAreaScreenState extends State<InstitutionalAreaScreen> {
                 }),
               ])),
         if (!widget.myQuestions && _profile?['role'] == 'admin') ...[
+          SectionCard(child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+            const Text('Base educativa da Petita', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
+            const Text('Publique apenas orientações educativas revisadas pela equipe, sem informações pessoais de gestantes. As respostas são exibidas no chat.'),
+            const SizedBox(height: 12),
+            TextField(controller: _category, maxLength: 80, decoration: const InputDecoration(labelText: 'Categoria')),
+            button('Cadastrar categoria', () async {
+              if (_category.text.trim().length < 2) throw const NeonApiException(400);
+              await runtime!.api.addKnowledgeCategory(_category.text.trim());
+            }),
+            const SizedBox(height: 12),
+            TextField(controller: _question, maxLength: 240, decoration: const InputDecoration(labelText: 'Pergunta educativa')),
+            TextField(controller: _keywords, decoration: const InputDecoration(labelText: 'Palavras-chave separadas por vírgula')),
+            TextField(controller: _educationalAnswer, maxLength: 6000, maxLines: 5, decoration: const InputDecoration(labelText: 'Resposta revisada')),
+            button('Publicar resposta educativa', () async {
+              if (!await _confirm('Publicar orientação educativa?')) throw _Cancelled();
+              await runtime!.api.addKnowledgeItem(category: _category.text.trim(), question: _question.text.trim(), keywords: _keywords.text.split(',').map((s)=>s.trim()).where((s)=>s.isNotEmpty).toList(), answer: _educationalAnswer.text.trim());
+              _question.clear(); _keywords.clear(); _educationalAnswer.clear();
+            }),
+          ])),
           const Text('Solicitações profissionais pendentes'),
           for (final request in _team)
             SectionCard(
