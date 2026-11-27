@@ -35,7 +35,7 @@ class _InstitutionalAccountScreenState extends State<InstitutionalAccountScreen>
   List<Map<String, dynamic>> _plans = [], _units = [], _requests = [];
   bool _busy = false;
   String _mode = 'login';
-  bool _routeRead = false, _resetRequested = false;
+  bool _routeRead = false, _resetRequested = false, _verificationSent = false;
   String? _localEmail, _localUbs;
   bool _localPrefill = false;
   String? _message, _ubs, _loadedSubject;
@@ -336,6 +336,9 @@ class _InstitutionalAccountScreenState extends State<InstitutionalAccountScreen>
   }
 
   String _safe(Object error) {
+    if (widget.professional && error is NeonApiException) {
+      return 'Não foi possível confirmar o acesso profissional. Verifique sua conexão e tente novamente.';
+    }
     if (error is InstitutionalAuthException || error is PlanConflict)
       return '$error';
     if (error is NeonApiException && error.status == 409)
@@ -431,7 +434,7 @@ class _InstitutionalAccountScreenState extends State<InstitutionalAccountScreen>
               SectionCard(
                 child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
                   Text(
-                    _mode == 'signup' ? 'Crie sua conta' : _mode == 'reset' ? 'Recupere sua senha' : 'Entre na sua conta',
+                    _mode == 'signup' ? (widget.professional ? 'Etapa 1 de 3 • Criar conta profissional' : 'Crie sua conta') : _mode == 'reset' ? 'Recupere sua senha' : 'Entre na sua conta',
                     style: Theme.of(context).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold),
                   ),
                   const SizedBox(height: 8),
@@ -487,7 +490,7 @@ class _InstitutionalAccountScreenState extends State<InstitutionalAccountScreen>
                         throw _ActionCancelled();
                       }
                       await _finishLogin();
-                    }, success: widget.professional ? 'Conta criada. Confira a verificação e solicite seu acesso profissional.' : 'Conta criada e perfil carregado. Bem-vinda à Petita!'),
+                    }, success: widget.professional ? 'Conta criada. Confirme seu e-mail para continuar.' : 'Conta criada e perfil carregado. Bem-vinda à Petita!'),
                     TextButton(onPressed: _busy ? null : () => _switchMode('login'),
                         child: const Text('Já tenho uma conta')),
                   ] else if (_mode == 'login') ...[
@@ -532,37 +535,48 @@ class _InstitutionalAccountScreenState extends State<InstitutionalAccountScreen>
                   child: Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
-                    Text(widget.professional ? 'Sessão profissional iniciada' : 'Você está conectada', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 20)),
+                    Text(widget.professional ? 'Sua conta' : 'Você está conectada', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 20)),
                     const SizedBox(height: 8),
                     Text('Conta: ${runtime.auth.user!['email'] ?? ''}'),
                     if (_profile == null)
-                      const Text('O perfil online ainda não foi carregado. Você pode usar o plano neste aparelho normalmente.'),
-                    if (widget.professional && runtime.auth.user?['emailVerified'] != true)
-                      Material(
-                        type: MaterialType.transparency,
-                        child: ExpansionTile(
-                          title: const Text('Verificação para acesso profissional'),
-                          children: [
-                            _button('Enviar código de verificação',
-                                () => runtime.auth.resend(runtime.auth.user!['email'] as String),
-                                success: 'Confira seu e-mail.'),
-                            TextField(
-                              controller: _professionalOtp,
-                              decoration: const InputDecoration(labelText: 'Código de verificação profissional'),
-                            ),
-                            _button('Verificar e-mail profissional', () async {
-                              await runtime.auth.verify(runtime.auth.user!['email'] as String, _professionalOtp.text);
-                              await _load();
-                            }, success: 'E-mail verificado.'),
-                          ],
-                        ),
-                      ),
-                    if (_profile != null) ...[
-                      Text('Perfil institucional: ${_profile!['role']}'),
-                      Text(
-                          'UBS aprovada: ${_profile!['ubs_code'] ?? 'ainda sem vínculo'}'),
+                      Text(widget.professional ? 'Ainda não foi possível confirmar suas permissões.' : 'O perfil online ainda não foi carregado. Você pode usar o plano neste aparelho normalmente.'),
+                    if (widget.professional && runtime.auth.user?['emailVerified'] != true) ...[
+                      const SizedBox(height: 16),
+                      const Text('Etapa 2 de 3 • Verificação de e-mail', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
+                      const SizedBox(height: 8),
+                      const Text('Para solicitar acesso à equipe de saúde, confirme que este e-mail pertence a você.'),
+                      if (!_verificationSent)
+                        _button('Enviar código para meu e-mail', () async {
+                          await runtime.auth.resend(runtime.auth.user!['email'] as String);
+                          if (mounted) setState(() => _verificationSent = true);
+                        }, success: 'Código solicitado. Confira sua caixa de entrada.')
+                      else ...[
+                        const SizedBox(height: 12),
+                        const Text('Digite o código que recebeu por e-mail. Confira também a pasta de spam.'),
+                        TextField(controller: _professionalOtp, keyboardType: TextInputType.number,
+                            autocorrect: false, enableSuggestions: false,
+                            decoration: const InputDecoration(labelText: 'Código recebido')),
+                        _button('Confirmar e-mail', () async {
+                          if (_professionalOtp.text.trim().isEmpty) {
+                            setState(() => _message = 'Informe o código recebido por e-mail.');
+                            throw _ActionCancelled();
+                          }
+                          await runtime.auth.verify(runtime.auth.user!['email'] as String, _professionalOtp.text);
+                          await _load();
+                          if (runtime.auth.user?['emailVerified'] != true) throw const NeonApiException(503);
+                        }, success: 'E-mail confirmado.'),
+                        TextButton(onPressed: _busy ? null : () => _run(() => runtime.auth.resend(runtime.auth.user!['email'] as String), success: 'Novo código solicitado.'), child: const Text('Reenviar código')),
+                      ],
                     ],
-                    if (_profile == null || widget.professional)
+                    if (widget.professional && runtime.auth.user?['emailVerified'] == true && _profile != null) ...[
+                      const SizedBox(height: 12),
+                      Text(_profile?['role'] == 'admin' ? 'Acesso administrativo liberado' : _profile?['role'] == 'ubs_team' ? 'Acesso profissional liberado' : 'Etapa 3 de 3 • Solicitar acesso à UBS', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
+                      if (_profile?['role'] == 'patient')
+                        const Text('Seu e-mail foi confirmado. A administração precisa aprovar seu vínculo profissional antes de liberar o acesso às dúvidas.'),
+                    ],
+                    if (!widget.professional && _profile != null)
+                      Text('UBS aprovada: ${_profile!['ubs_code'] ?? 'ainda sem vínculo'}'),
+                    if (_profile == null || (widget.professional && runtime.auth.user?['emailVerified'] == true))
                       _button(_profile == null ? 'Tentar carregar perfil novamente' : 'Atualizar situação', _load,
                           success: 'Situação atualizada.'),
                     if (!widget.professional && _profile?['role'] == 'patient')
@@ -588,6 +602,7 @@ class _InstitutionalAccountScreenState extends State<InstitutionalAccountScreen>
                             _consentKnown = false;
                             _ubsKnown = false;
                             _ubsChoiceSaved = false;
+                            _verificationSent = false;
                           });
                       }
                     },
@@ -743,9 +758,9 @@ class _InstitutionalAccountScreenState extends State<InstitutionalAccountScreen>
                       Text('Solicitação ${request['ubs_code']}: ${request['status']}'),
                   ])),
             ],
-            if (widget.professional && runtime.auth.signedIn && _profile != null)
-              _button('Área profissional e administrativa', () async {
-                await Navigator.pushNamed(context, AppRoutes.ubs);
+            if (widget.professional && runtime.auth.signedIn && runtime.auth.user?['emailVerified'] == true && _profile != null)
+              _button(_profile?['role'] == 'admin' ? 'Abrir administração' : _profile?['role'] == 'ubs_team' ? 'Abrir painel da equipe' : 'Escolher minha UBS', () async {
+                await Navigator.pushNamed(context, _profile?['role'] == 'admin' ? AppRoutes.admin : AppRoutes.ubs);
               }),
           ],
         ])));

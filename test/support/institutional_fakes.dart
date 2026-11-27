@@ -22,6 +22,7 @@ class MemoryVault implements SecretVault {
 class FixtureAuthTransport implements AuthTransport {
   String subject;
   bool signedIn = true;
+  bool emailVerified = false;
   FixtureAuthTransport([this.subject = 'fixture-a']);
   @override
   Future<Map<String, dynamic>> call(
@@ -37,7 +38,7 @@ class FixtureAuthTransport implements AuthTransport {
           'id': subject,
           'name': 'SYNTHETIC',
           'email': 'fixture@example.invalid',
-          'emailVerified': false
+          'emailVerified': emailVerified
         }
       };
     if (action == 'token') return {'token': 'fixture-api-token'};

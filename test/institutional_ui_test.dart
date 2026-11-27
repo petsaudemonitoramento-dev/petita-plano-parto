@@ -16,8 +16,8 @@ import 'package:plano_parto_pet_saude/models/user_profile.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
-  InstitutionalRuntime runtime(String role, List<String> requests) {
-    final auth = InstitutionalAuth(FixtureAuthTransport());
+  InstitutionalRuntime runtime(String role, List<String> requests, {bool verified = false}) {
+    final auth = InstitutionalAuth(FixtureAuthTransport()..emailVerified = verified);
     final vault = MemoryVault();
     final api = NeonApiClient(
         origin: Uri.parse('https://fixture.invalid'),
@@ -89,14 +89,24 @@ void main() {
       (tester) async {
     final calls = <String>[];
     await tester.pumpWidget(MaterialApp(
-        home: InstitutionalAreaScreen(runtime: runtime('patient', calls))));
+        home: InstitutionalAreaScreen(runtime: runtime('patient', calls, verified: true))));
     await finishAction(tester, calls);
     expect(find.text('Solicitar acesso profissional'), findsOneWidget);
+    expect(find.textContaining('Canal não urgente.'), findsNothing);
     expect(calls, contains('GET /api/ubs'));
     expect(find.text('Solicitações profissionais pendentes'), findsNothing);
     expect(find.text('Aprovar profissional'), findsNothing);
     expect(calls.any((c) => c.contains('/api/admin/')), false);
     expect(tester.takeException(), isNull);
+  });
+  testWidgets('unverified user sees verification guidance, not patient warning or UBS request', (tester) async {
+    final calls = <String>[];
+    await tester.pumpWidget(MaterialApp(home: InstitutionalAreaScreen(runtime: runtime('patient', calls))));
+    await finishAction(tester, calls);
+    expect(find.text('Confirme seu e-mail'), findsOneWidget);
+    expect(find.textContaining('Canal não urgente.'), findsNothing);
+    expect(find.text('Solicitar acesso profissional'), findsNothing);
+    expect(calls.any((c) => c.contains('/api/admin/')), false);
   });
   testWidgets('login keeps recovery and registration fields separate', (tester) async {
     tester.view.physicalSize = const Size(900, 1600);
@@ -166,7 +176,9 @@ void main() {
     await finishAction(tester, calls);
     expect(find.text('Acesso profissional'), findsOneWidget);
     expect(find.text('Editar meus dados'), findsNothing);
-    expect(find.text('Verificação para acesso profissional'), findsOneWidget);
+    expect(find.text('Etapa 2 de 3 • Verificação de e-mail'), findsOneWidget);
+    expect(find.text('Código recebido'), findsNothing);
+    expect(find.text('Escolher minha UBS'), findsNothing);
     expect(find.text('Sincronização online opcional'), findsNothing);
   });
   testWidgets('local profile is accessible without online runtime or login', (tester) async {

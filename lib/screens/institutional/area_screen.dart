@@ -30,6 +30,9 @@ class _InstitutionalAreaScreenState extends State<InstitutionalAreaScreen> {
   final Map<String, String> _operations = {};
   String? _message, _code;
   bool _busy = false;
+  bool _requestSent = false;
+  String? _subject;
+  bool get _verified => runtime?.auth.user?['emailVerified'] == true;
   @override
   void initState() {
     super.initState();
@@ -51,7 +54,16 @@ class _InstitutionalAreaScreenState extends State<InstitutionalAreaScreen> {
     final r = runtime;
     if (r == null) throw const NeonApiException(503);
     await r.auth.restore();
-    if (!r.auth.signedIn) throw const NeonApiException(401);
+    if (!r.auth.signedIn) {
+      if (mounted) setState(() { _profile = null; _questions = []; _team = []; _patients = []; _ubs = []; _code = null; _subject = null; _requestSent = false; });
+      return;
+    }
+    if (_subject != r.auth.subject) {
+      _subject = r.auth.subject;
+      _requestSent = false;
+      _code = null;
+      _operations.clear();
+    }
     final profile = (await r.api.loadProfile()).single;
     // Clear old privileged content before the next request, including role changes.
     if (mounted)
@@ -72,7 +84,7 @@ class _InstitutionalAreaScreenState extends State<InstitutionalAreaScreen> {
       patients = await r.api.listPatientUbsRequests();
     } else if (profile['role'] == 'ubs_team') {
       questions = await r.api.listTeamQueue();
-    } else {
+    } else if (_verified) {
       ubs = await r.api.listUbs();
     }
     if (mounted)
@@ -168,23 +180,38 @@ class _InstitutionalAreaScreenState extends State<InstitutionalAreaScreen> {
       appBar: AppBar(
           title: Text(widget.myQuestions
               ? 'Minhas dúvidas'
-              : 'Equipe e administração institucional')),
+              : _profile?['role'] == 'admin' ? 'Administração' : 'Equipe UBS')),
       body: SafeArea(
           child: ListView(padding: const EdgeInsets.all(20), children: [
-        const SectionCard(
+        if (widget.myQuestions) const SectionCard(
             child: Text(
                 'Canal não urgente. As respostas dependem da disponibilidade da UBS. Em caso de sinais de alerta, procure atendimento presencial.')),
         if (_busy) const LinearProgressIndicator(),
         if (_message != null)
           Semantics(liveRegion: true, child: Text(_message!)),
-        button(widget.myQuestions ? 'Abrir minha conta' : 'Entrar ou criar conta profissional', () async {
-          await Navigator.pushNamed(context, widget.myQuestions ? AppRoutes.institutional : AppRoutes.professionalAccount);
-          await _load();
-        }),
-        button('Atualizar', _load),
-        if (_profile != null)
-          Text(
-              'Perfil confirmado: ${_profile!['role']} • UBS ${_profile!['ubs_code'] ?? 'sem vínculo'}'),
+        if (!widget.myQuestions && (_profile == null || (_profile?['role'] == 'patient' && !_verified)))
+          SectionCard(child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+            Text(_profile == null ? 'Acesso da equipe de saúde' : 'Confirme seu e-mail', style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+            const SizedBox(height: 8),
+            Text(_profile == null
+                ? 'Entre com sua conta profissional ou crie uma para solicitar acesso à sua UBS.'
+                : 'Esta conta ainda não possui acesso profissional. Se você faz parte de uma equipe de saúde, confirme seu e-mail para solicitar acesso.'),
+            button(_profile == null ? 'Entrar ou criar conta profissional' : 'Verificar e-mail ou trocar de conta', () async {
+              await Navigator.pushNamed(context, AppRoutes.professionalAccount);
+              await _load();
+            }),
+          ])),
+        if (widget.myQuestions || _profile?['role'] == 'admin' || _profile?['role'] == 'ubs_team') ...[
+          if (!widget.myQuestions)
+            SectionCard(child: Text(_profile?['role'] == 'admin'
+                ? 'Administração PET Saúde • Gerencie as solicitações de acesso e a base educativa.'
+                : 'Equipe UBS • Responda às dúvidas encaminhadas à sua unidade de saúde.')),
+          TextButton(onPressed: _busy ? null : () => _run(_load), child: const Text('Atualizar')),
+          TextButton(onPressed: _busy ? null : () => _run(() async {
+            await Navigator.pushNamed(context, widget.myQuestions ? AppRoutes.institutional : AppRoutes.professionalAccount);
+            await _load();
+          }), child: const Text('Minha conta')),
+        ],
         for (final q in _questions)
           SectionCard(
               child: Column(
@@ -198,21 +225,25 @@ class _InstitutionalAreaScreenState extends State<InstitutionalAreaScreen> {
                 else
                   button('Responder ${q['public_code']}', () => _answer(q)),
               ])),
-        if (!widget.myQuestions && _profile?['role'] == 'patient')
+        if (!widget.myQuestions && _profile?['role'] == 'patient' && _verified)
           SectionCard(
               child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                const Text(
-                    'Profissionais: solicitem acesso para análise institucional. A solicitação não altera permissões.'),
+                const Text('Etapa 3 de 3 • Acesso à UBS', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
+                const SizedBox(height: 8),
+                Text(_requestSent ? 'Solicitação enviada. Aguarde a aprovação da administração do PET Saúde.' : 'Informe a UBS onde você trabalha. A administração do PET Saúde analisará sua solicitação antes de liberar o acesso às dúvidas.'),
+                if (!_requestSent) ...[
+                const SizedBox(height: 12),
                 DropdownButtonFormField<String>(
+                    isExpanded: true,
                     initialValue: _code,
                     decoration: const InputDecoration(
                         labelText: 'UBS de atuação profissional'),
                     items: _ubs
                         .map((u) => DropdownMenuItem(
                             value: u['code'] as String,
-                            child: Text('${u['name']}')))
+                            child: Text('${u['name']}', overflow: TextOverflow.ellipsis)))
                         .toList(),
                     onChanged: _busy ? null : (v) => setState(() => _code = v)),
                 button('Solicitar acesso profissional', () async {
@@ -220,8 +251,13 @@ class _InstitutionalAreaScreenState extends State<InstitutionalAreaScreen> {
                   final op =
                       _operations.putIfAbsent('team:$_code', newOperationId);
                   await runtime!.api.requestTeamAccess(_code!, op);
-                  await _load();
+                  if (mounted) setState(() => _requestSent = true);
                 }),
+                ],
+                TextButton(onPressed: _busy ? null : () => _run(() async {
+                  await Navigator.pushNamed(context, AppRoutes.professionalAccount);
+                  await _load();
+                }), child: const Text('Gerenciar conta')),
               ])),
         if (!widget.myQuestions && _profile?['role'] == 'admin') ...[
           SectionCard(child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
