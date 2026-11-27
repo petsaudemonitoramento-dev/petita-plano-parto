@@ -1,0 +1,35 @@
+Código aplicativo:89aa160; Cloud26/11/2026. Logs locais podem ser efêmeros; links CI constam do relatório.
+Resultados sobrepostos; não somar testes como únicos.
+auth-protected-fix LOG_SHA256=2bd8d899ded984fd386fcb0b49a6c042b647538ba51e6c4e503969264c7e97ed
+00:00 +9: All tests passed!
+auth-sync-clear-regression LOG_SHA256=4163c5661556ffdc96ac78d30497ef89bba8069d97ff465f6c66577be6d5576b
+00:17 +30: All tests passed!
+rc-auth-expiry LOG_SHA256=56381ec34d62f3a23c4da736b7707a729be4a469705ec71276104e4c5106b102
+00:00 +6: All tests passed!
+absolute-api-deadline LOG_SHA256=4b5abb835deccfae6175ed24ab30ac4edafa80850fc2e64bd5f26aee13713f1b
+00:00 +28: All tests passed!
+ubs-006-isolation LOG_SHA256=5caf2418584cc0a086f00c97b56a5fc5a0a304f32ee57ed7306f549dde56fbd7
+Ran 12 tests in 10.796s
+OK
+rc-api-signed-fixtures LOG_SHA256=75d23cfaf9cc0864e129877cfbb96f21877fa02cb4c33dbfee73efeff33585bd
+ℹ tests 19
+ℹ pass 19
+ℹ fail 0
+legacy-edge-security LOG_SHA256=3c9f377efa742023d8e430c1833aca824fdb7eeb005f37fa53fcc24382cf54a2
+ℹ tests 31
+ℹ pass 31
+ℹ fail 0
+pub-osv LOG_SHA256=6d0f1fb5c77ddfc8ba1b4702a9a7157e26b7daa88f5a0fce5be9fe9992d625d1
+  "packages": 116,
+  "findings": [],
+source-secrets LOG_SHA256=ae8c728c7bdb2eb3d1f99f4e01404b17d943910e3b69db6b2182d2aee64c4e6f
+  "findings": []
+rc-web-final LOG_SHA256=a017e9c4f7950e5693a8e829f3f5383333f1aa10ce3ab6a277ceeb6954488c1e
+web-browser-offline LOG_SHA256=491b3e02e513ab2c659abc25a079d6ed6f605864b3d36fde6b4db9d441b03d6a
+PASS: real Flutter Web bootstrap, encrypted envelope and reopening; institutional API/Auth unavailable; no credentials or patient data.
+timeout-fallback-check LOG_SHA256=d3fbc9072502f12bd5bc17d9cfa999de36d52a0a1a244401ac3d1cdfdb477b5c
+CI Flutter45892964333:142 pass,2 fail; suíte REPROVADA.
+CI API45892964078:APROVADO. CI SQL45892964173:APROVADO.
+CI Android45892964201:APROVADO, artefato15151963680, merge efêmero c35a255/head89aa160.
+CI iOS45893413561:APROVADO simulator210s, sem assinatura, head eee9598; aplicativo idêntico89aa160.
+Automação Chromium autenticada:3 tentativas, BLOQUEADO na navegação/semântica; nenhum teste real Neon positivo.

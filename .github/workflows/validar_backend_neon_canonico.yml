@@ -1,0 +1,28 @@
+name: Validar API Neon canônica (sem deploy)
+on:
+  pull_request:
+    paths:
+      - 'backend/**'
+      - '.github/workflows/validar_backend_neon_canonico.yml'
+permissions:
+  contents: read
+jobs:
+  api:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: bash ../tool/run_bounded_audit.sh backend-ci 180 npm ci --ignore-scripts
+      - name: Registrar versões resolvidas
+        run: npm ls @neon/auth better-auth @better-auth/drizzle-adapter zod --all
+      - run: bash ../tool/run_bounded_audit.sh backend-check 180 npm run check
+      - run: bash ../tool/run_bounded_audit.sh backend-test 180 npm test
+      - run: bash ../tool/run_bounded_audit.sh backend-auth 180 npm run build:auth
+      - name: Bloquear dependências de risco alto ou crítico
+        run: bash ../tool/run_bounded_audit.sh backend-audit 180 npm audit --audit-level=high

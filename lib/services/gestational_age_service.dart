@@ -3,6 +3,15 @@
 ///
 /// Não substitui ultrassonografia, acompanhamento pré-natal ou avaliação clínica.
 class GestationalAgeService {
+  /// Normalize a manually typed date without relaxing strict calendar validation.
+  static String? normalizeDpp(String value) {
+    var text = value.trim();
+    if (RegExp(r'^\d{8}$').hasMatch(text)) {
+      text = '${text.substring(0, 2)}/${text.substring(2, 4)}/${text.substring(4)}';
+    }
+    return parseDpp(text) == null ? null : text;
+  }
+
   static DateTime? parseDpp(String value) {
     final match = RegExp(r'^(\d{2})/(\d{2})/(\d{4})$').firstMatch(value.trim());
     if (match == null) return null;

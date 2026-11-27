@@ -1,9 +1,9 @@
+import '../../widgets/local_persistence_feedback.dart';
 import 'package:flutter/material.dart';
 import '../../config/app_theme.dart';
 import '../../models/ubs_unit.dart';
 import '../../models/user_profile.dart';
 import '../../services/storage_service.dart';
-import '../../services/supabase_service.dart';
 import '../../services/ubs_service.dart';
 import '../../widgets/app_button.dart';
 import '../../widgets/section_card.dart';
@@ -17,19 +17,15 @@ class ProfileScreen extends StatefulWidget {
 
 class _ProfileScreenState extends State<ProfileScreen> {
   final _storage = StorageService();
-  final _online = SupabaseService();
   final _nameController = TextEditingController();
   final _emailController = TextEditingController();
-  final _passwordController = TextEditingController();
   final _customUbsController = TextEditingController();
   List<UbsUnit> _officialUnits = [];
   UserProfile? _profile;
-  UserProfile? _onlineProfile;
   String? _selectedUbsCode;
   bool _manualUbsWarningShown = false;
   bool _loading = true;
-  bool _busy = false;
-  String _onlineMessage = 'Modo offline ativo. Faça login para sincronizar quando houver internet.';
+  bool _loadFailed = false;
 
   @override
   void initState() {
@@ -38,39 +34,42 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   Future<void> _load() async {
-    final units = await UbsService().loadOfficialUnits();
-    final profile = await _storage.loadProfile();
-    UserProfile? onlineProfile;
+    if (mounted) setState(() { _loading = true; _loadFailed = false; });
+    List<UbsUnit> units;
+    UserProfile? profile;
     try {
-      onlineProfile = await _online.loadOnlineProfile();
+      units = await UbsService().loadOfficialUnits().timeout(const Duration(seconds: 10));
+      profile = await _storage.loadProfile().timeout(const Duration(seconds: 10));
     } catch (_) {
-      onlineProfile = null;
+      if (mounted) setState(() { _loading = false; _loadFailed = true; });
+      return;
     }
     if (!mounted) return;
-    final source = onlineProfile ?? profile;
+    final source = profile;
+    final account = ModalRoute.of(context)?.settings.arguments;
+    final accountData = account is Map<String, String> ? account : const <String, String>{};
     setState(() {
       _officialUnits = units;
       _profile = profile;
-      _onlineProfile = onlineProfile;
       _selectedUbsCode = source?.ubsCode;
-      _nameController.text = source?.name ?? '';
-      _emailController.text = source?.email ?? '';
+      _nameController.text = source?.name ?? accountData['name'] ?? '';
+      _emailController.text = source?.email ?? accountData['email'] ?? '';
+      if (source == null && units.any((u) => u.code == accountData['ubsCode'])) {
+        _selectedUbsCode = accountData['ubsCode'];
+      }
       if (source?.ubsCode == null && source?.ubsName != null) {
         _customUbsController.text = source!.ubsName!;
       }
-      _onlineMessage = onlineProfile == null
-          ? 'Você pode usar o cadastro local offline. Login online é necessário para sincronizar plano e enviar dúvidas à UBS.'
-          : 'Conta online conectada como ${onlineProfile.role}. Dados sincronizados com Supabase.';
       _loading = false;
     });
   }
 
-  Future<void> _saveLocal() async {
+  Future<bool> _saveLocal() async {
     final name = _nameController.text.trim();
     final email = _emailController.text.trim();
     if (name.isEmpty || email.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Informe nome e e-mail para preparar o cadastro local.')));
-      return;
+      return false;
     }
 
     String? ubsCode = _selectedUbsCode;
@@ -95,81 +94,20 @@ class _ProfileScreenState extends State<ProfileScreen> {
       ubsName: ubsName,
       createdAt: _profile?.createdAt ?? DateTime.now(),
     );
-    await _storage.saveProfile(profile);
-    if (!mounted) return;
+    if (!await confirmLocalChange(context, () => _storage.saveProfile(profile))) return false;
+    if (!mounted) return false;
     setState(() => _profile = profile);
     ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Cadastro local salvo.')));
-  }
-
-  Future<void> _signUpOnline() async {
-    final name = _nameController.text.trim();
-    final email = _emailController.text.trim();
-    final password = _passwordController.text.trim();
-    if (name.isEmpty || email.isEmpty || password.length < 6) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Informe nome, e-mail e senha com pelo menos 6 caracteres.')));
-      return;
-    }
-    setState(() => _busy = true);
-    try {
-      await _saveLocal();
-      await _online.signUpPatient(name: name, email: email, password: password, ubsCode: _selectedUbsCode);
-      if (_online.isLoggedIn) {
-        await _online.updatePatientProfile(name: name, email: email, ubsCode: _selectedUbsCode);
-      }
-      await _load();
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Cadastro online solicitado. Se o Supabase exigir confirmação de e-mail, confirme antes de entrar.')));
-    } catch (e) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Não foi possível criar cadastro online: $e')));
-    } finally {
-      if (mounted) setState(() => _busy = false);
-    }
-  }
-
-  Future<void> _signInOnline() async {
-    final email = _emailController.text.trim();
-    final password = _passwordController.text.trim();
-    if (email.isEmpty || password.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Informe e-mail e senha.')));
-      return;
-    }
-    setState(() => _busy = true);
-    try {
-      await _online.signIn(email: email, password: password);
-      final onlineProfile = await _online.loadOnlineProfile();
-      if (onlineProfile != null) await _storage.saveProfile(onlineProfile);
-      await _load();
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Login online realizado.')));
-    } catch (e) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Não foi possível entrar: $e')));
-    } finally {
-      if (mounted) setState(() => _busy = false);
-    }
-  }
-
-  Future<void> _signOut() async {
-    setState(() => _busy = true);
-    try {
-      await _online.signOut();
-      await _load();
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Conta online desconectada. O modo offline continua disponível.')));
-    } finally {
-      if (mounted) setState(() => _busy = false);
-    }
+    return true;
   }
 
   Future<void> _clear() async {
-    await _storage.clearProfile();
+    if (!await confirmLocalChange(context, () => _storage.clearProfile())) return;
     if (!mounted) return;
     setState(() {
       _profile = null;
       _nameController.clear();
       _emailController.clear();
-      _passwordController.clear();
       _customUbsController.clear();
       _selectedUbsCode = null;
     });
@@ -198,25 +136,33 @@ class _ProfileScreenState extends State<ProfileScreen> {
   @override
   Widget build(BuildContext context) {
     if (_loading) return const Scaffold(body: Center(child: CircularProgressIndicator()));
+    if (_loadFailed) return Scaffold(
+      appBar: AppBar(title: const Text('Meu perfil')),
+      body: Center(child: Padding(padding: const EdgeInsets.all(24), child: Column(
+        mainAxisSize: MainAxisSize.min, children: [
+          const Text('Não conseguimos abrir seu cadastro neste aparelho. Seus dados não foram apagados.'),
+          const SizedBox(height: 16),
+          FilledButton(onPressed: _load, child: const Text('Tentar novamente')),
+        ],
+      ))),
+    );
     return Scaffold(
-      appBar: AppBar(title: const Text('Perfil da gestante')),
+      appBar: AppBar(title: const Text('Meus dados')),
       body: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(20),
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             SectionCard(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              const Text('Cadastro offline-first', style: TextStyle(fontSize: 22, fontWeight: FontWeight.w900, color: AppColors.petDarkBlue)),
+              const Text('Dados do meu plano de parto', style: TextStyle(fontSize: 22, fontWeight: FontWeight.w900, color: AppColors.petDarkBlue)),
               const SizedBox(height: 8),
-              Text(_onlineMessage),
-              const SizedBox(height: 8),
-              const Text('Mesmo sem internet, a gestante consegue montar, editar e gerar o Plano de Parto. Com login, o plano pode ser sincronizado e dúvidas podem ser enviadas para a UBS.'),
+              const Text('Edite seu nome, e-mail de contato e UBS para o plano de parto. Estes dados ficam neste aparelho e podem ser usados sem internet. Alterar este e-mail não modifica o e-mail de login da conta online.'),
             ])),
             SectionCard(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              TextField(controller: _nameController, decoration: const InputDecoration(labelText: 'Nome da gestante')),
+              TextField(controller: _nameController, decoration: const InputDecoration(labelText: 'Seu nome')),
               const SizedBox(height: 12),
               TextField(controller: _emailController, keyboardType: TextInputType.emailAddress, decoration: const InputDecoration(labelText: 'E-mail')),
               const SizedBox(height: 12),
-              TextField(controller: _passwordController, obscureText: true, decoration: const InputDecoration(labelText: 'Senha para login online')),
+              const Text('Você não precisa de uma senha para usar o plano neste aparelho.'),
               const SizedBox(height: 16),
               const Text('UBS de referência oficial', style: TextStyle(fontWeight: FontWeight.w900, color: AppColors.petDarkBlue)),
               const SizedBox(height: 8),
@@ -262,7 +208,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     border: Border.all(color: AppColors.petOrange.withAlpha((255 * 0.55).round())),
                   ),
                   child: const Text(
-                    'A UBS digitada aparecerá no Plano de Parto. Porém, dúvidas enviadas pelo chat só poderão ser respondidas quando a gestante estiver vinculada a uma UBS oficial da lista.',
+                    'A UBS digitada aparecerá no Plano de Parto. Porém, dúvidas enviadas pelo chat só poderão ser respondidas quando houver vínculo aprovado com uma UBS oficial da lista.',
                     style: TextStyle(fontWeight: FontWeight.w700, color: AppColors.petDarkBlue),
                   ),
                 ),
@@ -270,21 +216,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
             ])),
             AppButton(label: 'Salvar cadastro offline', icon: Icons.save_outlined, onPressed: _saveLocal),
             const SizedBox(height: 10),
-            AppButton(label: 'Criar cadastro online', icon: Icons.cloud_upload_outlined, onPressed: _busy ? () {} : _signUpOnline),
-            const SizedBox(height: 10),
-            AppButton(label: 'Entrar online', icon: Icons.login, outlined: true, onPressed: _busy ? () {} : _signInOnline),
-            const SizedBox(height: 10),
-            AppButton(label: 'Sair da conta online', icon: Icons.logout, outlined: true, onPressed: _busy ? () {} : _signOut),
-            const SizedBox(height: 10),
             AppButton(label: 'Limpar cadastro local', icon: Icons.delete_outline, outlined: true, onPressed: _clear),
-            if (_profile != null || _onlineProfile != null)
+            if (_profile != null)
               SectionCard(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                 const Text('Perfil ativo', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900, color: AppColors.primaryPink)),
                 const SizedBox(height: 8),
-                Text('Nome: ${(_onlineProfile ?? _profile)!.name}'),
-                Text('E-mail: ${(_onlineProfile ?? _profile)!.email}'),
-                Text('Perfil: ${(_onlineProfile ?? _profile)!.role}'),
-                Text('UBS: ${(_onlineProfile ?? _profile)!.ubsName ?? (_onlineProfile ?? _profile)!.ubsCode ?? 'Não informada'}'),
+                Text('Nome: ${_profile!.name}'),
+                Text('E-mail: ${_profile!.email}'),
+                Text('UBS: ${_profile!.ubsName ?? _profile!.ubsCode ?? 'Não informada'}'),
               ])),
           ]),
         ),

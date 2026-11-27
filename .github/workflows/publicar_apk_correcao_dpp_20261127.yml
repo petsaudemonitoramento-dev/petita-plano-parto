@@ -1,0 +1,37 @@
+name: Publicar APK de homologação com correção da DPP
+on:
+  push:
+    branches: [feat/neon-enrollment-20261126]
+    paths:
+      - '.github/workflows/publicar_apk_correcao_dpp_20261127.yml'
+permissions:
+  actions: read
+  contents: write
+concurrency:
+  group: petita-homologacao-dpp-20261127
+  cancel-in-progress: false
+jobs:
+  publicar:
+    if: github.repository == 'petsaudemonitoramento-dev/petita-plano-parto'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: petsaudemonitoramento-dev/petita-plano-parto
+    steps:
+      - name: Recuperar somente APK normal aprovado
+        run: |
+          set -euo pipefail
+          test "$(gh api repos/$GH_REPO/actions/runs/46010053570 --jq .conclusion)" = success
+          test "$(gh api repos/$GH_REPO/actions/artifacts/15204456209 --jq .workflow_run.id)" = 46010053570
+          mkdir -p /tmp/petita-release
+          gh run download 46010053570 --name petita-apk-homologacao-956a14e2eeac04a8f4e6be31dac1f46df147c7ae --dir /tmp/petita-release
+          cd /tmp/petita-release
+          echo 'e627f9bd3fd58897d60dcd43143fa51bb4532dbb883a69a69b3c99f642c7f4c3  app-debug.apk' | sha256sum -c -
+          test "$(stat -c%s app-debug.apk)" = 166594258
+          mv app-debug.apk Petita-Android-Homologacao-2026-11-27-DPP.apk
+      - name: Publicar pré-release, sem substituir produção
+        run: |
+          set -euo pipefail
+          gh release create petita-homologacao-20261127-dpp --target c2412a370aee7fd1899d6c981d8ef9d63273a2c9 --prerelease --title 'Petita — homologação Android 27/11/2026 (correção DPP)' --notes 'APK normal aprovado em CI. Data com formatação automática e feedback visível. Sem otimização experimental. Somente dados fictícios e homologação; não possui assinatura institucional de produção. Compatibilidade de atualização sobre instalação anterior depende da assinatura.' /tmp/petita-release/Petita-Android-Homologacao-2026-11-27-DPP.apk
+          gh release view petita-homologacao-20261127-dpp --json tagName,isPrerelease,assets --jq '{tagName,isPrerelease,assets:[.assets[]|{name,size}]}'

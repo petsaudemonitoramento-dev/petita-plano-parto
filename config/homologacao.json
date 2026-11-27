@@ -1,0 +1,5 @@
+{
+  "PETITA_NEON_ENABLED": "true",
+  "PETITA_API_ORIGIN": "https://petita-api-neon-homologacao-petsaudemonitoramento-devs-projects.vercel.app",
+  "PETITA_AUTH_URL": "https://ep-calm-night-b61u6bdb.neonauth.c-2.sa-east-1.aws.neon.tech/neondb/auth"
+}

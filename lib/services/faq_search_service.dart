@@ -1,11 +1,13 @@
 import 'dart:convert';
 import 'package:flutter/services.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 import '../models/faq_item.dart';
-import 'supabase_service.dart';
+import 'neon_api_client.dart';
+import 'institutional/runtime.dart';
 
 class FaqSearchService {
-  final SupabaseService _online = SupabaseService();
+  FaqSearchService({this.onlineBudget = const Duration(milliseconds: 600), this.api});
+  final Duration onlineBudget;
+  final NeonApiClient? api;
   List<FaqItem>? _cache;
 
   Future<List<FaqItem>> loadFaq() async {
@@ -18,22 +20,10 @@ class FaqSearchService {
 
   Future<FaqItem?> search(String input, {String? category}) async {
     final local = await _searchLocal(input);
-    final onlineCurated = await _searchOnlineCurated(input);
-    final curated = _better(local, onlineCurated);
-    if (curated != null) return curated;
-
-    final rag = await _online.askPetitaRag(question: input, category: category);
-    if (rag != null && rag.found && rag.answer.trim().isNotEmpty) {
-      return FaqItem(
-        id: 'rag_${DateTime.now().microsecondsSinceEpoch}',
-        category: category ?? 'Documentos de apoio',
-        question: input,
-        keywords: const [],
-        answer: rag.answer.trim(),
-        riskLevel: 'baixo',
-      );
-    }
-    return null;
+    final onlineCurated = await _searchOnlineCurated(input)
+        .timeout(onlineBudget, onTimeout: () => null);
+    // Do not contact the retired Supabase or invent document-based answers.
+    return _better(local, onlineCurated);
   }
 
   FaqItem? _better(FaqItem? a, FaqItem? b) {
@@ -59,13 +49,13 @@ class FaqSearchService {
 
   Future<FaqItem?> _searchOnlineCurated(String input) async {
     try {
-      final client = Supabase.instance.client;
+      final client = api ?? InstitutionalRuntime.instance?.api;
+      if (client == null) return null;
       final text = _normalize(input);
-      final kb = await client.from('knowledge_base').select().eq('active', true).limit(200);
+      final kb = await client.listKnowledge();
       FaqItem? best;
       int bestScore = 0;
-      for (final item in (kb as List)) {
-        final json = Map<String, dynamic>.from(item as Map);
+      for (final json in kb) {
         final keywords = List<String>.from(json['keywords'] as List? ?? const []);
         final score = _scoreItem(
           text,
@@ -81,7 +71,7 @@ class FaqSearchService {
             question: json['question'] as String? ?? '',
             keywords: keywords,
             answer: json['answer'] as String? ?? '',
-            riskLevel: 'baixo',
+            riskLevel: json['risk_level'] as String? ?? 'baixo',
           );
         }
       }

@@ -1,5 +1,8 @@
+import '../../widgets/local_persistence_feedback.dart';
+import '../../widgets/account_header_menu.dart';
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_tts/flutter_tts.dart';
 import '../../config/app_routes.dart';
@@ -14,7 +17,9 @@ import '../../services/birth_plan_explanations.dart';
 import '../../services/chatbot_service.dart';
 import '../../services/faq_search_service.dart';
 import '../../services/storage_service.dart';
-import '../../services/supabase_service.dart';
+import '../../services/institutional/question_service.dart';
+import '../../services/institutional/runtime.dart';
+import '../../services/institutional/institutional_auth.dart';
 
 enum _PlanStartChoice { resume, restart, summary }
 
@@ -31,8 +36,55 @@ class _ChatScreenState extends State<ChatScreen> {
   final _cardScrollController = ScrollController();
   final _inputFocusNode = FocusNode();
   final _storage = StorageService();
-  final _online = SupabaseService();
+  final _online = InstitutionalQuestionService();
   late final ChatbotService _chatbot;
+  late final InstitutionalAuth? _auth;
+  TreatmentPreferences? _treatment;
+  String? _treatmentAcknowledgement;
+  String get _conversationScope => _auth?.signedIn == true ? 'account:${_auth!.subject}' : 'guest';
+  TreatmentPreferences? get _currentTreatment => _treatment?.conversationScope == _conversationScope ? _treatment : null;
+  void _onAuthChanged() {
+    if (!mounted) return;
+    setState(() {
+      if (_treatment?.conversationScope != _conversationScope) {
+        _treatment = null;
+        _treatmentAcknowledgement = null;
+      }
+    });
+  }
+
+  String _address({required String neutral, required String feminine, required String masculine, required String inclusive}) =>
+      _currentTreatment?.address(neutral: neutral, feminine: feminine, masculine: masculine, inclusive: inclusive) ?? neutral;
+
+  // Keep canonical question identifiers and answer values unchanged.
+  // Only the wording shown/read to the person is adapted.
+  String _displayWording(String value) {
+    final choices = <String, List<String>>{
+      'Dados da gestante': ['Seus dados', 'Seus dados', 'Seus dados', 'Seus dados'],
+      'Sentir-me segura': ['Sentir segurança', 'Sentir-me segura', 'Sentir-me seguro', 'Sentir-me segure'],
+      'permanecer acompanhada durante': ['ter companhia durante', 'permanecer acompanhada durante', 'permanecer acompanhado durante', 'ter companhia durante'],
+      'ficar sozinha em alguns momentos': ['ficar sem companhia em alguns momentos', 'ficar sozinha em alguns momentos', 'ficar sozinho em alguns momentos', 'ficar sem companhia em alguns momentos'],
+      'Sentada': ['Posição sentada', 'Sentada', 'Sentado', 'Posição sentada'],
+      'Deitada de lado': ['Posição lateral', 'Deitada de lado', 'Deitado de lado', 'Posição lateral'],
+      'Semi-sentada': ['Posição semissentada', 'Semi-sentada', 'Semi-sentado', 'Posição semissentada'],
+      'Deitada de costas': ['Posição de costas', 'Deitada de costas', 'Deitado de costas', 'Posição de costas'],
+      'Você deseja ser informada antes': ['Você deseja receber informações antes', 'Você deseja ser informada antes', 'Você deseja ser informado antes', 'Você deseja receber informações antes'],
+      'desejo ser informada antes': ['desejo receber informações antes', 'desejo ser informada antes', 'desejo ser informado antes', 'desejo receber informações antes'],
+      'Ser informada': ['Receber informações', 'Ser informada', 'Ser informado', 'Receber informações'],
+      'Quando mãe e bebê estão bem': ['Quando você e o bebê estão bem', 'Quando você e o bebê estão bem', 'Quando você e o bebê estão bem', 'Quando você e o bebê estão bem'],
+    };
+    for (final entry in choices.entries) {
+      value = value.replaceAll(entry.key, _address(neutral: entry.value[0], feminine: entry.value[1], masculine: entry.value[2], inclusive: entry.value[3]));
+    }
+    return value;
+  }
+
+  Future<void> _loadTreatment() async {
+    final scope = _conversationScope;
+    final value = await _storage.loadTreatmentPreferences();
+    if (!mounted || scope != _conversationScope) return;
+    _treatment = value?.conversationScope == scope ? value : null;
+  }
 
   List<ChatMessage> _messages = [];
   List<BirthPlanQuestion> _questions = [];
@@ -40,6 +92,7 @@ class _ChatScreenState extends State<ChatScreen> {
   int _currentQuestion = -1;
   bool _loading = true;
   bool _answering = false;
+  bool _confirmingSelection = false;
   bool _textInputEnabled = true;
   bool _awaitingPronouns = false;
   bool _pronounCustomInput = false;
@@ -47,6 +100,9 @@ class _ChatScreenState extends State<ChatScreen> {
   bool _showCardExplanation = false;
   bool _writingModeSelected = false;
   String? _cardFeedback;
+  String? _dppError;
+  bool get _isDppInput => !_awaitingPronouns && _currentQuestion >= 0 &&
+      _currentQuestion < _questions.length && _questions[_currentQuestion].id == 'dpp';
   final FlutterTts _tts = FlutterTts();
   bool _readingVoice = false;
   int _typingDots = 1;
@@ -58,6 +114,8 @@ class _ChatScreenState extends State<ChatScreen> {
   void initState() {
     super.initState();
     _chatbot = ChatbotService(FaqSearchService());
+    _auth = InstitutionalRuntime.instance?.auth;
+    _auth?.addListener(_onAuthChanged);
     _tts.setCompletionHandler(() {
       if (mounted) setState(() => _readingVoice = false);
     });
@@ -69,6 +127,7 @@ class _ChatScreenState extends State<ChatScreen> {
 
   @override
   void dispose() {
+    _auth?.removeListener(_onAuthChanged);
     _typingTimer?.cancel();
     _tts.stop();
     _controller.dispose();
@@ -99,7 +158,9 @@ class _ChatScreenState extends State<ChatScreen> {
   Future<void> _init() async {
     _questions = await BirthPlanFlowService().loadQuestions();
     _answers = await _storage.loadAnswers();
-    _messages = [_chatbot.welcome()];
+    await _loadTreatment();
+    if (!mounted) return;
+    _messages = [_chatbot.welcome(treatment: _currentTreatment)];
     if (mounted) setState(() => _loading = false);
     _scrollToBottom();
   }
@@ -124,14 +185,24 @@ class _ChatScreenState extends State<ChatScreen> {
 
   String get _currentSectionName {
     if (_currentQuestion < 0 || _questions.isEmpty) return 'Conversa com a Petita';
-    return _questions[_currentQuestion].section;
+    return _displayWording(_questions[_currentQuestion].section);
   }
 
   Future<void> _send([String? override]) async {
     if (_petitaSearching || _answering) return;
-    final text = (override ?? _controller.text).trim();
-    if (text.isEmpty) return;
+    var text = (override ?? _controller.text).trim();
     if (!_textInputEnabled && override == null) return;
+    if (_isDppInput) {
+      final normalized = GestationalAgeService.normalizeDpp(text);
+      if (normalized == null) {
+        setState(() => _dppError = 'Informe uma data válida no formato DD/MM/AAAA.');
+        return;
+      }
+      text = normalized;
+      setState(() => _dppError = null);
+      _inputFocusNode.unfocus();
+    }
+    if (text.isEmpty) return;
     _controller.clear();
 
     if (_awaitingPronouns) {
@@ -141,16 +212,6 @@ class _ChatScreenState extends State<ChatScreen> {
     }
 
     if (_currentQuestion >= 0) {
-      final question = _questions[_currentQuestion];
-      if (question.id == 'dpp' && GestationalAgeService.parseDpp(text) == null) {
-        _controller.text = text;
-        setState(() => _messages.add(const ChatMessage(
-          text: 'Essa data não parece válida. Digite sua DPP no formato dia/mês/ano, por exemplo 18/11/2026.',
-          isUser: false,
-        )));
-        _scrollToBottom();
-        return;
-      }
       final q = _questions[_currentQuestion];
       if (q.multiple) {
         final values = {..._multiSelection, text}.toList();
@@ -171,8 +232,8 @@ class _ChatScreenState extends State<ChatScreen> {
       await _startPlanFlow();
       return;
     }
-    if (text == 'Criar cadastro local' || text == 'Abrir cadastro' || text == 'Perfil da gestante') {
-      Navigator.pushNamed(context, AppRoutes.profile);
+    if (text == 'Minha conta' || text == 'Criar cadastro local' || text == 'Abrir cadastro' || text == 'Perfil da gestante') {
+      Navigator.pushNamed(context, AppRoutes.institutional, arguments: _auth?.signedIn == true ? 'manage' : 'login');
       return;
     }
     if (text == 'Enviar dúvida à UBS' || text == 'Ainda tenho dúvida') {
@@ -182,6 +243,7 @@ class _ChatScreenState extends State<ChatScreen> {
     if (text == 'Resposta satisfatória' || text == 'Essa resposta ajudou') {
       _pendingUbsQuestion = null;
       setState(() => _messages.add(const ChatMessage(
+            addressByName: true,
             text: 'Que bom! Fico feliz em ajudar. Se surgir outra dúvida, pode me chamar novamente.',
             isUser: false,
             options: ['Montar meu plano', 'Ver meu plano'],
@@ -204,7 +266,7 @@ class _ChatScreenState extends State<ChatScreen> {
 
     _setPetitaSearching(true);
     try {
-      final reply = await _chatbot.respond(text);
+      final reply = await _chatbot.respond(text, treatment: _currentTreatment);
       await Future.delayed(const Duration(milliseconds: 480));
       if (!mounted) return;
       setState(() => _messages.add(reply));
@@ -263,14 +325,18 @@ class _ChatScreenState extends State<ChatScreen> {
         return;
       }
       if (choice == _PlanStartChoice.restart) {
-        await _storage.clearAnswers();
+        if (!await confirmLocalChange(context, () => _storage.clearAnswers())) return;
         answers = [];
         restarting = true;
+        _treatment = null;
+        _treatmentAcknowledgement = null;
       }
     }
 
     if (!mounted) return;
     _answers = answers;
+    await _loadTreatment();
+    if (!mounted) return;
     final answeredIds = _answers.map((answer) => answer.questionId).toSet();
     final pending = await _storage.loadConsultationPending();
     final next = _questions.indexWhere((question) => !answeredIds.contains(question.id) && !pending.contains(question.id));
@@ -285,8 +351,9 @@ class _ChatScreenState extends State<ChatScreen> {
     _textInputEnabled = false;
     _controller.clear();
     setState(() {
-      if (restarting) _messages = [_chatbot.welcome()];
+      if (restarting) _messages = [_chatbot.welcome(treatment: _currentTreatment)];
       _messages.add(ChatMessage(
+        addressByName: true,
         text: restarting
             ? 'Vamos criar um novo Plano de Parto! 💜 As respostas do plano anterior foram apagadas deste dispositivo.'
             : 'Que bom que vamos construir esse plano! 💜 Aqui você pode pensar nas suas preferências com tranquilidade. Não existe resposta certa ou errada: o importante é que suas escolhas sejam ouvidas. Se algum termo parecer difícil, toque em “Quero entender melhor”.',
@@ -306,6 +373,7 @@ class _ChatScreenState extends State<ChatScreen> {
     _multiSelection.clear();
     _showCardExplanation = false;
     _cardFeedback = null;
+    _dppError = null;
     _writingModeSelected = false;
     if (_readingVoice) {
       try { await _tts.stop(); } catch (_) { /* Voice playback is optional. */ }
@@ -335,8 +403,8 @@ class _ChatScreenState extends State<ChatScreen> {
   String _introForQuestion(BirthPlanQuestion q) {
     final section = q.section.toLowerCase();
     if (q.id == 'nome_gestante') return 'Que bom ter você aqui! 💜 Vamos começar com calma. Primeiro, me conte algumas informações para identificar seu plano.';
-    if (q.id == 'ubs_referencia') return 'Obrigada por compartilhar essas informações comigo. 💗 Agora vamos identificar a UBS que acompanha você. Se não souber, tudo bem: podemos conversar sobre isso.';
-    if (section.contains('acompanhante')) return 'Você merece se sentir acolhida e acompanhada. 💜 Vamos conversar sobre quem você gostaria de ter ao seu lado nesse momento.';
+    if (q.id == 'ubs_referencia') return 'Agradeço por compartilhar essas informações comigo. 💗 Agora vamos identificar a UBS que acompanha você. Se não souber, tudo bem: podemos conversar sobre isso.';
+    if (section.contains('acompanhante')) return _address(neutral: 'Você merece receber acolhimento e companhia.', feminine: 'Você merece se sentir acolhida e acompanhada.', masculine: 'Você merece se sentir acolhido e acompanhado.', inclusive: 'Você merece receber acolhimento e companhia.') + ' 💜 Vamos conversar sobre quem você gostaria de ter ao seu lado nesse momento.';
     if (section.contains('trabalho')) return 'Cada parto tem seu próprio ritmo, e suas preferências importam. 🌷 Vamos conhecer algumas possibilidades para o trabalho de parto, sempre considerando sua segurança e a avaliação da equipe.';
     if (section.contains('alívio')) return 'É natural ter dúvidas sobre as sensações do parto. 💗 Existem formas diferentes de buscar conforto e aliviar a dor. Vou ajudar você a conhecer essas opções.';
     if (section.contains('nascimento')) return 'Estamos chegando a uma parte muito especial: o nascimento. 💜 Vamos registrar o que é importante para você nesse momento.';
@@ -373,11 +441,13 @@ class _ChatScreenState extends State<ChatScreen> {
   }
 
   Future<void> _savePronouns(String pronouns) async {
-    await _storage.saveTreatmentPreferences(
-      TreatmentPreferences(pronouns: pronouns),
-    );
-    if (!mounted) return;
+    final scope = _conversationScope;
+    final preference = TreatmentPreferences(pronouns: pronouns, conversationScope: scope, includeInPdf: _currentTreatment?.includeInPdf ?? false);
+    if (!await confirmLocalChange(context, () => _storage.saveTreatmentPreferences(preference))) return;
+    if (!mounted || scope != _conversationScope) return;
     setState(() {
+      _treatment = preference;
+      _treatmentAcknowledgement = _address(neutral: 'Combinado! Vou respeitar sua preferência. 💜', feminine: 'Combinado! Quero que você se sinta acolhida aqui. 💜', masculine: 'Combinado! Quero que você se sinta acolhido aqui. 💜', inclusive: 'Combinado! Quero que você se sinta acolhide aqui. 💜');
       _messages.add(ChatMessage(
         text: pronouns.isEmpty ? 'Prefiro não informar' : pronouns,
         isUser: true,
@@ -389,12 +459,14 @@ class _ChatScreenState extends State<ChatScreen> {
     await _showCurrentQuestion();
   }
 
-  Future<void> _answerCurrentQuestion(List<String> values) async {
+  Future<void> _answerCurrentQuestion(List<String> values, {bool confirmSelection = false}) async {
     if (_answering || _currentQuestion < 0) return;
     final q = _questions[_currentQuestion];
     final cleaned = values.map((e) => e.trim()).where((e) => e.isNotEmpty).toList();
     if (cleaned.isEmpty) return;
     _answering = true;
+    if (confirmSelection) setState(() { _confirmingSelection = true; _cardFeedback = null; });
+    final previousAnswers = List<BirthPlanAnswer>.from(_answers);
     try {
       _answers.removeWhere((a) => a.questionId == q.id);
       _answers.add(BirthPlanAnswer(questionId: q.id, values: cleaned));
@@ -412,21 +484,25 @@ class _ChatScreenState extends State<ChatScreen> {
       await _storage.saveAnswers(_answers);
       await _storage.resolveQuestionForConsultation(q.id);
       if (!mounted) return;
-
+      // Allow the confirmation color to be visible before leaving the card.
+      if (confirmSelection) await Future<void>.delayed(const Duration(milliseconds: 240));
+      if (!mounted) return;
+      _confirmingSelection = false;
+      _treatmentAcknowledgement = null;
       _currentQuestion++;
       if (q.id == 'dpp' && gestationalEstimate != null &&
           _currentQuestion < _questions.length &&
           _questions[_currentQuestion].id == 'semanas_gestacao') {
         _currentQuestion++;
       }
-      if (q.id == 'nome_gestante' &&
-          await _storage.loadTreatmentPreferences() == null) {
+      if (q.id == 'nome_gestante' && _currentTreatment == null) {
         _showPronounsPrompt();
         return;
       }
       if (_currentQuestion >= _questions.length) {
-        setState(() => _messages.add(const ChatMessage(
-            text: 'Você conseguiu! 💜 Obrigada por compartilhar suas escolhas comigo. Seu Plano de Parto está pronto para ser revisado com calma. Você pode conferir as respostas, conversar com a equipe de saúde e gerar o PDF quando quiser.',
+        setState(() => _messages.add(ChatMessage(
+            addressByName: true,
+            text: _address(neutral: 'Você conseguiu!', feminine: 'Parabéns, você está pronta para revisar suas escolhas!', masculine: 'Parabéns, você está pronto para revisar suas escolhas!', inclusive: 'Parabéns por chegar até aqui!') + ' 💜 Agradeço por compartilhar suas escolhas comigo. Seu Plano de Parto está pronto para ser revisado com calma. Você pode conferir as respostas, conversar com a equipe de saúde e gerar o PDF quando quiser.',
             isUser: false,
             options: ['Ver meu plano'],
           )));
@@ -437,8 +513,13 @@ class _ChatScreenState extends State<ChatScreen> {
       } else {
         await _showCurrentQuestion();
       }
+    } on LocalPersistenceException {
+      _answers = previousAnswers;
+      _controller.text = cleaned.join(", ");
+      if (mounted) showLocalPersistenceError(context);
     } finally {
       _answering = false;
+      if (_confirmingSelection && mounted) setState(() => _confirmingSelection = false);
     }
   }
 
@@ -462,7 +543,7 @@ class _ChatScreenState extends State<ChatScreen> {
       _messages.add(ChatMessage(text: result.question, isUser: true));
       if (hasRiskAlert) {
         _messages.add(const ChatMessage(
-          text: 'Atenção: pelos sinais informados, este canal não substitui atendimento presencial. Se você estiver com sintomas importantes ou insegura, procure uma maternidade, pronto atendimento ou serviço de urgência.',
+          text: 'Atenção: pelos sinais informados, este canal não substitui atendimento presencial. Se você estiver com sintomas importantes ou sentir insegurança, procure uma maternidade, pronto atendimento ou serviço de urgência.',
           isUser: false,
         ));
       }
@@ -470,9 +551,9 @@ class _ChatScreenState extends State<ChatScreen> {
 
     _setPetitaSearching(true);
     try {
-      final reply = await _chatbot.respond(result.question, category: result.category);
+      final reply = await _chatbot.respond(result.question, category: result.category, treatment: _currentTreatment);
       final answerText = reply.text.contains('Ainda não encontrei uma resposta segura')
-          ? 'Eu não encontrei uma resposta suficientemente segura na minha base validada para essa dúvida. Posso encaminhar sua pergunta, de forma anônima, para a Equipe UBS vinculada ao seu perfil.'
+          ? 'Eu não encontrei uma resposta suficientemente segura na minha base validada para essa dúvida. Posso encaminhar sua pergunta, de forma pseudonimizada, para a Equipe UBS vinculada ao seu perfil.'
           : '${reply.text}\n\nEssa resposta foi satisfatória para você?';
 
       if (!mounted) return;
@@ -492,7 +573,7 @@ class _ChatScreenState extends State<ChatScreen> {
       await _showAccessRequiredDialog(
         title: 'Cadastro necessário',
         message:
-            'Para enviar uma dúvida à Equipe UBS, a paciente precisa estar cadastrada e conectada com e-mail e senha.\n\nVocê ainda pode conversar com a Petita, montar seu Plano de Parto e gerar o PDF offline, mas o envio de dúvidas para a UBS só funciona com cadastro online.',
+            'Para enviar uma dúvida à Equipe UBS, é necessário entrar em uma conta com e-mail e senha.\n\nVocê ainda pode conversar com a Petita, montar seu Plano de Parto e gerar o PDF offline, mas o envio de dúvidas para a UBS só funciona com cadastro online.',
       );
       return false;
     }
@@ -513,7 +594,7 @@ class _ChatScreenState extends State<ChatScreen> {
         await _showAccessRequiredDialog(
           title: 'Conta de paciente necessária',
           message:
-              'O envio de dúvidas é exclusivo para contas de paciente/gestante cadastradas.\n\nEntre com o e-mail e a senha da gestante no Perfil para continuar.',
+              'O envio de dúvidas é exclusivo para contas da área de gestação.\n\nEntre na sua conta para continuar.',
         );
         return false;
       }
@@ -561,15 +642,14 @@ class _ChatScreenState extends State<ChatScreen> {
       return;
     }
 
-    final profile = await _storage.loadProfile();
     final onlineProfile = await _online.loadOnlineProfile().catchError((_) => null);
-    final activeProfile = onlineProfile ?? profile;
+    final activeProfile = onlineProfile;
 
     if (!_online.isLoggedIn) {
       setState(() => _messages.add(const ChatMessage(
-            text: 'Para enviar uma dúvida à UBS, você precisa estar conectada em uma conta online usando e-mail e senha. Mesmo sem login, você ainda pode montar, editar e gerar seu Plano de Parto offline.',
+            text: 'Para enviar uma dúvida à UBS, você precisa entrar em uma conta online usando e-mail e senha. Mesmo sem login, você ainda pode montar, editar e gerar seu Plano de Parto offline.',
             isUser: false,
-            options: ['Perfil da gestante', 'Montar meu plano'],
+            options: ['Minha conta', 'Montar meu plano'],
           )));
       _scrollToBottom();
       return;
@@ -602,17 +682,19 @@ class _ChatScreenState extends State<ChatScreen> {
         warningSigns: pending.warningSigns,
         urgencyAcknowledged: pending.urgencyAcknowledged,
         expectedResponseNoticeAccepted: true,
+        ownUbsAcknowledged: true,
+        pseudonymizationAcknowledged: true,
       );
       final publicCode = data['public_code']?.toString() ?? 's/código';
       _pendingUbsQuestion = null;
       setState(() => _messages.add(ChatMessage(
-            text: 'Sua dúvida foi enviada de forma anonimizada para a Equipe UBS.\n\nCódigo da dúvida: $publicCode\n\nA equipe verá a dúvida, a UBS vinculada, a autopercepção de risco e os sinais informados, mas não verá seu nome, e-mail ou outros dados pessoais.',
+            text: 'Sua dúvida foi enviada de forma pseudonimizada para a Equipe UBS.\n\nCódigo da dúvida: $publicCode\n\nA equipe verá a dúvida, a UBS vinculada, a autopercepção de risco e os sinais informados, mas não verá seu nome, e-mail ou outros dados pessoais.',
             isUser: false,
             options: const ['Minhas dúvidas', 'Montar meu plano', 'Ver meu plano'],
           )));
     } catch (e) {
       setState(() => _messages.add(ChatMessage(
-            text: 'Não foi possível enviar sua dúvida agora. Verifique sua internet e tente novamente. Em caso de urgência, procure imediatamente um serviço de saúde.\n\nDetalhe técnico: $e',
+            text: 'Não foi possível enviar sua dúvida agora. Verifique sua internet e tente novamente. Em caso de urgência, procure imediatamente um serviço de saúde.\n\nSeus dados locais foram preservados.',
             isUser: false,
             options: const ['Sinais de atenção', 'Montar meu plano'],
           )));
@@ -647,7 +729,7 @@ class _ChatScreenState extends State<ChatScreen> {
           _textInputEnabled = true;
           _writingModeSelected = true;
           _messages.add(const ChatMessage(
-            text: 'Escreva como prefere ser tratada ou tratado. Por exemplo: “Use apenas meu nome”.',
+            text: 'Escreva como prefere que a Petita se refira a você. Por exemplo: “Use apenas meu nome”.',
             isUser: false,
           ));
         });
@@ -700,8 +782,8 @@ class _ChatScreenState extends State<ChatScreen> {
       Navigator.pushNamed(context, AppRoutes.myQuestions);
       return;
     }
-    if (option == 'Perfil da gestante' || option == 'Abrir cadastro' || option == 'Criar cadastro local') {
-      Navigator.pushNamed(context, AppRoutes.profile);
+    if (option == 'Minha conta' || option == 'Perfil da gestante' || option == 'Abrir cadastro' || option == 'Criar cadastro local') {
+      Navigator.pushNamed(context, AppRoutes.institutional, arguments: _auth?.signedIn == true ? 'manage' : 'login');
       return;
     }
 
@@ -754,7 +836,7 @@ class _ChatScreenState extends State<ChatScreen> {
           return;
         }
         setState(() => _messages.add(ChatMessage(text: _multiSelection.join(', '), isUser: true)));
-        _answerCurrentQuestion(_multiSelection.toList());
+        await _answerCurrentQuestion(_multiSelection.toList(), confirmSelection: true);
         return;
       }
       setState(() {
@@ -849,8 +931,8 @@ class _ChatScreenState extends State<ChatScreen> {
       await _tts.setSpeechRate(0.46);
       final q = _questions[_currentQuestion];
       final text = [
-        q.question,
-        if (q.options.isNotEmpty) 'Alternativas: ${q.options.join('. ')}.',
+        _displayWording(q.question),
+        if (q.options.isNotEmpty) 'Alternativas: ${q.options.map(_displayWording).join('. ')}.',
         if (_showCardExplanation)
           BirthPlanExplanations.forQuestion(q.id) ?? '',
       ].join(' ');
@@ -875,7 +957,7 @@ class _ChatScreenState extends State<ChatScreen> {
     _answering = true;
     try {
       final q = _questions[_currentQuestion];
-      await _storage.deferQuestionForConsultation(q.id);
+      if (!await confirmLocalChange(context, () => _storage.deferQuestionForConsultation(q.id))) return;
       if (!mounted) return;
       setState(() {
         _messages.add(ChatMessage(
@@ -906,42 +988,51 @@ class _ChatScreenState extends State<ChatScreen> {
 
 
 
-  // Um unico painel centralizado, com margens que diminuem nos celulares
-  // estreitos. O conteudo cresce verticalmente e rola: nunca e comprimido
-  // a uma altura fixa nem cortado quando o tamanho da fonte aumenta.
-  Widget _buildAdaptivePanel({required Widget child}) {
+  Widget _navigationHeader() => _ChatHeader(
+    auth: _auth, progress: _progress, currentSection: _currentSectionName,
+    inPlanFlow: _currentQuestion >= 0,
+    currentStep: _visibleCurrentStep, totalSteps: _visibleTotalSteps,
+  );
+
+  // Single portrait per question; the navigation header scrolls with the card.
+  Widget _buildAdaptivePanel({required Widget child, required String section}) {
     return LayoutBuilder(builder: (context, constraints) {
       final width = constraints.maxWidth;
-      final compact = width < 360;
-      final lowHeight = MediaQuery.sizeOf(context).height < 700;
-      final outer = compact ? 8.0 : width < 430 ? 12.0 : 20.0;
-      final inner = compact ? 12.0 : width < 430 ? 16.0 : 24.0;
+      final outer = width < 360 ? 8.0 : width < 430 ? 12.0 : 20.0;
       return SingleChildScrollView(
         key: const Key('petita_cards_scroll'),
         controller: _cardScrollController,
         keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
-        padding: EdgeInsets.fromLTRB(
-          outer, lowHeight ? 8 : 16, outer, 20,
-        ),
-        child: Center(
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 660),
-            child: Material(
-              color: Colors.white,
-              elevation: 1.5,
-              borderRadius: BorderRadius.circular(compact ? 18 : 24),
-              child: Container(
-                width: double.infinity,
-                padding: EdgeInsets.all(inner),
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(compact ? 18 : 24),
-                  border: Border.all(color: const Color(0xFFEDE3F8)),
-                ),
-                child: child,
-              ),
+        padding: EdgeInsets.fromLTRB(outer, 4, outer, 20),
+        child: Center(child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 660),
+          child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+            _navigationHeader(),
+            Padding(
+              padding: const EdgeInsets.only(top: 5, bottom: 14),
+              child: Row(children: [
+                Flexible(child: Text(section.toUpperCase(), style: const TextStyle(
+                  color: AppColors.primaryPink, fontSize: 12, fontWeight: FontWeight.w800, letterSpacing: .6))),
+                const SizedBox(width: 9),
+                const Expanded(child: Divider(color: AppColors.softGray)),
+              ]),
             ),
-          ),
-        ),
+            if (_petitaSearching)
+              _PetitaTypingBubble(dotCount: _typingDots, preparingQuestion: true)
+            else
+              Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                _PetitaPortrait(size: width < 360 ? 38 : 50, key: const Key('petita_question_avatar')),
+                const SizedBox(width: 12),
+                Expanded(child: _PetitaSpeechSurface(
+                  key: const Key('petita_question_bubble'),
+                  padding: EdgeInsets.all(width < 360 ? 11 : 15),
+                  child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+                    const _PetitaSpeaker(), const SizedBox(height: 7), child,
+                  ]),
+                )),
+              ]),
+          ]),
+        )),
       );
     });
   }
@@ -956,11 +1047,8 @@ class _ChatScreenState extends State<ChatScreen> {
       'Prefiro não informar',
     ];
     return _buildAdaptivePanel(
+      section: 'Preferência de tratamento',
       child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-        const Text('COMO PREFERE SER TRATADA?', style: TextStyle(
-          fontWeight: FontWeight.bold, color: AppColors.primaryPink,
-        )),
-        const SizedBox(height: 10),
         const Text('Antes de continuar, como prefere que a Petita e a equipe se refiram a você?',
             style: TextStyle(fontSize: 19, height: 1.3, fontWeight: FontWeight.bold)),
         const SizedBox(height: 10),
@@ -992,20 +1080,25 @@ class _ChatScreenState extends State<ChatScreen> {
     ];
     final explanation = BirthPlanExplanations.forQuestion(q.id);
     final compact = MediaQuery.sizeOf(context).width < 360;
+    final isSectionStart = _currentQuestion == 0 || _questions[_currentQuestion - 1].section != q.section;
+    final introduction = isSectionStart || q.id == 'ubs_referencia' ? _introForQuestion(q) : '';
+    final intro = ChatMessage(text: introduction, isUser: false, addressByName: true).textForAccount(signedIn: _auth?.signedIn == true, accountName: _auth?.user?['name']);
     return _buildAdaptivePanel(
+      section: _displayWording(q.section),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Text(q.section.toUpperCase(),
-              style: const TextStyle(
-                color: AppColors.primaryPink,
-                fontWeight: FontWeight.w800,
-                letterSpacing: 0.5,
-              )),
-          const SizedBox(height: 9),
-          Text(q.question,
+          if (_treatmentAcknowledgement != null) ...[
+            Text(_treatmentAcknowledgement!, style: const TextStyle(color: AppColors.petDarkBlue, height: 1.3)),
+            const SizedBox(height: 14),
+          ],
+          if (introduction.isNotEmpty) ...[
+            Text(intro, style: const TextStyle(color: Color(0xFF6F617F), height: 1.4, fontSize: 14)),
+            const SizedBox(height: 9),
+          ],
+          Text(_displayWording(q.question),
               style: TextStyle(
-                fontSize: compact ? 19 : 21,
+                fontSize: compact ? 17 : 19,
                 height: 1.3,
                 fontWeight: FontWeight.w800,
                 color: AppColors.petDarkBlue,
@@ -1032,12 +1125,12 @@ class _ChatScreenState extends State<ChatScreen> {
             return Padding(
               padding: const EdgeInsets.only(bottom: 9),
               child: _ChoicePill(
-                label: option,
+                label: _displayWording(option),
                 icon: isSelected && option == 'Escrever minha resposta'
                     ? Icons.check_circle_rounded
                     : (option == 'Concluir seleção'
                         ? Icons.check_circle_outline : _optionIcon(option)),
-                selected: isSelected,
+                selected: isSelected || (option == 'Concluir seleção' && _confirmingSelection),
                 primary: option == 'Concluir seleção',
                 help: false,
                 onTap: () => _handleOption(option),
@@ -1053,31 +1146,17 @@ class _ChatScreenState extends State<ChatScreen> {
           if (_writingModeSelected)
             Semantics(
               liveRegion: true,
-              child: Container(
-                key: const Key('petita_writing_confirmation'),
-                margin: const EdgeInsets.only(bottom: 12),
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 11),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFF3EBFF),
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: AppColors.primaryPink.withAlpha(95)),
-                ),
-                child: const Row(
-                  children: [
-                    Icon(Icons.check_circle, color: AppColors.primaryPink, size: 20),
-                    SizedBox(width: 9),
-                    Expanded(
-                      child: Text(
-                        'Modo escrita ativado. Digite abaixo e toque em enviar.',
-                        style: TextStyle(
-                          color: AppColors.petDarkBlue,
-                          fontSize: 13,
-                          height: 1.3,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ),
-                  ],
+              child: const Padding(
+                padding: EdgeInsets.fromLTRB(6, 0, 6, 10),
+                child: Text(
+                  'Modo escrita ativado. Digite sua resposta abaixo.',
+                  key: Key('petita_writing_confirmation'),
+                  style: TextStyle(
+                    color: Color(0xFF625772),
+                    fontSize: 13,
+                    height: 1.4,
+                    fontWeight: FontWeight.w400,
+                  ),
                 ),
               ),
             ),
@@ -1134,13 +1213,6 @@ class _ChatScreenState extends State<ChatScreen> {
       body: SafeArea(
         child: Column(
           children: [
-            _ChatHeader(
-              progress: _progress,
-              currentSection: _currentSectionName,
-              inPlanFlow: _currentQuestion >= 0,
-              currentStep: _visibleCurrentStep,
-              totalSteps: _visibleTotalSteps,
-            ),
             Expanded(
               child: _awaitingPronouns
                   ? _buildPronounsCard()
@@ -1149,17 +1221,26 @@ class _ChatScreenState extends State<ChatScreen> {
                       : ListView.builder(
                 controller: _scrollController,
                 padding: const EdgeInsets.fromLTRB(14, 14, 14, 14),
-                itemCount: _messages.length + (_petitaSearching ? 1 : 0),
-                itemBuilder: (context, index) {
+                itemCount: 1 + _messages.length + (_petitaSearching ? 1 : 0),
+                itemBuilder: (context, itemIndex) {
+                   if (itemIndex == 0) return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+                     _navigationHeader(),
+                     Align(alignment: Alignment.centerRight, child: TextButton.icon(
+                       onPressed: () => Navigator.pushNamed(context, AppRoutes.planSync),
+                       icon: const Icon(Icons.cloud_upload_outlined, size: 19),
+                       label: const Text('Sincronizar meu plano'),
+                     )),
+                   ]);
+                   final index = itemIndex - 1;
                   if (_petitaSearching && index == _messages.length) {
                     return _PetitaTypingBubble(dotCount: _typingDots);
                   }
                   final msg = _messages[index];
                   return Column(crossAxisAlignment: msg.isUser ? CrossAxisAlignment.end : CrossAxisAlignment.start, children: [
-                    _PetitaChatBubble(text: msg.text, isUser: msg.isUser),
+                    _PetitaChatBubble(text: msg.textForAccount(signedIn: _auth?.signedIn == true, accountName: _auth?.user?['name']), isUser: msg.isUser),
                     if (!msg.isUser && msg.options.isNotEmpty && index == activeOptionsIndex)
                       Padding(
-                        padding: const EdgeInsets.only(left: 10, top: 8, bottom: 14),
+                        padding: const EdgeInsets.only(left: 46, top: 8, bottom: 14),
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.stretch,
                           children: msg.options.map((o) {
@@ -1171,7 +1252,7 @@ class _ChatScreenState extends State<ChatScreen> {
                               child: _ChoicePill(
                                 label: o,
                                 icon: isHelp ? Icons.lightbulb_outline_rounded : (isFinish ? Icons.check_circle_outline : _optionIcon(o)),
-                                selected: isSelected,
+                                selected: isSelected || (isFinish && _confirmingSelection),
                                 primary: isFinish,
                                 help: isHelp,
                                 onTap: () => _handleOption(o),
@@ -1193,6 +1274,9 @@ class _ChatScreenState extends State<ChatScreen> {
                 controller: _controller,
                 focusNode: _inputFocusNode,
                 enabled: _textInputEnabled,
+                dateInput: _isDppInput,
+                errorText: _isDppInput ? _dppError : null,
+                onChanged: (_) { if (_dppError != null) setState(() => _dppError = null); },
                 onSend: () => _send(),
               ),
           ],
@@ -1217,218 +1301,149 @@ class _ChatScreenState extends State<ChatScreen> {
 }
 
 class _ChatHeader extends StatelessWidget {
-  const _ChatHeader({
-    required this.progress,
-    required this.currentSection,
-    required this.inPlanFlow,
-    required this.currentStep,
-    required this.totalSteps,
-  });
-
+  const _ChatHeader({required this.auth, required this.progress,
+    required this.currentSection, required this.inPlanFlow,
+    required this.currentStep, required this.totalSteps});
+  final InstitutionalAuth? auth;
   final double progress;
   final String currentSection;
   final bool inPlanFlow;
-  final int currentStep;
-  final int totalSteps;
+  final int currentStep, totalSteps;
 
   @override
   Widget build(BuildContext context) {
-    final size = MediaQuery.sizeOf(context);
-    final narrow = size.width < 370;
-    final short = size.height < 700;
+    final short = MediaQuery.sizeOf(context).height < 700;
     final keyboardVisible = MediaQuery.viewInsetsOf(context).bottom > 0;
-    return Container(
-      padding: EdgeInsets.fromLTRB(
-        narrow ? 8 : 16,
-        short ? 6 : 12,
-        narrow ? 8 : 16,
-        short ? 8 : 16,
-      ),
-      decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          colors: [Color(0xFF6332AB), Color(0xFFAB53D8), Color(0xFFE56BAC)],
-        ),
-        boxShadow: [
-          BoxShadow(color: Colors.black.withAlpha(10),
-              blurRadius: 12, offset: const Offset(0, 5)),
-        ],
-      ),
+    return Padding(
+      key: const Key('petita_scroll_header'),
+      padding: EdgeInsets.only(bottom: short ? 9 : 14),
       child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
         Row(children: [
-          IconButton(
-            tooltip: 'Voltar',
-            visualDensity: VisualDensity.compact,
-            onPressed: () => Navigator.pop(context),
-            icon: const Icon(Icons.arrow_back, color: Colors.white),
-          ),
-          Container(
-            padding: const EdgeInsets.all(3),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(14),
-            ),
-            child: CircleAvatar(
-              radius: narrow ? 16 : 19,
-              backgroundColor: AppColors.softPink,
-              child: ClipOval(child: Image.asset(
-                  'assets/images/petita.png', fit: BoxFit.cover)),
-            ),
-          ),
-          const SizedBox(width: 9),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text('Petita',
-                    style: TextStyle(
-                        fontWeight: FontWeight.w900,
-                        color: Colors.white, fontSize: 19)),
-                if (!short && !narrow)
-                  const Text('Com você em cada escolha 💗',
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(color: Colors.white, fontSize: 12)),
-              ],
-            ),
-          ),
-          IconButton(
-            tooltip: 'Meu perfil',
-            visualDensity: VisualDensity.compact,
-            onPressed: () => Navigator.pushNamed(context, AppRoutes.profile),
-            icon: const Icon(Icons.person_outline, color: Colors.white),
-          ),
+          IconButton(tooltip: 'Voltar', onPressed: () => Navigator.pop(context),
+            icon: const Icon(Icons.arrow_back, color: AppColors.petDarkBlue)),
+          Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            const Text('Petita', style: TextStyle(color: AppColors.petDarkBlue, fontSize: 19, fontWeight: FontWeight.w800)),
+            if (!short && !keyboardVisible) const Text('Seu plano de parto, com carinho.',
+              style: TextStyle(color: Color(0xFF736681), fontSize: 11)),
+          ])),
+          if (inPlanFlow) IconButton(tooltip: 'Sincronizar meu plano',
+            onPressed: () => Navigator.pushNamed(context, AppRoutes.planSync),
+            icon: const Icon(Icons.cloud_upload_outlined, color: AppColors.petDarkBlue)),
+          AccountHeaderMenu(auth: auth, color: AppColors.petDarkBlue, roleLabel: 'Plano de parto'),
         ]),
         if (inPlanFlow && !keyboardVisible) ...[
-          SizedBox(height: short ? 5 : 10),
-          if (narrow)
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(currentSection, maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                        fontWeight: FontWeight.w800, color: Colors.white)),
-                Text('Etapa $currentStep de $totalSteps',
-                    style: const TextStyle(
-                        fontSize: 12, color: Colors.white,
-                        fontWeight: FontWeight.w800)),
-              ],
-            )
-          else
-            Row(children: [
-              Expanded(
-                child: Text(currentSection, maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                        fontWeight: FontWeight.w800, color: Colors.white)),
-              ),
-              const SizedBox(width: 10),
-              Text('Etapa $currentStep de $totalSteps',
-                  style: const TextStyle(
-                      fontSize: 12, color: Colors.white,
-                      fontWeight: FontWeight.w800)),
-            ]),
-          SizedBox(height: short ? 5 : 8),
-          ClipRRect(
-            borderRadius: BorderRadius.circular(999),
-            child: LinearProgressIndicator(
-              value: progress,
-              minHeight: short ? 5 : 8,
-              backgroundColor: Colors.white24,
-              valueColor: const AlwaysStoppedAnimation<Color>(Colors.white),
-            ),
-          ),
+          const SizedBox(height: 4),
+          Semantics(label: currentSection, child: Text('Etapa $currentStep de $totalSteps',
+            style: const TextStyle(color: Color(0xFF736681), fontSize: 12, fontWeight: FontWeight.w700))),
+          const SizedBox(height: 6),
+          ClipRRect(borderRadius: BorderRadius.circular(999),
+            child: LinearProgressIndicator(value: progress, minHeight: 5,
+              backgroundColor: AppColors.softGray,
+              valueColor: const AlwaysStoppedAnimation<Color>(AppColors.primaryPink))),
         ],
       ]),
     );
   }
+}
+
+class _PetitaPortrait extends StatelessWidget {
+  const _PetitaPortrait({super.key, required this.size});
+  final double size;
+  @override
+  Widget build(BuildContext context) => Semantics(
+    label: 'Petita, personagem do aplicativo', image: true,
+    child: Container(
+      width: size, height: size, padding: const EdgeInsets.all(2),
+      decoration: BoxDecoration(shape: BoxShape.circle, color: Colors.white,
+        boxShadow: [BoxShadow(color: AppColors.primaryPink.withAlpha(28), blurRadius: 7, offset: const Offset(0, 2))]),
+      child: ClipOval(child: ColoredBox(color: AppColors.softPink,
+        child: Image.asset('assets/images/petita.png', fit: BoxFit.cover, excludeFromSemantics: true))),
+    ),
+  );
+}
+
+class _PetitaSpeaker extends StatelessWidget {
+  const _PetitaSpeaker();
+  @override
+  Widget build(BuildContext context) => const Text.rich(TextSpan(
+    text: 'Petita', style: TextStyle(fontSize: 12, color: Color(0xFF8B49BF), fontWeight: FontWeight.w800),
+    children: [TextSpan(text: '  • sua guia', style: TextStyle(fontSize: 11, color: Color(0xFF736681), fontWeight: FontWeight.w400))],
+  ));
+}
+
+class _PetitaSpeechSurface extends StatelessWidget {
+  const _PetitaSpeechSurface({super.key, required this.child, this.padding = const EdgeInsets.all(14)});
+  final Widget child;
+  final EdgeInsets padding;
+  @override
+  Widget build(BuildContext context) => Stack(clipBehavior: Clip.none, children: [
+    Container(
+      padding: padding,
+      decoration: BoxDecoration(color: Colors.white, border: Border.all(color: const Color(0xFFE7DCF2)),
+        borderRadius: const BorderRadius.only(topLeft: Radius.circular(20), topRight: Radius.circular(20), bottomLeft: Radius.circular(8), bottomRight: Radius.circular(20)),
+        boxShadow: [BoxShadow(color: Colors.black.withAlpha(9), blurRadius: 9, offset: const Offset(0, 3))]),
+      child: child,
+    ),
+    Positioned(left: -11, top: 13, child: IgnorePointer(
+      child: CustomPaint(key: const Key('petita_speech_tail'), size: const Size(12, 21), painter: _SpeechTailPainter()),
+    )),
+  ]);
+}
+
+class _SpeechTailPainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    final path = Path()..moveTo(size.width, 0)..lineTo(1, size.height / 2)..lineTo(size.width, size.height);
+    canvas.drawPath(path, Paint()..color = Colors.white..style = PaintingStyle.fill);
+    canvas.drawPath(path, Paint()..color = const Color(0xFFE7DCF2)..style = PaintingStyle.stroke..strokeWidth = 1);
+  }
+  @override
+  bool shouldRepaint(covariant _SpeechTailPainter oldDelegate) => false;
 }
 
 class _PetitaChatBubble extends StatelessWidget {
   const _PetitaChatBubble({required this.text, required this.isUser});
   final String text;
   final bool isUser;
-
   @override
   Widget build(BuildContext context) {
-    final bubble = Container(
-      constraints: const BoxConstraints(maxWidth: 360),
-      padding: const EdgeInsets.symmetric(horizontal: 17, vertical: 16),
-      decoration: BoxDecoration(
-        color: isUser ? const Color(0xFF8741C6) : Colors.white,
-        borderRadius: BorderRadius.only(
-          topLeft: const Radius.circular(20),
-          topRight: const Radius.circular(20),
-          bottomLeft: Radius.circular(isUser ? 20 : 6),
-          bottomRight: Radius.circular(isUser ? 6 : 20),
-        ),
-        border: isUser ? null : Border.all(color: const Color(0xFFEDE3F8)),
-        boxShadow: [BoxShadow(color: Colors.black.withAlpha((255 * 0.04).round()), blurRadius: 8, offset: const Offset(0, 3))],
-      ),
-      child: Text(text, style: TextStyle(color: isUser ? Colors.white : AppColors.textPrimary, height: 1.28, fontWeight: isUser ? FontWeight.w700 : FontWeight.w500)),
-    );
-
+    final content = Text(text, style: TextStyle(color: isUser ? Colors.white : AppColors.textPrimary,
+      height: 1.35, fontWeight: isUser ? FontWeight.w600 : FontWeight.w400));
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 7),
-      child: Row(
-        mainAxisAlignment: isUser ? MainAxisAlignment.end : MainAxisAlignment.start,
-        crossAxisAlignment: CrossAxisAlignment.end,
-        children: [
-          if (!isUser) ...[
-            CircleAvatar(radius: 17, backgroundColor: AppColors.softPink, child: ClipOval(child: Image.asset('assets/images/petita.png', fit: BoxFit.cover))),
-            const SizedBox(width: 8),
-          ],
-          Flexible(child: bubble),
-        ],
-      ),
+      child: Row(mainAxisAlignment: isUser ? MainAxisAlignment.end : MainAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.start, children: [
+          if (!isUser) ...[const _PetitaPortrait(size: 40), const SizedBox(width: 12)],
+          Flexible(child: ConstrainedBox(constraints: const BoxConstraints(maxWidth: 540),
+            child: isUser ? Container(padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 12),
+              decoration: const BoxDecoration(color: Color(0xFF8741C6), borderRadius: BorderRadius.only(
+                topLeft: Radius.circular(20), topRight: Radius.circular(6), bottomLeft: Radius.circular(20), bottomRight: Radius.circular(20))),
+              child: content) : _PetitaSpeechSurface(child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min,
+                children: [const _PetitaSpeaker(), const SizedBox(height: 6), content])),
+          )),
+        ]),
     );
   }
 }
 
 class _PetitaTypingBubble extends StatelessWidget {
-  const _PetitaTypingBubble({required this.dotCount});
-
+  const _PetitaTypingBubble({required this.dotCount, this.preparingQuestion = false});
   final int dotCount;
-
+  final bool preparingQuestion;
   @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 7),
-      child: Row(crossAxisAlignment: CrossAxisAlignment.end, children: [
-        CircleAvatar(
-          radius: 17,
-          backgroundColor: AppColors.softPink,
-          child: ClipOval(child: Image.asset('assets/images/petita.png', fit: BoxFit.cover)),
-        ),
-        const SizedBox(width: 8),
-        Flexible(
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: const BorderRadius.only(
-                topLeft: Radius.circular(20),
-                topRight: Radius.circular(20),
-                bottomLeft: Radius.circular(6),
-                bottomRight: Radius.circular(20),
-              ),
-              border: Border.all(color: AppColors.softPink),
-            ),
-            child: Text.rich(
-              TextSpan(children: [
-                const TextSpan(text: 'Petita está buscando uma resposta', style: TextStyle(fontWeight: FontWeight.w600)),
-                TextSpan(
-                  text: List.filled(dotCount, '.').join(),
-                  style: const TextStyle(fontWeight: FontWeight.w900, color: AppColors.primaryPink),
-                ),
-              ]),
-              softWrap: true,
-            ),
-          ),
-        ),
-      ]),
-    );
-  }
+  Widget build(BuildContext context) => Padding(
+    padding: const EdgeInsets.symmetric(vertical: 7),
+    child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      const _PetitaPortrait(size: 40), const SizedBox(width: 12),
+      Flexible(child: _PetitaSpeechSurface(child: Text.rich(TextSpan(children: [
+        TextSpan(text: preparingQuestion ? 'Petita está preparando a próxima pergunta' : 'Petita está buscando uma resposta',
+          style: const TextStyle(fontWeight: FontWeight.w500, color: AppColors.textPrimary)),
+        TextSpan(text: List.filled(dotCount, '.').join(),
+          style: const TextStyle(fontWeight: FontWeight.w900, color: AppColors.primaryPink)),
+      ])))),
+    ]),
+  );
 }
 
 class _ChoicePill extends StatelessWidget {
@@ -1443,6 +1458,7 @@ class _ChoicePill extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final filled = selected || primary;
+    final fillColor = selected ? AppColors.primaryPink : (primary ? const Color(0xFFC23880) : (help ? const Color(0xFFFFF0DC) : Colors.white));
     return InkWell(
       borderRadius: BorderRadius.circular(18),
       onTap: onTap,
@@ -1450,9 +1466,9 @@ class _ChoicePill extends StatelessWidget {
         duration: const Duration(milliseconds: 160),
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 15),
         decoration: BoxDecoration(
-          color: filled ? AppColors.primaryPink : (help ? const Color(0xFFFFF0DC) : Colors.white),
+          color: fillColor,
           borderRadius: BorderRadius.circular(18),
-          border: Border.all(color: help ? const Color(0xFFE6A34E) : AppColors.primaryPink.withAlpha((255 * 0.7).round())),
+          border: Border.all(color: filled ? fillColor : (help ? const Color(0xFFE6A34E) : AppColors.primaryPink.withAlpha((255 * 0.7).round()))),
           boxShadow: [BoxShadow(color: Colors.black.withAlpha((255 * 0.025).round()), blurRadius: 6, offset: const Offset(0, 3))],
         ),
         constraints: const BoxConstraints(minHeight: 54),
@@ -1480,12 +1496,39 @@ class _ChoicePill extends StatelessWidget {
   }
 }
 
+class _DppInputFormatter extends TextInputFormatter {
+  const _DppInputFormatter();
+  @override
+  TextEditingValue formatEditUpdate(TextEditingValue oldValue, TextEditingValue newValue) {
+    if (!newValue.composing.isCollapsed) return newValue;
+    if (!RegExp(r'^[0-9/]*$').hasMatch(newValue.text)) return oldValue;
+    final digits = newValue.text.replaceAll('/', '');
+    if (digits.length > 8) return oldValue;
+    String formatted = digits;
+    if (digits.length > 4) {
+      formatted = '${digits.substring(0, 2)}/${digits.substring(2, 4)}/${digits.substring(4)}';
+    } else if (digits.length > 2) {
+      formatted = '${digits.substring(0, 2)}/${digits.substring(2)}';
+    }
+    final offset = newValue.selection.extentOffset;
+    final before = offset < 0 ? digits.length : newValue.text.substring(0, offset.clamp(0, newValue.text.length).toInt()).replaceAll('/', '').length;
+    var caret = before;
+    if (before > 2) caret++;
+    if (before > 4) caret++;
+    return TextEditingValue(text: formatted, selection: TextSelection.collapsed(offset: caret.clamp(0, formatted.length).toInt()));
+  }
+}
+
 class _ChatInput extends StatelessWidget {
-  const _ChatInput({required this.controller, required this.focusNode, required this.enabled, required this.onSend});
+  const _ChatInput({required this.controller, required this.focusNode, required this.enabled, required this.onSend,
+    required this.dateInput, required this.errorText, required this.onChanged});
   final TextEditingController controller;
   final FocusNode focusNode;
   final bool enabled;
   final VoidCallback onSend;
+  final bool dateInput;
+  final String? errorText;
+  final ValueChanged<String> onChanged;
 
   @override
   Widget build(BuildContext context) {
@@ -1505,12 +1548,19 @@ class _ChatInput extends StatelessWidget {
                 focusNode: focusNode,
                 enabled: enabled,
                 minLines: 1,
-                maxLines: 3,
+                maxLines: dateInput ? 1 : 3,
+                keyboardType: dateInput ? TextInputType.number : null,
+                inputFormatters: dateInput ? const [_DppInputFormatter()] : null,
+                autocorrect: !dateInput,
+                enableSuggestions: !dateInput,
+                onChanged: onChanged,
                 textInputAction: TextInputAction.send,
                 decoration: InputDecoration(
                   hintText: enabled
-                      ? 'Digite sua resposta...'
+                      ? (dateInput ? 'DD/MM/AAAA' : 'Digite sua resposta...')
                       : 'Escolha uma alternativa acima',
+                  errorText: errorText,
+                  errorMaxLines: 2,
                   isDense: true,
                   contentPadding: const EdgeInsets.symmetric(
                       horizontal: 12, vertical: 12),
@@ -1574,8 +1624,9 @@ class _ConfirmAnonymousSendDialog extends StatefulWidget {
 class _ConfirmAnonymousSendDialogState extends State<_ConfirmAnonymousSendDialog> {
   bool _anonymousAck = false;
   bool _responseAck = false;
+  bool _ubsAck = false;
 
-  bool get _canSend => _anonymousAck && _responseAck;
+  bool get _canSend => _anonymousAck && _responseAck && _ubsAck;
 
   @override
   Widget build(BuildContext context) {
@@ -1593,7 +1644,7 @@ class _ConfirmAnonymousSendDialogState extends State<_ConfirmAnonymousSendDialog
               border: Border.all(color: AppColors.primaryPink.withAlpha((255 * 0.35).round())),
             ),
             child: const Text(
-              'Sua dúvida será encaminhada de forma anônima. A Equipe UBS não verá seu nome, e-mail, telefone, CPF, cartão SUS ou plano completo.',
+              'Sua dúvida será encaminhada de forma pseudonimizada. O sistema não envia os campos de identificação ou seu plano completo à equipe. Não escreva nomes, contatos ou documentos no texto da dúvida.',
               style: TextStyle(fontWeight: FontWeight.w700),
             ),
           ),
@@ -1601,7 +1652,7 @@ class _ConfirmAnonymousSendDialogState extends State<_ConfirmAnonymousSendDialog
           CheckboxListTile(
             value: _anonymousAck,
             onChanged: (v) => setState(() => _anonymousAck = v ?? false),
-            title: const Text('Entendi que a dúvida será enviada de forma anônima.'),
+            title: const Text('Entendi que a dúvida será enviada de forma pseudonimizada e não incluirei identificadores pessoais no texto.'),
           ),
           CheckboxListTile(
             value: _responseAck,
@@ -1611,6 +1662,7 @@ class _ConfirmAnonymousSendDialogState extends State<_ConfirmAnonymousSendDialog
         ],
       ),
       actions: [
+        CheckboxListTile(value:_ubsAck,onChanged:(v)=>setState(()=>_ubsAck=v==true),title:const Text('Autorizo o envio somente à minha UBS aprovada.')),
         TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancelar')),
         FilledButton(onPressed: _canSend ? () => Navigator.pop(context, true) : null, child: const Text('Enviar')),
       ],

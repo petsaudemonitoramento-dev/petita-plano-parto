@@ -1,4 +1,5 @@
 import '../models/chat_message.dart';
+import '../models/treatment_preferences.dart';
 import 'faq_search_service.dart';
 
 class ChatbotService {
@@ -6,27 +7,31 @@ class ChatbotService {
 
   final FaqSearchService _faqSearchService;
 
-  ChatMessage welcome() {
-    return const ChatMessage(
+  ChatMessage welcome({TreatmentPreferences? treatment}) {
+    final greeting = treatment?.address(neutral: 'Que bom ter você aqui.', feminine: 'Seja bem-vinda!', masculine: 'Seja bem-vindo!', inclusive: 'Que bom ter você aqui.') ?? 'Que bom ter você aqui.';
+    return ChatMessage(
       isUser: false,
-      text: 'Oi! Que bom ter você aqui. 💜 Eu sou a Petita, e este é um espaço para conversar com calma sobre o seu parto.\n\nPodemos construir seu plano juntas, passo a passo. Se você tiver dúvidas ou não souber o que escolher, tudo bem: vou explicar com palavras simples. O que você gostaria de fazer primeiro?',
-      options: ['Montar meu plano', 'Criar cadastro local', 'O que é plano de parto?', 'Sinais de atenção', 'Enviar dúvida à UBS'],
+      addressByName: true,
+      text: 'Oi! $greeting 💜 Eu sou a Petita, e este é um espaço para conversar com calma sobre o seu parto.\n\nPodemos construir seu plano em conjunto, passo a passo. Se você tiver dúvidas ou não souber o que escolher, tudo bem: vou explicar com palavras simples. O que você gostaria de fazer primeiro?',
+      options: ['Montar meu plano', 'Minha conta', 'O que é plano de parto?', 'Sinais de atenção', 'Enviar dúvida à UBS'],
     );
   }
 
-  Future<ChatMessage> respond(String userText, {String? category}) async {
+  Future<ChatMessage> respond(String userText, {String? category, TreatmentPreferences? treatment}) async {
     final lower = userText.toLowerCase();
     if (lower.contains('cadastro') || lower.contains('login') || lower.contains('entrar')) {
       return const ChatMessage(
         isUser: false,
         text: 'Claro! 💗 Você pode preencher seu perfil e guardar suas escolhas neste dispositivo, mesmo sem internet. Para enviar dúvidas não urgentes à equipe da UBS, será necessário entrar na sua conta e ter uma UBS vinculada.',
-        options: ['Abrir cadastro', 'Montar meu plano'],
+        options: ['Minha conta', 'Montar meu plano'],
       );
     }
     if (lower.contains('montar')) {
-      return const ChatMessage(
+      final invitation = treatment?.address(neutral: 'Quando quiser começar', feminine: 'Quando estiver pronta', masculine: 'Quando estiver pronto', inclusive: 'Quando quiser começar') ?? 'Quando quiser começar';
+      return ChatMessage(
         isUser: false,
-        text: 'Com carinho, vamos construir seu plano juntas. 💜 Vou explicar cada etapa e você escolhe o que faz sentido para você. Quando estiver pronta, toque em “Montar meu plano”.',
+        addressByName: true,
+        text: 'Com carinho, vamos construir seu plano passo a passo. 💜 Vou explicar cada etapa e você escolhe o que faz sentido para você. $invitation, toque em “Montar meu plano”.',
         options: ['Montar meu plano'],
       );
     }
@@ -42,12 +47,13 @@ class ChatbotService {
       return const ChatMessage(
         isUser: false,
         text: 'Quero te orientar com cuidado, por isso prefiro não arriscar uma resposta quando não encontro uma informação confiável. 💜 Podemos tentar escrever a dúvida de outro jeito ou encaminhá-la, sem seu nome, para a equipe da sua UBS. Se for algo urgente, procure atendimento presencial.',
-        options: ['Sinais de atenção', 'Montar meu plano', 'Criar cadastro local'],
+        options: ['Sinais de atenção', 'Montar meu plano', 'Minha conta'],
       );
     }
     return ChatMessage(
       isUser: false,
-      text: 'Obrigada por trazer sua dúvida. 💗 Vou compartilhar o que encontrei nas orientações disponíveis:\n\n${faq.answer}\n\nEssa explicação ajudou? Se quiser, podemos conversar mais sobre o assunto.',
+      addressByName: true,
+      text: 'Agradeço por trazer sua dúvida. 💗 Vou compartilhar o que encontrei nas orientações disponíveis:\n\n${faq.answer.replaceAll('a gestante registra', 'a pessoa gestante registra')}\n\nEssa explicação ajudou? Se quiser, podemos conversar mais sobre o assunto.',
       options: const ['Essa resposta ajudou', 'Ainda tenho dúvida', 'Montar meu plano'],
     );
   }

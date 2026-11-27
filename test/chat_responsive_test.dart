@@ -42,6 +42,11 @@ void main() {
     await tester.tap(resume);
     await advanceChat(tester);
     expect(find.byKey(const Key('petita_cards_scroll')), findsOneWidget);
+    expect(find.byKey(const Key('petita_question_avatar')), findsOneWidget);
+    expect(find.byKey(const Key('petita_question_bubble')), findsOneWidget);
+    expect(find.byKey(const Key('petita_speech_tail')), findsOneWidget);
+    expect(find.descendant(of: find.byKey(const Key('petita_cards_scroll')), matching: find.byKey(const Key('petita_scroll_header'))), findsOneWidget);
+    expect(find.byType(Image), findsOneWidget);
     expect(find.byType(TextField), findsNothing);
     expect(tester.takeException(), isNull);
   }
@@ -113,6 +118,10 @@ void main() {
     expect(find.byKey(const Key('petita_writing_confirmation')),
         findsOneWidget);
     expect(find.textContaining('Modo escrita ativado'), findsOneWidget);
+    final notice = find.byKey(const Key('petita_writing_confirmation'));
+    expect(tester.widget(notice), isA<Text>());
+    expect(find.ancestor(of: notice, matching: find.byType(InkWell)), findsNothing);
+    expect(tester.widget<Text>(notice).style?.fontWeight, FontWeight.w400);
     final pill = tester.widget<AnimatedContainer>(
       find.ancestor(of: option, matching: find.byType(AnimatedContainer)).first,
     );

@@ -1,0 +1,33 @@
+name: Validar integração real Petita (homologação isolada)
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'tool/smoke_neon_homologacao.mjs'
+      - 'tool/smoke_web_neon_homologacao.mjs'
+      - '.github/workflows/smoke_neon_homologacao.yml'
+permissions:
+  contents: read
+jobs:
+  smoke:
+    if: github.event.pull_request.head.repo.full_name == github.repository && github.event.pull_request.head.ref == 'feat/neon-enrollment-20261126'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: node tool/smoke_neon_homologacao.mjs
+  browser:
+    if: github.event.pull_request.head.repo.full_name == github.repository && github.event.pull_request.head.ref == 'feat/neon-enrollment-20261126'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm install --no-save --package-lock=false --ignore-scripts playwright@1.56.1
+      - run: npx playwright install --with-deps chromium webkit
+      - run: node tool/smoke_web_neon_homologacao.mjs

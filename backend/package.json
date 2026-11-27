@@ -1,0 +1,23 @@
+{
+  "name": "petita-neon-api",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": "22.x"
+  },
+  "scripts": {
+    "test": "node --test",
+    "check": "node --check api/index.js && node --check lib/auth.js && node --check lib/db.js && node --check lib/routes.js",
+    "build:auth": "node scripts/build-auth.mjs",
+    "build:flutter-auth": "node scripts/build-flutter-auth.mjs"
+  },
+  "dependencies": {
+    "jose": "6.1.0",
+    "pg": "8.16.3",
+    "@neon/auth": "0.8.2"
+  },
+  "devDependencies": {
+    "esbuild": "0.25.12"
+  }
+}

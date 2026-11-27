@@ -47,7 +47,10 @@ void main() {
     await tester.tap(find.text('Entendi'));
     await tester.pumpAndSettle();
     await tester.enterText(
-        find.byType(TextField).at(3), 'UBS Sintetica Manual');
+        find.byWidgetPredicate((w) =>
+            w is TextField &&
+            w.decoration?.labelText == 'Digite a UBS de referência'),
+        'UBS Sintetica Manual');
     await save(tester);
     final saved = await StorageService().loadProfile();
     expect(saved!.ubsCode, isNull);
@@ -61,7 +64,12 @@ void main() {
         tester.widget<TextField>(find.byType(TextField).first).controller!.text,
         'Gestante Sintetica');
     expect(
-        tester.widget<TextField>(find.byType(TextField).at(3)).controller!.text,
+        tester
+            .widget<TextField>(find.byWidgetPredicate((w) =>
+                w is TextField &&
+                w.decoration?.labelText == 'Digite a UBS de referência'))
+            .controller!
+            .text,
         'UBS Sintetica Manual');
     final clear = find.text('Limpar cadastro local');
     await tester.ensureVisible(clear);
@@ -77,7 +85,11 @@ void main() {
     await tester.enterText(find.byType(TextField).at(0), 'Sintetica');
     await tester.enterText(
         find.byType(TextField).at(1), 'test@example.invalid');
-    await tester.enterText(find.byType(TextField).at(3), 'UBS Sintetica');
+    await tester.enterText(
+        find.byWidgetPredicate((w) =>
+            w is TextField &&
+            w.decoration?.labelText == 'Digite a UBS de referência'),
+        'UBS Sintetica');
     await save(tester);
     final original = (await StorageService().loadProfile())!;
     final radio = find.byType(RadioListTile<String>).first;

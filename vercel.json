@@ -1,0 +1,12 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "git": {
+    "deploymentEnabled": false
+  },
+  "rewrites": [
+    {
+      "source": "/petita-auth/:action",
+      "destination": "https://petita-api-neon-homologacao-petsaudemonitoramento-devs-projects.vercel.app/api/petita-auth/:action"
+    }
+  ]
+}

@@ -32,6 +32,6 @@ void main() {
         await ChatbotService(FaqSearchService()).respond('ZZZSINTETICO999');
     expect(reply.isUser, isFalse);
     expect(reply.text, contains('não encontro uma informação confiável'));
-    expect(reply.options, contains('Criar cadastro local'));
+    expect(reply.options, contains('Minha conta'));
   });
 }

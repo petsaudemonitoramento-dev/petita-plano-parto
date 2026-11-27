@@ -30,3 +30,15 @@ Thumbs.db
 # Environment files
 .env
 *.env
+
+# Backend dependencies and generated Auth bundles
+node_modules/
+backend/public/auth-preview.js
+web/neon_auth_bridge.js
+# Candidate evidence and local credentials
+*.p12
+*.jks
+*.keystore
+
+# Python audit runners
+__pycache__/

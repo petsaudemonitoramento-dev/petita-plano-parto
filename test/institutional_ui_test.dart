@@ -1,0 +1,271 @@
+import 'dart:convert';
+import 'package:flutter/material.dart';
+import 'package:flutter_test/flutter_test.dart';
+import 'package:http/http.dart' as http;
+import 'package:http/testing.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:plano_parto_pet_saude/screens/institutional/account_screen.dart';
+import 'package:plano_parto_pet_saude/screens/institutional/area_screen.dart';
+import 'package:plano_parto_pet_saude/widgets/account_header_menu.dart';
+import 'package:plano_parto_pet_saude/services/neon_api_client.dart';
+import 'package:plano_parto_pet_saude/services/institutional/institutional_auth.dart';
+import 'package:plano_parto_pet_saude/services/institutional/plan_sync_controller.dart';
+import 'package:plano_parto_pet_saude/services/institutional/runtime.dart';
+import 'support/institutional_fakes.dart';
+import 'package:plano_parto_pet_saude/services/storage_service.dart';
+import 'package:plano_parto_pet_saude/models/user_profile.dart';
+
+void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
+  InstitutionalRuntime runtime(String role, List<String> requests, {bool verified = false}) {
+    final auth = InstitutionalAuth(FixtureAuthTransport()..emailVerified = verified);
+    final vault = MemoryVault();
+    final api = NeonApiClient(
+        origin: Uri.parse('https://fixture.invalid'),
+        client: MockClient((r) async {
+          requests.add('${r.method} ${r.url.path}');
+          final rows = switch (r.url.path) {
+            '/api/me' => [
+                {
+                  'id': '00000000-0000-4000-8000-000000000001',
+                  'role': role,
+                  'ubs_code': null
+                }
+              ],
+            '/api/ubs' => [{'code':'FIXTURE-A','name':'UBS fictícia'}],
+            '/api/profile' => [
+                {'id': '00000000-0000-4000-8000-000000000001'}
+              ],
+            _ => []
+          };
+          return http.Response(jsonEncode({'data': rows}), 200,
+              headers: {'content-type': 'application/json'});
+        }),
+        tokenProvider: auth.token);
+    return InstitutionalRuntime(
+        auth, api, PlanSyncController(api: api, auth: auth, vault: vault));
+  }
+
+  Future<void> finishAction(WidgetTester tester, List<String> calls) async {
+    // Let each in-memory request complete and paint the state it scheduled.
+    // Stay below the client's timeout so a transport failure cannot look idle.
+    final progress = find.byType(LinearProgressIndicator);
+    for (var frame = 0; frame < 120; frame++) {
+      // Stream completion may cross the real event queue between API calls.
+      await tester.runAsync(() => Future<void>.delayed(Duration.zero));
+      await tester.pump(const Duration(milliseconds: 16));
+      if (progress.evaluate().isEmpty) return;
+    }
+    fail('A tela continua carregando. Requisições observadas: $calls');
+  }
+
+  setUp(() => SharedPreferences.setMockInitialValues({}));
+  testWidgets(
+      'online consent starts entirely unchecked and cannot POST implicit acceptance',
+      (tester) async {
+    tester.view.physicalSize = const Size(900, 6000);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    final calls = <String>[];
+    final r = runtime('patient', calls);
+    await tester
+        .pumpWidget(MaterialApp(home: InstitutionalAccountScreen(runtime: r, syncOnly: true)));
+    await finishAction(tester, calls);
+    final choices = tester
+        .widgetList<CheckboxListTile>(find.byType(CheckboxListTile))
+        .toList();
+    expect(choices, hasLength(6));
+    expect(choices.every((c) => c.value == false), true);
+    expect(calls, contains('GET /api/consent'));
+    expect(calls, isNot(contains('POST /api/consent')));
+    final primary = tester.widget<FilledButton>(find.widgetWithText(FilledButton, 'Autorizar e sincronizar'));
+    expect(primary.onPressed, isNull);
+    expect(calls.contains('POST /api/consent'), false);
+    expect(find.text('Desativar sincronização'), findsNothing);
+    expect(tester.takeException(), isNull);
+  });
+  testWidgets(
+      'pending professional can request access but never sees admin approvals',
+      (tester) async {
+    final calls = <String>[];
+    await tester.pumpWidget(MaterialApp(
+        home: InstitutionalAreaScreen(runtime: runtime('professional_pending', calls))));
+    await finishAction(tester, calls);
+    expect(find.text('Solicitar acesso profissional'), findsOneWidget);
+    expect(find.textContaining('Canal não urgente.'), findsNothing);
+    expect(calls, contains('GET /api/ubs'));
+    expect(find.text('Solicitações profissionais pendentes'), findsNothing);
+    expect(find.text('Aprovar profissional'), findsNothing);
+    expect(calls.any((c) => c.contains('/api/admin/')), false);
+    expect(tester.takeException(), isNull);
+  });
+  testWidgets('patient cannot request professional access from patient account', (tester) async {
+    final calls = <String>[];
+    await tester.pumpWidget(MaterialApp(home: InstitutionalAreaScreen(runtime: runtime('patient', calls))));
+    await finishAction(tester, calls);
+    expect(find.text('Conta de gestante'), findsOneWidget);
+    expect(find.textContaining('Canal não urgente.'), findsNothing);
+    expect(find.text('Solicitar acesso profissional'), findsNothing);
+    expect(calls.any((c) => c.contains('/api/admin/')), false);
+  });
+  testWidgets('admin approvals have their own section', (tester) async {
+    tester.view.physicalSize = const Size(900, 1600);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    final calls = <String>[];
+    await tester.pumpWidget(MaterialApp(home: InstitutionalAreaScreen(runtime: runtime('admin', calls))));
+    await finishAction(tester, calls);
+    expect(find.text('Aprovar profissionais'), findsOneWidget);
+    expect(find.text('Solicitações profissionais pendentes'), findsOneWidget);
+    expect(find.text('Vínculos de gestantes pendentes'), findsNothing);
+    expect(calls, contains('GET /api/admin/professional-approvals'));
+    await tester.tap(find.text('Vínculos de gestantes'));
+    await tester.pumpAndSettle();
+    expect(find.text('Vínculos de gestantes pendentes'), findsOneWidget);
+    expect(find.text('Solicitações profissionais pendentes'), findsNothing);
+  });
+  testWidgets('successful admin login opens administration directly', (tester) async {
+    tester.view.physicalSize = const Size(900, 1600);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    final calls = <String>[];
+    final r = runtime('admin', calls);
+    await r.auth.logout();
+    (r.auth.transport as FixtureAuthTransport).allowLogin = true;
+    await tester.pumpWidget(MaterialApp(
+      home: Builder(builder: (context) => Scaffold(body: TextButton(
+        onPressed: () => Navigator.pushNamed(context, '/professional-account'),
+        child: const Text('Abrir login profissional'),
+      ))),
+      routes: {
+        '/professional-account': (_) => InstitutionalAccountScreen(runtime: r, professional: true),
+        '/admin': (_) => const Scaffold(body: Text('Destino administração')),
+      },
+    ));
+    await tester.tap(find.text('Abrir login profissional'));
+    await tester.pumpAndSettle();
+    await finishAction(tester, calls);
+    await tester.enterText(find.byType(TextField).at(0), 'fixture@example.invalid');
+    await tester.enterText(find.byType(TextField).at(1), 'synthetic-password');
+    await tester.tap(find.text('Entrar'));
+    await tester.pump();
+    await finishAction(tester, calls);
+    await tester.pumpAndSettle();
+    expect(find.text('Destino administração'), findsOneWidget);
+    expect(find.text('Abrir administração'), findsNothing);
+    expect(tester.takeException(), isNull);
+  });
+  testWidgets('header account menu shows current identity and logout options', (tester) async {
+    final r = runtime('admin', []);
+    await r.auth.restore();
+    await tester.pumpWidget(MaterialApp(home: Scaffold(
+      appBar: AppBar(actions: [AccountHeaderMenu(auth: r.auth, professional: true, roleLabel: 'Administração PET Saúde')]),
+    )));
+    await tester.tap(find.byTooltip('Minha conta'));
+    await tester.pumpAndSettle();
+    expect(find.text('fixture@example.invalid'), findsOneWidget);
+    expect(find.text('Administração PET Saúde'), findsOneWidget);
+    expect(find.text('Configurações da conta'), findsOneWidget);
+    expect(find.text('Sair da conta'), findsOneWidget);
+    expect(find.text('Editar perfil'), findsNothing);
+    expect(tester.takeException(), isNull);
+  });
+  testWidgets('login keeps recovery and registration fields separate', (tester) async {
+    tester.view.physicalSize = const Size(900, 1600);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    await StorageService().saveProfile(UserProfile(id: 'LOCAL-fixture', name: 'Gestante fictícia', email: 'local@example.invalid', role: 'patient', ubsCode: 'FIXTURE-A', createdAt: DateTime.utc(2026)));
+    final r = runtime('patient', []);
+    await r.auth.logout();
+    await tester.pumpWidget(MaterialApp(home: InstitutionalAccountScreen(runtime: r)));
+    await tester.pumpAndSettle();
+    expect(find.text('Entrar'), findsOneWidget);
+    expect(find.text('Seu nome'), findsNothing);
+    expect(find.text('Código recebido por e-mail'), findsNothing);
+    await tester.tap(find.text('Criar conta'));
+    await tester.pumpAndSettle();
+    expect(find.text('Seu nome'), findsOneWidget);
+    expect(find.text('Gestante fictícia'), findsOneWidget);
+    expect(find.text('local@example.invalid'), findsOneWidget);
+    expect(find.text('Criar minha conta'), findsOneWidget);
+    expect(find.text('Já tenho uma conta'), findsOneWidget);
+    expect(find.text('Código recebido por e-mail'), findsNothing);
+  });
+  testWidgets('patient account does not show professional verification or access button', (tester) async {
+    tester.view.physicalSize = const Size(900, 6000);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    final calls = <String>[];
+    await tester.pumpWidget(MaterialApp(home: InstitutionalAccountScreen(runtime: runtime('patient', calls))));
+    await finishAction(tester, calls);
+    expect(find.text('Verificação para acesso profissional'), findsNothing);
+    expect(find.text('Área profissional e administrativa'), findsNothing);
+    expect(find.text('Sincronização online opcional'), findsNothing);
+    expect(find.text('Conversar com a Petita'), findsOneWidget);
+    expect(find.text('Editar meus dados'), findsOneWidget);
+  });
+  testWidgets('unregistered UBS is optional and never sends a fake request', (tester) async {
+    tester.view.physicalSize = const Size(900, 6000);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    final calls = <String>[];
+    final r = runtime('patient', calls);
+    await tester.pumpWidget(MaterialApp(home: InstitutionalAccountScreen(runtime: r)));
+    await finishAction(tester, calls);
+    await tester.tap(find.byType(DropdownButtonFormField<String>));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Minha UBS não está cadastrada').last);
+    await tester.pump();
+    await finishAction(tester, calls);
+    await tester.pumpAndSettle();
+    expect(find.textContaining('Você pode salvar e sincronizar seu plano online normalmente.'), findsOneWidget);
+    expect(find.text('Solicitar vínculo à UBS'), findsNothing);
+    expect(find.text('Autorizar e sincronizar'), findsNothing);
+    expect(calls, contains('POST /api/patient/ubs-preference'));
+    expect(calls, isNot(contains('POST /api/patient/ubs-requests')));
+    expect(tester.takeException(), isNull);
+  });
+  testWidgets('professional account does not expose patient synchronization', (tester) async {
+    tester.view.physicalSize = const Size(900, 6000);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    final calls = <String>[];
+    await tester.pumpWidget(MaterialApp(home: InstitutionalAccountScreen(professional: true, runtime: runtime('professional_pending', calls))));
+    await finishAction(tester, calls);
+    expect(find.text('Acesso profissional'), findsOneWidget);
+    expect(find.text('Editar meus dados'), findsNothing);
+    expect(find.text('Etapa 2 de 2 • Solicitar acesso à UBS'), findsOneWidget);
+    expect(find.text('Código recebido'), findsNothing);
+    expect(find.text('Escolher minha UBS'), findsOneWidget);
+    expect(find.text('Sincronização online opcional'), findsNothing);
+  });
+  testWidgets('local profile is accessible without online runtime or login', (tester) async {
+    await tester.pumpWidget(MaterialApp(
+      home: const InstitutionalAccountScreen(),
+      routes: {'/profile': (_) => const Scaffold(body: Text('Editor local'))},
+    ));
+    await tester.pumpAndSettle();
+    expect(find.text('Editar meus dados'), findsOneWidget);
+    await tester.tap(find.text('Editar meus dados'));
+    await tester.pumpAndSettle();
+    expect(find.text('Editor local'), findsOneWidget);
+  });
+  testWidgets(
+      'unconfigured account gives offline availability message without simulated auth',
+      (tester) async {
+    await tester
+        .pumpWidget(const MaterialApp(home: InstitutionalAccountScreen()));
+    await tester.pumpAndSettle();
+    expect(
+        find.textContaining('conexão institucional ainda não está disponível'),
+        findsOneWidget);
+    expect(find.text('Entrar'), findsNothing);
+  });
+}

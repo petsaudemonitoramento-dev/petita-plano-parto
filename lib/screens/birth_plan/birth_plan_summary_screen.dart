@@ -1,3 +1,5 @@
+import '../../config/app_routes.dart';
+import '../../widgets/local_persistence_feedback.dart';
 import 'package:flutter/material.dart';
 import 'package:printing/printing.dart';
 import '../../config/app_theme.dart';
@@ -7,7 +9,6 @@ import '../../models/treatment_preferences.dart';
 import '../../services/birth_plan_flow_service.dart';
 import '../../services/pdf_service.dart';
 import '../../services/storage_service.dart';
-import '../../services/supabase_service.dart';
 import '../../widgets/app_button.dart';
 import '../../widgets/section_card.dart';
 
@@ -20,7 +21,6 @@ class BirthPlanSummaryScreen extends StatefulWidget {
 
 class _BirthPlanSummaryScreenState extends State<BirthPlanSummaryScreen> {
   final _storage = StorageService();
-  final _online = SupabaseService();
   List<BirthPlanQuestion> _questions = [];
   List<BirthPlanAnswer> _answers = [];
   TreatmentPreferences? _treatment;
@@ -154,10 +154,10 @@ class _BirthPlanSummaryScreenState extends State<BirthPlanSummaryScreen> {
       final updated = await _storage.loadAnswers();
       updated.removeWhere((a) => a.questionId == question.id);
       updated.add(BirthPlanAnswer(questionId: question.id, values: result));
-      await _storage.saveAnswers(updated);
-      await _storage.resolveQuestionForConsultation(question.id);
+      if (!await confirmLocalChange(context, () => _storage.saveAnswers(updated))) return;
+      if (!await confirmLocalChange(context, () => _storage.resolveQuestionForConsultation(question.id))) return;
       // Nao descartar observacoes digitadas antes de resolver uma pendencia.
-      await _storage.saveConsultationNotes(_consultationNotesController.text);
+      if (!await confirmLocalChange(context, () => _storage.saveConsultationNotes(_consultationNotesController.text))) return;
       await _load();
     } finally {
       freeText.dispose();
@@ -165,7 +165,7 @@ class _BirthPlanSummaryScreenState extends State<BirthPlanSummaryScreen> {
   }
 
   Future<void> _saveConsultationNotes() async {
-    await _storage.saveConsultationNotes(_consultationNotesController.text);
+    if (!await confirmLocalChange(context, () => _storage.saveConsultationNotes(_consultationNotesController.text))) return;
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(content: Text('Dúvidas para a consulta salvas neste aparelho.')),
@@ -175,7 +175,7 @@ class _BirthPlanSummaryScreenState extends State<BirthPlanSummaryScreen> {
   Future<void> _shareConsultationGuide() async {
     if (_generatingPdf) return;
     // Salva o que estiver digitado antes de montar o roteiro.
-    await _storage.saveConsultationNotes(_consultationNotesController.text);
+    if (!await confirmLocalChange(context, () => _storage.saveConsultationNotes(_consultationNotesController.text))) return;
     if (!mounted) return;
     setState(() => _generatingPdf = true);
     await WidgetsBinding.instance.endOfFrame;
@@ -242,56 +242,29 @@ class _BirthPlanSummaryScreenState extends State<BirthPlanSummaryScreen> {
         field.dispose();
       }
     }
-    await _storage.saveTreatmentPreferences(
+    if (!await confirmLocalChange(context, () => _storage.saveTreatmentPreferences(
       TreatmentPreferences(pronouns: selection),
-    );
+    ))) return;
     await _load();
   }
 
   Future<void> _setIncludeInPdf(bool value) async {
     final preference = _treatment;
     if (preference == null || !preference.hasPronouns) return;
-    await _storage.saveTreatmentPreferences(
+    if (!await confirmLocalChange(context, () => _storage.saveTreatmentPreferences(
       preference.copyWith(includeInPdf: value),
-    );
+    ))) return;
     await _load();
   }
 
   Future<void> _syncOnline() async {
-    if (_answers.isEmpty) return;
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: const Text('Sincronizar dados com o serviço online?'),
-        content: const Text(
-          'O envio incluirá dados do perfil e as respostas do Plano de Parto, '
-          'que podem conter informações pessoais e de saúde. '
-          'Você pode continuar utilizando a Petita offline sem sincronizar. '
-          'Leia a Política de Privacidade antes de escolher.',
-        ),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(dialogContext, false), child: const Text('Manter só neste dispositivo')),
-          FilledButton(onPressed: () => Navigator.pop(dialogContext, true), child: const Text('Confirmar envio')),
-        ],
-      ),
-    );
-    if (confirmed != true || !mounted) return;
-    final answerMap = {for (final a in _answers) a.questionId: a.values.join(', ')};
-    final profile = await _storage.loadProfile();
-    try {
-      await _online.syncBirthPlan(
-        patientName: answerMap['nome_gestante'] ?? profile?.name ?? 'Gestante',
-        ubsCode: profile?.ubsCode,
-        dppBr: answerMap['dpp'],
-        companion: answerMap['acompanhante_principal'],
-        answers: _answers,
-      );
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Plano de Parto sincronizado com Supabase.')));
-    } catch (e) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Não foi possível sincronizar agora. O plano continua salvo offline. Detalhe: $e')));
-    }
+    final proceed=await showDialog<bool>(context:context,builder:(c)=>AlertDialog(
+      title:const Text('Sincronizar dados com o serviço online?'),
+      content:const Text('A conta institucional exige verificação e consentimento específico antes do envio. Você pode manter seu plano apenas neste dispositivo.'),
+      actions:[TextButton(onPressed:()=>Navigator.pop(c,false),child:const Text('Manter só neste dispositivo')),FilledButton(onPressed:()=>Navigator.pop(c,true),child:const Text('Abrir conta institucional'))]));
+    if(proceed!=true || !mounted)return;
+    await Navigator.pushNamed(context, AppRoutes.institutional);
+    await _load();
   }
 
   @override
@@ -419,7 +392,7 @@ class _BirthPlanSummaryScreenState extends State<BirthPlanSummaryScreen> {
             if (_answers.isNotEmpty)
               AppButton(label: 'Sincronizar plano online', icon: Icons.cloud_upload_outlined, outlined: true, onPressed: _syncOnline),
             const SizedBox(height: 10),
-            AppButton(label: 'Limpar plano local', outlined: true, icon: Icons.delete_outline, onPressed: () async { await _storage.clearAnswers(); await _load(); }),
+            AppButton(label: 'Limpar plano local', outlined: true, icon: Icons.delete_outline, onPressed: () async { if (!await confirmLocalChange(context, () => _storage.clearAnswers())) return; await _load(); }),
           ]),
         ),
       ),

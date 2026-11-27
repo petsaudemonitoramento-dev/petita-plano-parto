@@ -1,3 +1,4 @@
+import '../../widgets/local_persistence_feedback.dart';
 import 'package:flutter/material.dart';
 import '../../config/app_info.dart';
 import '../../config/app_routes.dart';
@@ -24,7 +25,7 @@ class _HomeScreenState extends State<HomeScreen> {
         content: const Text(
           'O perfil e as respostas do Plano de Parto salvos neste dispositivo serão apagados. '
           'Será necessário aceitar novamente os termos para preencher o aplicativo. '
-          'Isso não apaga dados que já foram sincronizados com serviços online.',
+          'Isso não apaga registros já enviados à nuvem. Envios pendentes locais serão cancelados; a retirada online será confirmada ao reconectar a conta.',
         ),
         actions: [
           TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancelar')),
@@ -36,7 +37,7 @@ class _HomeScreenState extends State<HomeScreen> {
       ),
     );
     if (confirmed != true) return;
-    await StorageService().revokeConsentAndClearPatientData();
+    if (!await confirmLocalChange(context, () => StorageService().revokeConsentAndClearPatientData())) return;
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(content: Text('Aceite retirado e dados locais do plano e perfil apagados.')),
@@ -65,7 +66,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(15)),
                 child: Image.asset('assets/images/ufcg_avatar.png', fit: BoxFit.contain)),
             ]),
-            const SizedBox(height: 18),
+            const SizedBox(height: 14),
             Container(
               decoration: BoxDecoration(
                 gradient: const LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight,
@@ -120,14 +121,17 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
               ]),
             ),
+            const SizedBox(height: 18),
+            _HomeAction(
+              icon: Icons.account_circle_outlined,
+              title: 'Minha conta',
+              subtitle: 'Entrar, criar conta ou editar meus dados',
+              onTap: () => Navigator.pushNamed(context, AppRoutes.institutional, arguments: 'login')),
             const SizedBox(height: 24),
             const Text('O que vamos fazer hoje?', style: TextStyle(fontSize: 21, fontWeight: FontWeight.w900, color: Color(0xFF422467))),
             const SizedBox(height: 12),
             _HomeAction(icon: Icons.description_outlined, title: 'Meu plano de parto',
               subtitle: 'Veja suas escolhas e gere o PDF', onTap: () => Navigator.pushNamed(context, AppRoutes.summary)),
-            const SizedBox(height: 10),
-            _HomeAction(icon: Icons.person_outline_rounded, title: 'Meu perfil',
-              subtitle: 'Informações da gestante', onTap: () => Navigator.pushNamed(context, AppRoutes.profile)),
             const SizedBox(height: 10),
             _HomeAction(icon: Icons.chat_bubble_outline_rounded, title: 'Minhas dúvidas',
               subtitle: 'Informações e perguntas frequentes', onTap: () => Navigator.pushNamed(context, AppRoutes.myQuestions)),
