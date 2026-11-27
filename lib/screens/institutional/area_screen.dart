@@ -31,6 +31,7 @@ class _InstitutionalAreaScreenState extends State<InstitutionalAreaScreen> {
   String? _message, _code;
   bool _busy = false;
   bool _requestSent = false;
+  String _adminSection = 'professionals';
   String? _subject;
   @override
   void initState() {
@@ -197,10 +198,15 @@ class _InstitutionalAreaScreenState extends State<InstitutionalAreaScreen> {
             Text(_profile == null
                 ? 'Entre com sua conta profissional ou crie uma para solicitar acesso à sua UBS.'
                 : 'Esta conta pertence à área da gestante. Entre com uma conta profissional ou crie uma conta específica.'),
-            button(_profile == null ? 'Entrar ou criar conta profissional' : 'Trocar de conta', () async {
+            button(_profile == null ? 'Entrar na conta profissional' : 'Trocar de conta', () async {
               await Navigator.pushNamed(context, AppRoutes.professionalAccount);
               await _load();
             }),
+            if (_profile == null)
+              OutlinedButton(onPressed: _busy ? null : () => _run(() async {
+                await Navigator.pushNamed(context, AppRoutes.professionalAccount, arguments: 'signup');
+                await _load();
+              }), child: const Text('Criar perfil profissional')),
           ])),
         if (widget.myQuestions || _profile?['role'] == 'admin' || _profile?['role'] == 'ubs_team') ...[
           if (!widget.myQuestions)
@@ -261,7 +267,11 @@ class _InstitutionalAreaScreenState extends State<InstitutionalAreaScreen> {
                 }), child: const Text('Gerenciar conta')),
               ])),
         if (!widget.myQuestions && _profile?['role'] == 'admin') ...[
-          SectionCard(child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+          Wrap(spacing: 8, runSpacing: 8, children: [
+            for (final entry in {'professionals': 'Aprovar profissionais', 'patients': 'Vínculos de gestantes', 'knowledge': 'Base educativa', 'access': 'Revogar acessos'}.entries)
+              ChoiceChip(label: Text(entry.value), selected: _adminSection == entry.key, onSelected: _busy ? null : (_) => setState(() => _adminSection = entry.key)),
+          ]),
+          if (_adminSection == 'knowledge') SectionCard(child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
             const Text('Base educativa da Petita', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
             const Text('Publique apenas orientações educativas revisadas pela equipe, sem informações pessoais de gestantes. As respostas são exibidas no chat.'),
             const SizedBox(height: 12),
@@ -280,7 +290,10 @@ class _InstitutionalAreaScreenState extends State<InstitutionalAreaScreen> {
               _question.clear(); _keywords.clear(); _educationalAnswer.clear();
             }),
           ])),
-          const Text('Solicitações profissionais pendentes'),
+          if (_adminSection == 'professionals') ...[
+          const SizedBox(height: 12),
+          const Text('Solicitações profissionais pendentes', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
+          if (_team.isEmpty) const SectionCard(child: Text('Nenhuma solicitação profissional pendente.')),
           for (final request in _team)
             SectionCard(
                 child: Column(children: [
@@ -305,7 +318,10 @@ class _InstitutionalAreaScreenState extends State<InstitutionalAreaScreen> {
                 }
               }),
             ])),
-          const Text('Vínculos de gestantes pendentes'),
+          ],
+          if (_adminSection == 'patients') ...[
+          const Text('Vínculos de gestantes pendentes', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
+          if (_patients.isEmpty) const SectionCard(child: Text('Nenhum vínculo de gestante pendente.')),
           for (final request in _patients)
             SectionCard(
                 child: Column(children: [
@@ -330,7 +346,8 @@ class _InstitutionalAreaScreenState extends State<InstitutionalAreaScreen> {
                 }
               }),
             ])),
-          SectionCard(
+          ],
+          if (_adminSection == 'access') SectionCard(
               child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [

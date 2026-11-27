@@ -108,6 +108,23 @@ void main() {
     expect(find.text('Solicitar acesso profissional'), findsNothing);
     expect(calls.any((c) => c.contains('/api/admin/')), false);
   });
+  testWidgets('admin approvals have their own section', (tester) async {
+    tester.view.physicalSize = const Size(900, 1600);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    final calls = <String>[];
+    await tester.pumpWidget(MaterialApp(home: InstitutionalAreaScreen(runtime: runtime('admin', calls))));
+    await finishAction(tester, calls);
+    expect(find.text('Aprovar profissionais'), findsOneWidget);
+    expect(find.text('Solicitações profissionais pendentes'), findsOneWidget);
+    expect(find.text('Vínculos de gestantes pendentes'), findsNothing);
+    expect(calls, contains('GET /api/admin/professional-approvals'));
+    await tester.tap(find.text('Vínculos de gestantes'));
+    await tester.pumpAndSettle();
+    expect(find.text('Vínculos de gestantes pendentes'), findsOneWidget);
+    expect(find.text('Solicitações profissionais pendentes'), findsNothing);
+  });
   testWidgets('login keeps recovery and registration fields separate', (tester) async {
     tester.view.physicalSize = const Size(900, 1600);
     tester.view.devicePixelRatio = 1;
