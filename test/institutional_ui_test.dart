@@ -11,6 +11,8 @@ import 'package:plano_parto_pet_saude/services/institutional/institutional_auth.
 import 'package:plano_parto_pet_saude/services/institutional/plan_sync_controller.dart';
 import 'package:plano_parto_pet_saude/services/institutional/runtime.dart';
 import 'support/institutional_fakes.dart';
+import 'package:plano_parto_pet_saude/services/storage_service.dart';
+import 'package:plano_parto_pet_saude/models/user_profile.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -98,6 +100,11 @@ void main() {
     expect(tester.takeException(), isNull);
   });
   testWidgets('login keeps recovery and registration fields separate', (tester) async {
+    tester.view.physicalSize = const Size(900, 1600);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    await StorageService().saveProfile(UserProfile(id: 'LOCAL-fixture', name: 'Gestante fictícia', email: 'local@example.invalid', role: 'patient', ubsCode: 'FIXTURE-A', createdAt: DateTime.utc(2026)));
     final r = runtime('patient', []);
     await r.auth.logout();
     await tester.pumpWidget(MaterialApp(home: InstitutionalAccountScreen(runtime: r)));
@@ -108,6 +115,8 @@ void main() {
     await tester.tap(find.text('Criar conta'));
     await tester.pumpAndSettle();
     expect(find.text('Nome da gestante'), findsOneWidget);
+    expect(find.text('Gestante fictícia'), findsOneWidget);
+    expect(find.text('local@example.invalid'), findsOneWidget);
     expect(find.text('Criar minha conta'), findsOneWidget);
     expect(find.text('Já tenho uma conta'), findsOneWidget);
     expect(find.text('Código recebido por e-mail'), findsNothing);
