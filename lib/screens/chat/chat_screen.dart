@@ -16,6 +16,8 @@ import '../../services/chatbot_service.dart';
 import '../../services/faq_search_service.dart';
 import '../../services/storage_service.dart';
 import '../../services/institutional/question_service.dart';
+import '../../services/institutional/runtime.dart';
+import '../../services/institutional/institutional_auth.dart';
 
 enum _PlanStartChoice { resume, restart, summary }
 
@@ -34,6 +36,8 @@ class _ChatScreenState extends State<ChatScreen> {
   final _storage = StorageService();
   final _online = InstitutionalQuestionService();
   late final ChatbotService _chatbot;
+  late final InstitutionalAuth? _auth;
+  void _onAuthChanged() { if (mounted) setState(() {}); }
 
   List<ChatMessage> _messages = [];
   List<BirthPlanQuestion> _questions = [];
@@ -59,6 +63,8 @@ class _ChatScreenState extends State<ChatScreen> {
   void initState() {
     super.initState();
     _chatbot = ChatbotService(FaqSearchService());
+    _auth = InstitutionalRuntime.instance?.auth;
+    _auth?.addListener(_onAuthChanged);
     _tts.setCompletionHandler(() {
       if (mounted) setState(() => _readingVoice = false);
     });
@@ -70,6 +76,7 @@ class _ChatScreenState extends State<ChatScreen> {
 
   @override
   void dispose() {
+    _auth?.removeListener(_onAuthChanged);
     _typingTimer?.cancel();
     _tts.stop();
     _controller.dispose();
@@ -172,8 +179,8 @@ class _ChatScreenState extends State<ChatScreen> {
       await _startPlanFlow();
       return;
     }
-    if (text == 'Criar cadastro local' || text == 'Abrir cadastro' || text == 'Perfil da gestante') {
-      Navigator.pushNamed(context, AppRoutes.profile);
+    if (text == 'Minha conta' || text == 'Criar cadastro local' || text == 'Abrir cadastro' || text == 'Perfil da gestante') {
+      Navigator.pushNamed(context, AppRoutes.institutional);
       return;
     }
     if (text == 'Enviar dúvida à UBS' || text == 'Ainda tenho dúvida') {
@@ -183,6 +190,7 @@ class _ChatScreenState extends State<ChatScreen> {
     if (text == 'Resposta satisfatória' || text == 'Essa resposta ajudou') {
       _pendingUbsQuestion = null;
       setState(() => _messages.add(const ChatMessage(
+            addressByName: true,
             text: 'Que bom! Fico feliz em ajudar. Se surgir outra dúvida, pode me chamar novamente.',
             isUser: false,
             options: ['Montar meu plano', 'Ver meu plano'],
@@ -288,6 +296,7 @@ class _ChatScreenState extends State<ChatScreen> {
     setState(() {
       if (restarting) _messages = [_chatbot.welcome()];
       _messages.add(ChatMessage(
+        addressByName: true,
         text: restarting
             ? 'Vamos criar um novo Plano de Parto! 💜 As respostas do plano anterior foram apagadas deste dispositivo.'
             : 'Que bom que vamos construir esse plano! 💜 Aqui você pode pensar nas suas preferências com tranquilidade. Não existe resposta certa ou errada: o importante é que suas escolhas sejam ouvidas. Se algum termo parecer difícil, toque em “Quero entender melhor”.',
@@ -336,8 +345,8 @@ class _ChatScreenState extends State<ChatScreen> {
   String _introForQuestion(BirthPlanQuestion q) {
     final section = q.section.toLowerCase();
     if (q.id == 'nome_gestante') return 'Que bom ter você aqui! 💜 Vamos começar com calma. Primeiro, me conte algumas informações para identificar seu plano.';
-    if (q.id == 'ubs_referencia') return 'Obrigada por compartilhar essas informações comigo. 💗 Agora vamos identificar a UBS que acompanha você. Se não souber, tudo bem: podemos conversar sobre isso.';
-    if (section.contains('acompanhante')) return 'Você merece se sentir acolhida e acompanhada. 💜 Vamos conversar sobre quem você gostaria de ter ao seu lado nesse momento.';
+    if (q.id == 'ubs_referencia') return 'Agradeço por compartilhar essas informações comigo. 💗 Agora vamos identificar a UBS que acompanha você. Se não souber, tudo bem: podemos conversar sobre isso.';
+    if (section.contains('acompanhante')) return 'Você merece receber acolhimento e companhia. 💜 Vamos conversar sobre quem você gostaria de ter ao seu lado nesse momento.';
     if (section.contains('trabalho')) return 'Cada parto tem seu próprio ritmo, e suas preferências importam. 🌷 Vamos conhecer algumas possibilidades para o trabalho de parto, sempre considerando sua segurança e a avaliação da equipe.';
     if (section.contains('alívio')) return 'É natural ter dúvidas sobre as sensações do parto. 💗 Existem formas diferentes de buscar conforto e aliviar a dor. Vou ajudar você a conhecer essas opções.';
     if (section.contains('nascimento')) return 'Estamos chegando a uma parte muito especial: o nascimento. 💜 Vamos registrar o que é importante para você nesse momento.';
@@ -428,7 +437,8 @@ class _ChatScreenState extends State<ChatScreen> {
       }
       if (_currentQuestion >= _questions.length) {
         setState(() => _messages.add(const ChatMessage(
-            text: 'Você conseguiu! 💜 Obrigada por compartilhar suas escolhas comigo. Seu Plano de Parto está pronto para ser revisado com calma. Você pode conferir as respostas, conversar com a equipe de saúde e gerar o PDF quando quiser.',
+            addressByName: true,
+            text: 'Você conseguiu! 💜 Agradeço por compartilhar suas escolhas comigo. Seu Plano de Parto está pronto para ser revisado com calma. Você pode conferir as respostas, conversar com a equipe de saúde e gerar o PDF quando quiser.',
             isUser: false,
             options: ['Ver meu plano'],
           )));
@@ -468,7 +478,7 @@ class _ChatScreenState extends State<ChatScreen> {
       _messages.add(ChatMessage(text: result.question, isUser: true));
       if (hasRiskAlert) {
         _messages.add(const ChatMessage(
-          text: 'Atenção: pelos sinais informados, este canal não substitui atendimento presencial. Se você estiver com sintomas importantes ou insegura, procure uma maternidade, pronto atendimento ou serviço de urgência.',
+          text: 'Atenção: pelos sinais informados, este canal não substitui atendimento presencial. Se você estiver com sintomas importantes ou sentir insegurança, procure uma maternidade, pronto atendimento ou serviço de urgência.',
           isUser: false,
         ));
       }
@@ -498,7 +508,7 @@ class _ChatScreenState extends State<ChatScreen> {
       await _showAccessRequiredDialog(
         title: 'Cadastro necessário',
         message:
-            'Para enviar uma dúvida à Equipe UBS, a paciente precisa estar cadastrada e conectada com e-mail e senha.\n\nVocê ainda pode conversar com a Petita, montar seu Plano de Parto e gerar o PDF offline, mas o envio de dúvidas para a UBS só funciona com cadastro online.',
+            'Para enviar uma dúvida à Equipe UBS, é necessário entrar em uma conta com e-mail e senha.\n\nVocê ainda pode conversar com a Petita, montar seu Plano de Parto e gerar o PDF offline, mas o envio de dúvidas para a UBS só funciona com cadastro online.',
       );
       return false;
     }
@@ -519,7 +529,7 @@ class _ChatScreenState extends State<ChatScreen> {
         await _showAccessRequiredDialog(
           title: 'Conta de paciente necessária',
           message:
-              'O envio de dúvidas é exclusivo para contas de paciente/gestante cadastradas.\n\nEntre com o e-mail e a senha da gestante no Perfil para continuar.',
+              'O envio de dúvidas é exclusivo para contas da área de gestação.\n\nEntre na sua conta para continuar.',
         );
         return false;
       }
@@ -572,9 +582,9 @@ class _ChatScreenState extends State<ChatScreen> {
 
     if (!_online.isLoggedIn) {
       setState(() => _messages.add(const ChatMessage(
-            text: 'Para enviar uma dúvida à UBS, você precisa estar conectada em uma conta online usando e-mail e senha. Mesmo sem login, você ainda pode montar, editar e gerar seu Plano de Parto offline.',
+            text: 'Para enviar uma dúvida à UBS, você precisa entrar em uma conta online usando e-mail e senha. Mesmo sem login, você ainda pode montar, editar e gerar seu Plano de Parto offline.',
             isUser: false,
-            options: ['Perfil da gestante', 'Montar meu plano'],
+            options: ['Minha conta', 'Montar meu plano'],
           )));
       _scrollToBottom();
       return;
@@ -707,8 +717,8 @@ class _ChatScreenState extends State<ChatScreen> {
       Navigator.pushNamed(context, AppRoutes.myQuestions);
       return;
     }
-    if (option == 'Perfil da gestante' || option == 'Abrir cadastro' || option == 'Criar cadastro local') {
-      Navigator.pushNamed(context, AppRoutes.profile);
+    if (option == 'Minha conta' || option == 'Perfil da gestante' || option == 'Abrir cadastro' || option == 'Criar cadastro local') {
+      Navigator.pushNamed(context, AppRoutes.institutional);
       return;
     }
 
@@ -1175,7 +1185,7 @@ class _ChatScreenState extends State<ChatScreen> {
                   }
                   final msg = _messages[index];
                   return Column(crossAxisAlignment: msg.isUser ? CrossAxisAlignment.end : CrossAxisAlignment.start, children: [
-                    _PetitaChatBubble(text: msg.text, isUser: msg.isUser),
+                    _PetitaChatBubble(text: msg.textForAccount(signedIn: _auth?.signedIn == true, accountName: _auth?.user?['name']), isUser: msg.isUser),
                     if (!msg.isUser && msg.options.isNotEmpty && index == activeOptionsIndex)
                       Padding(
                         padding: const EdgeInsets.only(left: 10, top: 8, bottom: 14),

@@ -158,7 +158,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
               const Text('Edite seu nome, e-mail de contato e UBS para o plano de parto. Estes dados ficam neste aparelho e podem ser usados sem internet. Alterar este e-mail não modifica o e-mail de login da conta online.'),
             ])),
             SectionCard(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              TextField(controller: _nameController, decoration: const InputDecoration(labelText: 'Nome da gestante')),
+              TextField(controller: _nameController, decoration: const InputDecoration(labelText: 'Seu nome')),
               const SizedBox(height: 12),
               TextField(controller: _emailController, keyboardType: TextInputType.emailAddress, decoration: const InputDecoration(labelText: 'E-mail')),
               const SizedBox(height: 12),
@@ -208,7 +208,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     border: Border.all(color: AppColors.petOrange.withAlpha((255 * 0.55).round())),
                   ),
                   child: const Text(
-                    'A UBS digitada aparecerá no Plano de Parto. Porém, dúvidas enviadas pelo chat só poderão ser respondidas quando a gestante estiver vinculada a uma UBS oficial da lista.',
+                    'A UBS digitada aparecerá no Plano de Parto. Porém, dúvidas enviadas pelo chat só poderão ser respondidas quando houver vínculo aprovado com uma UBS oficial da lista.',
                     style: TextStyle(fontWeight: FontWeight.w700, color: AppColors.petDarkBlue),
                   ),
                 ),

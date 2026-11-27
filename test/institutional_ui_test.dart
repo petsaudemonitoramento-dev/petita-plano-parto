@@ -136,11 +136,11 @@ void main() {
     await tester.pumpWidget(MaterialApp(home: InstitutionalAccountScreen(runtime: r)));
     await tester.pumpAndSettle();
     expect(find.text('Entrar'), findsOneWidget);
-    expect(find.text('Nome da gestante'), findsNothing);
+    expect(find.text('Seu nome'), findsNothing);
     expect(find.text('Código recebido por e-mail'), findsNothing);
     await tester.tap(find.text('Criar conta'));
     await tester.pumpAndSettle();
-    expect(find.text('Nome da gestante'), findsOneWidget);
+    expect(find.text('Seu nome'), findsOneWidget);
     expect(find.text('Gestante fictícia'), findsOneWidget);
     expect(find.text('local@example.invalid'), findsOneWidget);
     expect(find.text('Criar minha conta'), findsOneWidget);

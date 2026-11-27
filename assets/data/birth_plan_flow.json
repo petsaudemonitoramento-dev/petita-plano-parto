@@ -1,7 +1,7 @@
 [
   {
     "id": "nome_gestante",
-    "section": "Dados da gestante",
+    "section": "Seus dados",
     "question": "Para começar, qual nome deve aparecer no seu Plano de Parto?",
     "options": [
       "Prefiro não informar"
@@ -10,14 +10,14 @@
   },
   {
     "id": "dpp",
-    "section": "Dados da gestante",
+    "section": "Seus dados",
     "question": "Qual é a sua Data Provável do Parto (DPP)? Exemplo: 18/11/2026.",
     "options": [],
     "multiple": false
   },
   {
     "id": "semanas_gestacao",
-    "section": "Dados da gestante",
+    "section": "Seus dados",
     "question": "Quantas semanas de gestação você está? (Opcional.)",
     "options": [
       "Menos de 12 semanas",
@@ -32,7 +32,7 @@
   },
   {
     "id": "ubs_referencia",
-    "section": "Dados da gestante",
+    "section": "Seus dados",
     "question": "Escolha sua UBS de referência. Se sua UBS não aparecer, você pode digitar o nome no campo de mensagem.",
     "options": [
       "UBS - Estação Velha",
@@ -45,7 +45,7 @@
   },
   {
     "id": "cenario_parto",
-    "section": "Dados da gestante",
+    "section": "Seus dados",
     "question": "Você gostaria de construir seu plano de parto pensando em qual possibilidade?",
     "options": [
       "Parto vaginal",
@@ -56,10 +56,10 @@
   },
   {
     "id": "prioridade_parto",
-    "section": "Dados da gestante",
+    "section": "Seus dados",
     "question": "O que é mais importante para você durante o nascimento do seu bebê?",
     "options": [
-      "Sentir-me segura",
+      "Sentir segurança",
       "Ter autonomia nas decisões",
       "Ter apoio emocional",
       "Sentir o mínimo de dor possível",
@@ -111,11 +111,11 @@
   {
     "id": "acompanhamento_continuo",
     "section": "Acompanhante e apoio",
-    "question": "Você gostaria de permanecer acompanhada durante todo o trabalho de parto?",
+    "question": "Você gostaria de ter companhia durante todo o trabalho de parto?",
     "options": [
       "Sim, durante todo o trabalho de parto",
       "Sim, mas gostaria de decidir no momento",
-      "Não, prefiro ficar sozinha em alguns momentos",
+      "Não, prefiro ficar sem companhia em alguns momentos",
       "Ainda não sei"
     ],
     "multiple": false
@@ -151,14 +151,14 @@
     "options": [
       "Em pé",
       "Caminhando",
-      "Sentada",
+      "Posição sentada",
       "Agachada/de cócoras",
       "De joelhos",
       "Apoiando-me na bola",
       "De quatro apoios",
-      "Deitada de lado",
-      "Semi-sentada",
-      "Deitada de costas",
+      "Posição lateral",
+      "Posição semissentada",
+      "Posição de costas",
       "Quero mudar de posição conforme a necessidade",
       "Ainda não sei"
     ],
@@ -195,9 +195,9 @@
   {
     "id": "informacao_procedimentos",
     "section": "Trabalho de parto",
-    "question": "Você deseja ser informada antes de qualquer procedimento realizado com você ou com o bebê?",
+    "question": "Você deseja receber informações antes de qualquer procedimento realizado com você ou com o bebê?",
     "options": [
-      "Sim, desejo ser informada antes de qualquer procedimento",
+      "Sim, desejo receber informações antes de qualquer procedimento",
       "Quero conversar com a equipe",
       "Não desejo registrar"
     ],
@@ -228,12 +228,12 @@
     "options": [
       "De cócoras/agachada",
       "Em pé",
-      "Sentada",
+      "Posição sentada",
       "De joelhos",
       "De quatro apoios",
       "De lado",
-      "Semi-sentada",
-      "Deitada de costas",
+      "Posição semissentada",
+      "Posição de costas",
       "Outra posição",
       "Quero decidir no momento"
     ],
@@ -276,7 +276,7 @@
   {
     "id": "cordao_umbilical",
     "section": "Nascimento",
-    "question": "Depois que o bebê nasce, o cordão umbilical liga o bebê à placenta por alguns instantes. Quando mãe e bebê estão bem, muitas equipes podem esperar um pouco antes de cortar esse cordão. Você deseja registrar essa preferência?",
+    "question": "Depois que o bebê nasce, o cordão umbilical liga o bebê à placenta por alguns instantes. Quando você e o bebê estão bem, muitas equipes podem esperar um pouco antes de cortar esse cordão. Você deseja registrar essa preferência?",
     "options": [
       "Sim, gostaria de aguardar o clampeamento, se estiver tudo bem",
       "Gostaria de receber explicações antes de decidir",
@@ -338,7 +338,7 @@
     "section": "Em caso de cesárea",
     "question": "Caso seja necessária cesárea, quais preferências você deseja registrar? Você pode selecionar mais de uma.",
     "options": [
-      "Ser informada sobre a indicação e participar da decisão",
+      "Receber informações sobre a indicação e participar da decisão",
       "Presença do acompanhante, se possível",
       "Contato pele a pele quando houver condições",
       "Amamentação precoce quando houver condições",
@@ -353,7 +353,7 @@
     "options": [
       "Ter o mínimo possível de pessoas no ambiente",
       "Que procedimentos sejam feitos com privacidade",
-      "Ser informada antes da entrada de outras pessoas",
+      "Receber informações antes da entrada de outras pessoas",
       "Não tenho preferência",
       "Outra preferência"
     ],

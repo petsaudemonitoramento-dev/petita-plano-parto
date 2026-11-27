@@ -450,7 +450,7 @@ class _InstitutionalAccountScreenState extends State<InstitutionalAccountScreen>
                   const SizedBox(height: 16),
                   if (_mode == 'signup') ...[
                     TextField(controller: _name, textCapitalization: TextCapitalization.words,
-                        decoration: InputDecoration(labelText: widget.professional ? 'Nome do profissional' : 'Nome da gestante')),
+                        decoration: InputDecoration(labelText: widget.professional ? 'Nome do profissional' : 'Seu nome')),
                     const SizedBox(height: 12),
                   ],
                   TextField(controller: _email, keyboardType: TextInputType.emailAddress,
@@ -490,7 +490,7 @@ class _InstitutionalAccountScreenState extends State<InstitutionalAccountScreen>
                         throw _ActionCancelled();
                       }
                       await _finishLogin();
-                    }, success: widget.professional ? 'Conta criada. Escolha sua UBS para solicitar acesso.' : 'Conta criada e perfil carregado. Bem-vinda à Petita!'),
+                    }, success: widget.professional ? 'Conta criada. Escolha sua UBS para solicitar acesso.' : 'Conta criada e perfil carregado. Que bom ter você na Petita!'),
                     TextButton(onPressed: _busy ? null : () => _switchMode('login'),
                         child: const Text('Já tenho uma conta')),
                   ] else if (_mode == 'login') ...[
@@ -535,7 +535,7 @@ class _InstitutionalAccountScreenState extends State<InstitutionalAccountScreen>
                   child: Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
-                    Text(widget.professional ? 'Sua conta' : 'Você está conectada', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 20)),
+                    Text(widget.professional ? 'Sua conta' : 'Você entrou na sua conta', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 20)),
                     const SizedBox(height: 8),
                     Text('Conta: ${runtime.auth.user!['email'] ?? ''}'),
                     if (_profile == null)
