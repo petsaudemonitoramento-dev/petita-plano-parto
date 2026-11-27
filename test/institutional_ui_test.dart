@@ -146,6 +146,8 @@ void main() {
     await tester.tap(find.byType(DropdownButtonFormField<String>));
     await tester.pumpAndSettle();
     await tester.tap(find.text('Minha UBS não está cadastrada').last);
+    await tester.pump();
+    await finishAction(tester, calls);
     await tester.pumpAndSettle();
     expect(find.textContaining('Você pode salvar e sincronizar seu plano online normalmente.'), findsOneWidget);
     expect(find.text('Solicitar vínculo à UBS'), findsNothing);

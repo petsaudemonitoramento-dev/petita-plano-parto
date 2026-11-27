@@ -1148,6 +1148,18 @@ class _ChatScreenState extends State<ChatScreen> {
               currentStep: _visibleCurrentStep,
               totalSteps: _visibleTotalSteps,
             ),
+            if (!_awaitingPronouns && _currentQuestion < 0)
+              Align(
+                alignment: Alignment.centerRight,
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 14),
+                  child: TextButton.icon(
+                    onPressed: () => Navigator.pushNamed(context, AppRoutes.planSync),
+                    icon: const Icon(Icons.cloud_upload_outlined, size: 19),
+                    label: const Text('Sincronizar meu plano'),
+                  ),
+                ),
+              ),
             Expanded(
               child: _awaitingPronouns
                   ? _buildPronounsCard()
@@ -1298,7 +1310,7 @@ class _ChatHeader extends StatelessWidget {
               ],
             ),
           ),
-          IconButton(
+          if (inPlanFlow) IconButton(
             tooltip: 'Sincronizar meu plano',
             visualDensity: VisualDensity.compact,
             onPressed: () => Navigator.pushNamed(context, AppRoutes.planSync),
