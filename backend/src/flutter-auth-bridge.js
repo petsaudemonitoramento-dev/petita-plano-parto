@@ -1,34 +1,13 @@
-import {createAuthClient} from '@neon/auth';
-import {sessionAccessToken} from './session-access-token.js';
-let auth, origin;
-const error=status=>({error:{status:Number.isInteger(status)?status:503}});
-// A local generated bundle of the pinned official SDK; no CDN, tokens in
-// localStorage, credential logging, arbitrary redirects or anonymous fallback.
+const error=status=>JSON.stringify({error:{status:Number.isInteger(status)?status:503}});
+// Same-origin HTTPS: the session cookie is HttpOnly and never exposed to Flutter.
 globalThis.petitaNeonAuthCall=async(action,payload)=>{
-  try {
-    const {url,body={}}=JSON.parse(payload);
-    const u=new URL(url);
-    if(u.protocol!=='https:'||!u.hostname.endsWith('.neon.tech')||u.username||u.password||u.search||u.hash) return JSON.stringify(error(503));
-    if(origin && origin!==u.href) return JSON.stringify(error(503));
-    if(!auth){auth=createAuthClient(u.href);origin=u.href;}
-    let result;
-    switch(action){
-      case 'signup': result=await auth.signUp.email(body);break;
-      case 'login': result=await auth.signIn.email(body);break;
-      case 'verify': result=await auth.emailOtp.verifyEmail(body);break;
-      case 'resend': result=await auth.emailOtp.sendVerificationOtp(body);break;
-      case 'requestReset': result=await auth.emailOtp.requestPasswordReset(body);break;
-      case 'reset': result=await auth.emailOtp.resetPassword(body);break;
-      case 'session': result=await auth.getSession();break;
-      case 'token': result=await sessionAccessToken(auth);break;
-      case 'logout': result=await auth.signOut();break;
-      default:return JSON.stringify(error(400));
-    }
-    if(result?.error) return JSON.stringify(error(result.error.status));
-    const data=result?.data??{};
-    if(action==='token')return JSON.stringify({data:{token:data.token}});
-    // Never send Better Auth's session secret to Flutter Web or its storage.
-    const user=data.user;
-    return JSON.stringify({data:user?{user:{id:user.id,name:user.name,email:user.email,emailVerified:user.emailVerified},session:{expiresAt:data.session?.expiresAt}}:{}});
-  }catch{return JSON.stringify(error(503));}
+ try {
+  const {body={}}=JSON.parse(payload);
+  if(!['signup','login','verify','resend','requestReset','reset','session','token','logout'].includes(action))return error(400);
+  const r=await fetch('/petita-auth/'+action,{method:'POST',headers:{'Content-Type':'application/json'},credentials:'same-origin',body:JSON.stringify(body),cache:'no-store',redirect:'error',signal:AbortSignal.timeout(16000)});
+  if(!r.ok)return error(r.status);
+  const result=await r.json();
+  if(!result||typeof result.data!=='object'||result.data===null)return error(503);
+  return JSON.stringify({data:result.data});
+ }catch{return error(503);}
 };
