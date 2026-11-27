@@ -169,6 +169,10 @@ class NeonApiClient {
         'companion': companion,
         'answers': answers,
       });
+  Future<List<Map<String, dynamic>>> getUbsPreference() =>
+      _request('GET', '/api/patient/ubs-preference');
+  Future<List<Map<String, dynamic>>> saveNoUbsPreference() =>
+      _request('POST', '/api/patient/ubs-preference', body: {});
   Future<List<Map<String, dynamic>>> listMyUbsRequests() =>
       _request('GET', '/api/patient/ubs-requests');
   Future<List<Map<String, dynamic>>> requestPatientUbs(

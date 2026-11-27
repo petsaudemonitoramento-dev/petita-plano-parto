@@ -31,6 +31,7 @@ class PlanoPartoPetSaudeApp extends StatelessWidget {
         AppRoutes.responsibility: (_) => const TermsScreen(initialAsset: 'assets/legal/aviso_responsabilidade.md', title: 'Responsabilidade em Saúde'),
         AppRoutes.about: (_) => const AboutScreen(),
         AppRoutes.institutional: (_) => const ConsentRequiredScreen(child: InstitutionalAccountScreen()),
+        AppRoutes.planSync: (_) => const ConsentRequiredScreen(child: InstitutionalAccountScreen(syncOnly: true)),
         AppRoutes.professionalAccount: (_) => const InstitutionalAccountScreen(professional: true),
         AppRoutes.profile: (_) => const ConsentRequiredScreen(child: ProfileScreen()),
         AppRoutes.ubs: (_) => const InstitutionalAreaScreen(),

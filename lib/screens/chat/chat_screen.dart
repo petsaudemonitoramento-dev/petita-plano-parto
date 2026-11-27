@@ -1299,9 +1299,15 @@ class _ChatHeader extends StatelessWidget {
             ),
           ),
           IconButton(
-            tooltip: 'Meu perfil',
+            tooltip: 'Sincronizar meu plano',
             visualDensity: VisualDensity.compact,
-            onPressed: () => Navigator.pushNamed(context, AppRoutes.profile),
+            onPressed: () => Navigator.pushNamed(context, AppRoutes.planSync),
+            icon: const Icon(Icons.cloud_upload_outlined, color: Colors.white),
+          ),
+          IconButton(
+            tooltip: 'Minha conta',
+            visualDensity: VisualDensity.compact,
+            onPressed: () => Navigator.pushNamed(context, AppRoutes.institutional),
             icon: const Icon(Icons.person_outline, color: Colors.white),
           ),
         ]),

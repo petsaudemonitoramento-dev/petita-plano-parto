@@ -11,8 +11,8 @@ class _ActionCancelled implements Exception {}
 
 class InstitutionalAccountScreen extends StatefulWidget {
   final InstitutionalRuntime? runtime;
-  final bool professional;
-  const InstitutionalAccountScreen({super.key, this.runtime, this.professional = false});
+  final bool professional, syncOnly;
+  const InstitutionalAccountScreen({super.key, this.runtime, this.professional = false, this.syncOnly = false});
   @override
   State<InstitutionalAccountScreen> createState() =>
       _InstitutionalAccountScreenState();
@@ -25,7 +25,7 @@ class _InstitutionalAccountScreenState extends State<InstitutionalAccountScreen>
   final _professionalOtp = TextEditingController();
   final _choices = <String, bool>{};
   static const _unregisteredUbs = '__not_registered__';
-  bool _consentKnown = false, _ubsKnown = false;
+  bool _consentKnown = false, _ubsKnown = false, _ubsChoiceSaved = false;
   bool get _acceptedAll => _choices.length == 6 && _choices.values.every((v) => v);
   String? get _approvedUbs => _profile?['ubs_code'] as String?;
   bool get _hasPendingUbs => _requests.any((r) => r['status'] == 'pending');
@@ -118,6 +118,7 @@ class _InstitutionalAccountScreenState extends State<InstitutionalAccountScreen>
         _ubs = null;
         _consentKnown = false;
         _ubsKnown = false;
+        _ubsChoiceSaved = false;
         _loadedSubject = subject;
       });
     }
@@ -156,6 +157,10 @@ class _InstitutionalAccountScreenState extends State<InstitutionalAccountScreen>
           final units = await runtime.api.listUbs();
           final requests = await runtime.api.listMyUbsRequests();
           String? preference;
+          bool choiceSaved = false;
+          try {
+            choiceSaved = (await runtime.api.getUbsPreference()).isNotEmpty;
+          } catch (_) { /* Older API or network failure; never grants access. */ }
           try {
             preference = await runtime.sync.vault.read('petita.ubs.preference:$subject');
           } catch (_) { /* Local preference is optional. */ }
@@ -164,10 +169,11 @@ class _InstitutionalAccountScreenState extends State<InstitutionalAccountScreen>
             _units = units;
             _requests = requests;
             _ubsKnown = true;
+            _ubsChoiceSaved = choiceSaved || preference == _unregisteredUbs;
             if (_approvedUbs != null) {
               _ubs = _approvedUbs;
             } else if (_ubs == null && !_hasPendingUbs) {
-              if (preference == _unregisteredUbs) {
+              if (_ubsChoiceSaved) {
                 _ubs = _unregisteredUbs;
               } else if (_localEmail != null &&
                   '${runtime.auth.user?['email']}'.toLowerCase() == _localEmail!.toLowerCase() &&
@@ -186,6 +192,72 @@ class _InstitutionalAccountScreenState extends State<InstitutionalAccountScreen>
       }(),
     ]);
     if (failed) throw const NeonApiException(503);
+  }
+
+  Future<void> _enterConversation() async {
+    if (!mounted || widget.professional) return;
+    final runtime = _runtime;
+    if (runtime == null || !runtime.auth.signedIn) return;
+    if (_profile?['role'] == 'patient' && _ubsKnown &&
+        _approvedUbs == null && _requests.isEmpty && !_ubsChoiceSaved) {
+      String? selected = _units.any((u) => u['code'] == _ubs) ? _ubs : null;
+      final choice = await showDialog<String>(
+        context: context,
+        barrierDismissible: false,
+        builder: (ctx) => StatefulBuilder(builder: (ctx, update) => AlertDialog(
+          title: const Text('Qual é sua UBS?'),
+          content: SingleChildScrollView(child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text('Escolha sua unidade de saúde uma única vez. Isso permite solicitar acesso ao envio de dúvidas para a equipe.'),
+              const SizedBox(height: 12),
+              DropdownButtonFormField<String>(
+                isExpanded: true,
+                initialValue: selected,
+                decoration: const InputDecoration(labelText: 'Sua UBS'),
+                items: [
+                  ..._units.map((u) => DropdownMenuItem<String>(value: u['code'] as String, child: Text('${u['name']}', overflow: TextOverflow.ellipsis))),
+                  const DropdownMenuItem(value: _unregisteredUbs, child: Text('Minha UBS não está cadastrada', overflow: TextOverflow.ellipsis)),
+                ],
+                onChanged: (value) => update(() => selected = value),
+              ),
+              const SizedBox(height: 8),
+              Text(selected == _unregisteredUbs
+                ? 'Você poderá usar e sincronizar seu plano normalmente. O envio de dúvidas à UBS ficará indisponível.'
+                : 'A equipe só receberá suas dúvidas depois que a administração aprovar o vínculo. Você pode usar o plano enquanto aguarda.'),
+            ],
+          )),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Voltar')),
+            FilledButton(onPressed: selected == null ? null : () => Navigator.pop(ctx, selected), child: const Text('Continuar')),
+          ],
+        )),
+      );
+      if (choice == null || !mounted) return;
+      if (choice == _unregisteredUbs) {
+        await runtime.api.saveNoUbsPreference();
+        await _chooseUbs(choice);
+        _ubsChoiceSaved = true;
+      } else {
+        if (!_units.any((u) => u['code'] == choice)) throw const NeonApiException(400);
+        await runtime.api.requestPatientUbs(choice, newOperationId());
+        _ubs = choice;
+      }
+    }
+    if (mounted) Navigator.pushReplacementNamed(context, AppRoutes.chat);
+  }
+
+  Future<void> _finishLogin() async {
+    try {
+      await _load();
+    } catch (_) {
+      // A partial profile/connection failure must be shown; don't force onboarding.
+      if (_profile == null) rethrow;
+    }
+    if (!widget.professional && !widget.syncOnly && _profile?['role'] == 'patient') {
+      await _enterConversation();
+    }
   }
 
   Future<void> _syncPlan(InstitutionalRuntime runtime) async {
@@ -323,10 +395,10 @@ class _InstitutionalAccountScreenState extends State<InstitutionalAccountScreen>
   Widget build(BuildContext context) {
     final runtime = _runtime;
     return Scaffold(
-        appBar: AppBar(title: Text(widget.professional ? 'Acesso profissional' : 'Minha conta')),
+        appBar: AppBar(title: Text(widget.professional ? 'Acesso profissional' : widget.syncOnly ? 'Meu plano online' : 'Minha conta')),
         body: SafeArea(
             child: ListView(padding: const EdgeInsets.all(20), children: [
-          if (!widget.professional)
+          if (!widget.professional && !widget.syncOnly)
             SectionCard(child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
@@ -351,6 +423,10 @@ class _InstitutionalAccountScreenState extends State<InstitutionalAccountScreen>
             const LinearProgressIndicator(
                 semanticsLabel: 'Concluindo operação'),
           if (runtime != null) ...[
+            if (widget.syncOnly && runtime.auth.signedIn && _profile == null)
+              _button('Tentar carregar perfil novamente', _load),
+            if (widget.syncOnly && !runtime.auth.signedIn)
+              const SectionCard(child: Text('Entre em sua conta para salvar ou recuperar seu plano online. O plano local continua disponível.')),
             if (!runtime.auth.signedIn)
               SectionCard(
                 child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
@@ -410,7 +486,7 @@ class _InstitutionalAccountScreenState extends State<InstitutionalAccountScreen>
                         if (mounted) setState(() => _message = 'Sua conta foi criada. Digite sua senha e toque em Entrar para continuar.');
                         throw _ActionCancelled();
                       }
-                      await _load();
+                      await _finishLogin();
                     }, success: widget.professional ? 'Conta criada. Confira a verificação e solicite seu acesso profissional.' : 'Conta criada e perfil carregado. Bem-vinda à Petita!'),
                     TextButton(onPressed: _busy ? null : () => _switchMode('login'),
                         child: const Text('Já tenho uma conta')),
@@ -421,7 +497,7 @@ class _InstitutionalAccountScreenState extends State<InstitutionalAccountScreen>
                         throw _ActionCancelled();
                       }
                       await runtime.auth.login(_email.text, _password.text);
-                      await _load();
+                      await _finishLogin();
                     }, success: 'Você entrou na sua conta.'),
                     TextButton(onPressed: _busy ? null : () => _switchMode('reset'),
                         child: const Text('Esqueci minha senha')),
@@ -451,7 +527,7 @@ class _InstitutionalAccountScreenState extends State<InstitutionalAccountScreen>
                         child: const Text('Voltar para entrar')),
                   ],
                 ])),
-            if (runtime.auth.user != null)
+            if (runtime.auth.user != null && !widget.syncOnly)
               SectionCard(
                   child: Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -489,6 +565,8 @@ class _InstitutionalAccountScreenState extends State<InstitutionalAccountScreen>
                     if (_profile == null || widget.professional)
                       _button(_profile == null ? 'Tentar carregar perfil novamente' : 'Atualizar situação', _load,
                           success: 'Situação atualizada.'),
+                    if (!widget.professional && _profile?['role'] == 'patient')
+                      _button('Conversar com a Petita', _enterConversation),
                     if (_profile != null && !widget.professional)
                       TextButton(onPressed: _busy ? null : () => _run(_load, success: 'Situação atualizada.'), child: const Text('Atualizar conta')),
                     _button('Sair da conta', () async {
@@ -509,6 +587,7 @@ class _InstitutionalAccountScreenState extends State<InstitutionalAccountScreen>
                             _loadedSubject = null;
                             _consentKnown = false;
                             _ubsKnown = false;
+                            _ubsChoiceSaved = false;
                           });
                       }
                     },
@@ -516,7 +595,7 @@ class _InstitutionalAccountScreenState extends State<InstitutionalAccountScreen>
                             'Sessão encerrada. O plano offline permanece neste aparelho.'),
                   ])),
             if (!widget.professional && _profile?['role'] == 'patient' && runtime.auth.signedIn) ...[
-              SectionCard(
+              if (widget.syncOnly) SectionCard(
                   child: Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
@@ -586,7 +665,7 @@ class _InstitutionalAccountScreenState extends State<InstitutionalAccountScreen>
                         }, success: 'Sincronização desativada.'),
                         child: const Text('Desativar sincronização')),
                   ])),
-              SectionCard(
+              if (widget.syncOnly) SectionCard(
                   child: Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
@@ -604,7 +683,7 @@ class _InstitutionalAccountScreenState extends State<InstitutionalAccountScreen>
                           success:
                               'Plano recuperado. Abra Meu Plano de Parto para revisar e gerar o PDF.'),
                   ])),
-              SectionCard(
+              if (!widget.syncOnly) SectionCard(
                   child: Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
@@ -630,7 +709,13 @@ class _InstitutionalAccountScreenState extends State<InstitutionalAccountScreen>
                               child: Text('${u['name']}', overflow: TextOverflow.ellipsis))),
                           const DropdownMenuItem(value: _unregisteredUbs, child: Text('Minha UBS não está cadastrada', overflow: TextOverflow.ellipsis)),
                         ],
-                        onChanged: _busy ? null : _chooseUbs),
+                        onChanged: _busy ? null : (value) => _run(() async {
+                          if (value == _unregisteredUbs) {
+                            await runtime.api.saveNoUbsPreference();
+                            _ubsChoiceSaved = true;
+                          }
+                          await _chooseUbs(value);
+                        })),
                       if (_ubs == _unregisteredUbs)
                         Padding(
                           padding: const EdgeInsets.only(top: 12),

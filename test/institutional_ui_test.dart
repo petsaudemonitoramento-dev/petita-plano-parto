@@ -69,7 +69,7 @@ void main() {
     final calls = <String>[];
     final r = runtime('patient', calls);
     await tester
-        .pumpWidget(MaterialApp(home: InstitutionalAccountScreen(runtime: r)));
+        .pumpWidget(MaterialApp(home: InstitutionalAccountScreen(runtime: r, syncOnly: true)));
     await finishAction(tester, calls);
     final choices = tester
         .widgetList<CheckboxListTile>(find.byType(CheckboxListTile))
@@ -130,7 +130,8 @@ void main() {
     await finishAction(tester, calls);
     expect(find.text('Verificação para acesso profissional'), findsNothing);
     expect(find.text('Área profissional e administrativa'), findsNothing);
-    expect(find.text('Sincronização online opcional'), findsOneWidget);
+    expect(find.text('Sincronização online opcional'), findsNothing);
+    expect(find.text('Conversar com a Petita'), findsOneWidget);
     expect(find.text('Editar meus dados'), findsOneWidget);
   });
   testWidgets('unregistered UBS is optional and never sends a fake request', (tester) async {
@@ -148,7 +149,8 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.textContaining('Você pode salvar e sincronizar seu plano online normalmente.'), findsOneWidget);
     expect(find.text('Solicitar vínculo à UBS'), findsNothing);
-    expect(find.text('Autorizar e sincronizar'), findsOneWidget);
+    expect(find.text('Autorizar e sincronizar'), findsNothing);
+    expect(calls, contains('POST /api/patient/ubs-preference'));
     expect(calls, isNot(contains('POST /api/patient/ubs-requests')));
     expect(tester.takeException(), isNull);
   });

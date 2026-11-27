@@ -40,3 +40,5 @@ test('educational knowledge is read-only for anonymous clients; publishing is au
  assert.equal(route('POST','/api/admin/knowledge/categories',{name:'Teste'}).isPublic,false);
  assert.throws(()=>route('POST','/api/admin/knowledge',{category:'Teste',question:'Pergunta',keywords:[],answer:'Resposta sintética'}),{status:400});
 });
+
+test('optional UBS preference is authenticated and actor-scoped',()=>{const get=route('GET','/api/patient/ubs-preference');const post=route('POST','/api/patient/ubs-preference',{});assert.equal(get.isPublic,false);assert.equal(post.isPublic,false);assert.match(post.sql,/actor_id\(\)/);assert.throws(()=>route('POST','/api/patient/ubs-preference',{patient_id:'other'}),{status:400});});

@@ -25,6 +25,8 @@ function isoDate(v) {
   return v;
 }
 export function route(method, path, body = {}) {
+  if(method==='GET' && path==='/api/patient/ubs-preference') {noBody(body);return q('select patient_id from petita.patient_no_ubs_preference where patient_id=petita_private.actor_id()');}
+  if(method==='POST' && path==='/api/patient/ubs-preference') {noBody(body);return q('insert into petita.patient_no_ubs_preference(patient_id) values(petita_private.actor_id()) on conflict(patient_id) do nothing returning patient_id');}
   if(method==='GET' && path==='/api/patient/ubs-requests') {noBody(body);return q('select * from petita.list_my_ubs_requests()');}
   if(method==='POST' && path==='/api/patient/ubs-requests') {only(body,['ubs_code','operation_id']);return q('select petita.request_patient_ubs($1,$2::uuid) as result',[text(body.ubs_code,1,80),uuid(body.operation_id)]);}
   if(method==='GET' && path==='/api/admin/patient-ubs-requests') {noBody(body);return q('select * from petita.list_patient_ubs_requests()');}

@@ -9,6 +9,7 @@ class AppRoutes {
   static const about = '/about';
   static const profile = '/profile';
   static const institutional = '/institutional';
+  static const planSync = '/plan-sync';
   static const professionalAccount = '/professional-account';
   static const ubs = '/ubs';
   static const admin = '/admin';
