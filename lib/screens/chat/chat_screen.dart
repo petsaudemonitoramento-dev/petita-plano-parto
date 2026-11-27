@@ -1,4 +1,5 @@
 import '../../widgets/local_persistence_feedback.dart';
+import '../../widgets/account_header_menu.dart';
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
@@ -227,7 +228,7 @@ class _ChatScreenState extends State<ChatScreen> {
       return;
     }
     if (text == 'Minha conta' || text == 'Criar cadastro local' || text == 'Abrir cadastro' || text == 'Perfil da gestante') {
-      Navigator.pushNamed(context, AppRoutes.institutional);
+      Navigator.pushNamed(context, AppRoutes.institutional, arguments: _auth?.signedIn == true ? 'manage' : 'login');
       return;
     }
     if (text == 'Enviar dúvida à UBS' || text == 'Ainda tenho dúvida') {
@@ -771,7 +772,7 @@ class _ChatScreenState extends State<ChatScreen> {
       return;
     }
     if (option == 'Minha conta' || option == 'Perfil da gestante' || option == 'Abrir cadastro' || option == 'Criar cadastro local') {
-      Navigator.pushNamed(context, AppRoutes.institutional);
+      Navigator.pushNamed(context, AppRoutes.institutional, arguments: _auth?.signedIn == true ? 'manage' : 'login');
       return;
     }
 
@@ -1209,6 +1210,7 @@ class _ChatScreenState extends State<ChatScreen> {
         child: Column(
           children: [
             _ChatHeader(
+              auth: _auth,
               progress: _progress,
               currentSection: _currentSectionName,
               inPlanFlow: _currentQuestion >= 0,
@@ -1304,6 +1306,7 @@ class _ChatScreenState extends State<ChatScreen> {
 
 class _ChatHeader extends StatelessWidget {
   const _ChatHeader({
+    required this.auth,
     required this.progress,
     required this.currentSection,
     required this.inPlanFlow,
@@ -1311,6 +1314,7 @@ class _ChatHeader extends StatelessWidget {
     required this.totalSteps,
   });
 
+  final InstitutionalAuth? auth;
   final double progress;
   final String currentSection;
   final bool inPlanFlow;
@@ -1383,12 +1387,7 @@ class _ChatHeader extends StatelessWidget {
             onPressed: () => Navigator.pushNamed(context, AppRoutes.planSync),
             icon: const Icon(Icons.cloud_upload_outlined, color: Colors.white),
           ),
-          IconButton(
-            tooltip: 'Minha conta',
-            visualDensity: VisualDensity.compact,
-            onPressed: () => Navigator.pushNamed(context, AppRoutes.institutional),
-            icon: const Icon(Icons.person_outline, color: Colors.white),
-          ),
+          AccountHeaderMenu(auth: auth, color: Colors.white, roleLabel: 'Plano de parto'),
         ]),
         if (inPlanFlow && !keyboardVisible) ...[
           SizedBox(height: short ? 5 : 10),

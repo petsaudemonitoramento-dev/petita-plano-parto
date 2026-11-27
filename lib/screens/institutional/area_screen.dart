@@ -4,6 +4,7 @@ import '../../services/institutional/runtime.dart';
 import '../../services/institutional/plan_sync_controller.dart';
 import '../../services/neon_api_client.dart';
 import '../../widgets/section_card.dart';
+import '../../widgets/account_header_menu.dart';
 
 class _Cancelled implements Exception {}
 
@@ -36,11 +37,22 @@ class _InstitutionalAreaScreenState extends State<InstitutionalAreaScreen> {
   @override
   void initState() {
     super.initState();
+    runtime?.auth.addListener(_authChanged);
     _run(_load);
+  }
+
+  void _authChanged() {
+    if (!mounted) return;
+    if (runtime?.auth.signedIn != true || (_subject != null && runtime?.auth.subject != _subject)) {
+      setState(() { _profile = null; _questions = []; _team = []; _patients = []; _ubs = []; _subject = null; });
+    } else {
+      setState(() {});
+    }
   }
 
   @override
   void dispose() {
+    runtime?.auth.removeListener(_authChanged);
     _member.dispose();
     _reason.dispose();
     _category.dispose();
@@ -54,6 +66,7 @@ class _InstitutionalAreaScreenState extends State<InstitutionalAreaScreen> {
     final r = runtime;
     if (r == null) throw const NeonApiException(503);
     await r.auth.restore();
+    if (!mounted) return;
     if (!r.auth.signedIn) {
       if (mounted) setState(() { _profile = null; _questions = []; _team = []; _patients = []; _ubs = []; _code = null; _subject = null; _requestSent = false; });
       return;
@@ -64,7 +77,9 @@ class _InstitutionalAreaScreenState extends State<InstitutionalAreaScreen> {
       _code = null;
       _operations.clear();
     }
+    final subject = r.auth.subject;
     final profile = (await r.api.loadProfile()).single;
+    if (!mounted || !r.auth.signedIn || r.auth.subject != subject) return;
     // Clear old privileged content before the next request, including role changes.
     if (mounted)
       setState(() {
@@ -89,7 +104,7 @@ class _InstitutionalAreaScreenState extends State<InstitutionalAreaScreen> {
       final own = await r.api.listMyProfessionalRequests();
       if (mounted) setState(() => _requestSent = own.any((r) => r['status'] == 'pending'));
     }
-    if (mounted)
+    if (mounted && r.auth.signedIn && r.auth.subject == subject)
       setState(() {
         _questions = questions;
         _team = team;
@@ -177,12 +192,77 @@ class _InstitutionalAreaScreenState extends State<InstitutionalAreaScreen> {
     await _load();
   }
 
+  Widget _adminOverview() => Container(
+    padding: const EdgeInsets.all(20),
+    decoration: BoxDecoration(
+      gradient: const LinearGradient(colors: [Color(0xFF492777), Color(0xFF8042B6)]),
+      borderRadius: BorderRadius.circular(24),
+    ),
+    child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      const Row(children: [Icon(Icons.shield_outlined, color: Colors.white, size: 19), SizedBox(width: 8), Expanded(child: Text('PET SAÚDE • GESTÃO INSTITUCIONAL', style: TextStyle(color: Color(0xFFE9D8FF), fontSize: 11, fontWeight: FontWeight.w700, letterSpacing: .4)))]),
+      const SizedBox(height: 14),
+      const Text('Painel de administração', style: TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.w800)),
+      const SizedBox(height: 6),
+      const Text('Acompanhe as solicitações e gerencie os acessos e conteúdos da Petita.', style: TextStyle(color: Color(0xFFF3E9FF), height: 1.4)),
+      const SizedBox(height: 18),
+      Container(padding: const EdgeInsets.all(13), decoration: BoxDecoration(color: Colors.white.withAlpha(28), borderRadius: BorderRadius.circular(14)),
+        child: Row(children: [
+          const Icon(Icons.pending_actions_outlined, color: Colors.white),
+          const SizedBox(width: 12),
+          Expanded(child: Text(_busy ? 'Consultando solicitações…' : '${_team.length + _patients.length} solicitações pendentes', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700))),
+        ])),
+    ]),
+  );
+
+  Widget _adminTile(String key, String label, String description, IconData icon, double width, {int? count}) {
+    final selected = _adminSection == key;
+    final color = selected ? const Color(0xFF6332AB) : const Color(0xFF665777);
+    return SizedBox(width: width, child: Material(
+      color: selected ? const Color(0xFFF0E4FF) : Colors.white,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18), side: BorderSide(color: selected ? const Color(0xFF9B59DA) : const Color(0xFFE5DAEF))),
+      child: InkWell(borderRadius: BorderRadius.circular(18),
+        onTap: _busy ? null : () => setState(() => _adminSection = key),
+        child: Padding(padding: const EdgeInsets.all(12), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Row(children: [
+            Container(padding: const EdgeInsets.all(8), decoration: BoxDecoration(color: const Color(0xFFECE1FA), borderRadius: BorderRadius.circular(12)), child: Icon(icon, color: color, size: 21)),
+            const Spacer(),
+            if (count != null) Text('$count', style: TextStyle(color: color, fontSize: 21, fontWeight: FontWeight.w900)),
+            if (count == null && selected) Icon(Icons.check_circle, color: color, size: 18),
+          ]),
+          const SizedBox(height: 10),
+          Text(label, style: TextStyle(color: color, fontSize: 15, fontWeight: FontWeight.w800)),
+          const SizedBox(height: 4),
+          Text(description, style: const TextStyle(fontSize: 12, color: Color(0xFF6C607B))),
+        ])),
+      ),
+    ));
+  }
+
+  Widget _emptyQueue(String message) => SectionCard(child: Padding(
+    padding: const EdgeInsets.symmetric(vertical: 16),
+    child: Column(children: [
+      Container(padding: const EdgeInsets.all(13), decoration: const BoxDecoration(color: Color(0xFFEDE6FA), shape: BoxShape.circle), child: const Icon(Icons.inbox_outlined, color: Color(0xFF6332AB), size: 28)),
+      const SizedBox(height: 12),
+      Text(message, textAlign: TextAlign.center, style: const TextStyle(fontWeight: FontWeight.w700)),
+      const SizedBox(height: 5),
+      const Text('Novas solicitações aparecerão aqui.', textAlign: TextAlign.center, style: TextStyle(color: Color(0xFF6C607B), fontSize: 13)),
+    ]),
+  ));
+
   @override
   Widget build(BuildContext context) => Scaffold(
       appBar: AppBar(
           title: Text(widget.myQuestions
               ? 'Minhas dúvidas'
-              : _profile?['role'] == 'admin' ? 'Administração' : 'Equipe UBS')),
+              : _profile?['role'] == 'admin' ? 'Administração' : 'Equipe UBS'),
+          actions: [
+            if (runtime?.auth.signedIn == true) ...[
+              IconButton(tooltip: 'Atualizar painel', onPressed: _busy ? null : () => _run(_load), icon: const Icon(Icons.refresh)),
+              AccountHeaderMenu(auth: runtime?.auth, professional: !widget.myQuestions, busy: _busy,
+                roleLabel: _profile?['role'] == 'admin' ? 'Administração PET Saúde' : widget.myQuestions ? 'Plano de parto' : 'Equipe UBS',
+                onRefresh: () => _run(_load)),
+            ],
+          ]),
       body: SafeArea(
           child: ListView(padding: const EdgeInsets.all(20), children: [
         if (widget.myQuestions) const SectionCard(
@@ -199,26 +279,17 @@ class _InstitutionalAreaScreenState extends State<InstitutionalAreaScreen> {
                 ? 'Entre com sua conta profissional ou crie uma para solicitar acesso à sua UBS.'
                 : 'Esta conta pertence à área da gestante. Entre com uma conta profissional ou crie uma conta específica.'),
             button(_profile == null ? 'Entrar na conta profissional' : 'Trocar de conta', () async {
-              await Navigator.pushNamed(context, AppRoutes.professionalAccount);
-              await _load();
+              await Navigator.pushNamed(context, AppRoutes.professionalAccount, arguments: 'login');
+              if (mounted) await _load();
             }),
             if (_profile == null)
               OutlinedButton(onPressed: _busy ? null : () => _run(() async {
                 await Navigator.pushNamed(context, AppRoutes.professionalAccount, arguments: 'signup');
-                await _load();
+                if (mounted) await _load();
               }), child: const Text('Criar perfil profissional')),
           ])),
-        if (widget.myQuestions || _profile?['role'] == 'admin' || _profile?['role'] == 'ubs_team') ...[
-          if (!widget.myQuestions)
-            SectionCard(child: Text(_profile?['role'] == 'admin'
-                ? 'Administração PET Saúde • Gerencie as solicitações de acesso e a base educativa.'
-                : 'Equipe UBS • Responda às dúvidas encaminhadas à sua unidade de saúde.')),
-          TextButton(onPressed: _busy ? null : () => _run(_load), child: const Text('Atualizar')),
-          TextButton(onPressed: _busy ? null : () => _run(() async {
-            await Navigator.pushNamed(context, widget.myQuestions ? AppRoutes.institutional : AppRoutes.professionalAccount);
-            await _load();
-          }), child: const Text('Minha conta')),
-        ],
+        if (!widget.myQuestions && _profile?['role'] == 'ubs_team')
+          const SectionCard(child: Text('Equipe UBS • Responda às dúvidas encaminhadas à sua unidade de saúde.')),
         for (final q in _questions)
           SectionCard(
               child: Column(
@@ -261,16 +332,23 @@ class _InstitutionalAreaScreenState extends State<InstitutionalAreaScreen> {
                   await _load();
                 }),
                 ],
-                TextButton(onPressed: _busy ? null : () => _run(() async {
-                  await Navigator.pushNamed(context, AppRoutes.professionalAccount);
-                  await _load();
-                }), child: const Text('Gerenciar conta')),
               ])),
         if (!widget.myQuestions && _profile?['role'] == 'admin') ...[
-          Wrap(spacing: 8, runSpacing: 8, children: [
-            for (final entry in {'professionals': 'Aprovar profissionais', 'patients': 'Vínculos de gestantes', 'knowledge': 'Base educativa', 'access': 'Revogar acessos'}.entries)
-              ChoiceChip(label: Text(entry.value), selected: _adminSection == entry.key, onSelected: _busy ? null : (_) => setState(() => _adminSection = entry.key)),
-          ]),
+          _adminOverview(),
+          const SizedBox(height: 18),
+          const Text('Gerenciar', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800, color: Color(0xFF38205D))),
+          const SizedBox(height: 10),
+          LayoutBuilder(builder: (context, constraints) {
+            final columns = constraints.maxWidth >= 720 ? 4 : 2;
+            final width = (constraints.maxWidth - (columns - 1) * 10) / columns;
+            return Wrap(spacing: 10, runSpacing: 10, children: [
+              _adminTile('professionals', 'Aprovar profissionais', 'Solicitações de acesso', Icons.badge_outlined, width, count: _team.length),
+              _adminTile('patients', 'Vínculos de gestantes', 'Solicitações de UBS', Icons.link, width, count: _patients.length),
+              _adminTile('knowledge', 'Base educativa', 'Conteúdo do chat', Icons.menu_book_outlined, width),
+              _adminTile('access', 'Revogar acessos', 'Permissões e vínculos', Icons.admin_panel_settings_outlined, width),
+            ]);
+          }),
+          const SizedBox(height: 22),
           if (_adminSection == 'knowledge') SectionCard(child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
             const Text('Base educativa da Petita', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
             const Text('Publique apenas orientações educativas revisadas pela equipe, sem informações pessoais de gestantes. As respostas são exibidas no chat.'),
@@ -293,7 +371,7 @@ class _InstitutionalAreaScreenState extends State<InstitutionalAreaScreen> {
           if (_adminSection == 'professionals') ...[
           const SizedBox(height: 12),
           const Text('Solicitações profissionais pendentes', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
-          if (_team.isEmpty) const SectionCard(child: Text('Nenhuma solicitação profissional pendente.')),
+          if (_team.isEmpty) _emptyQueue('Nenhuma solicitação profissional pendente.'),
           for (final request in _team)
             SectionCard(
                 child: Column(children: [
@@ -321,7 +399,7 @@ class _InstitutionalAreaScreenState extends State<InstitutionalAreaScreen> {
           ],
           if (_adminSection == 'patients') ...[
           const Text('Vínculos de gestantes pendentes', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
-          if (_patients.isEmpty) const SectionCard(child: Text('Nenhum vínculo de gestante pendente.')),
+          if (_patients.isEmpty) _emptyQueue('Nenhum vínculo de gestante pendente.'),
           for (final request in _patients)
             SectionCard(
                 child: Column(children: [

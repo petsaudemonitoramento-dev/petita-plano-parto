@@ -6,6 +6,7 @@ import '../../services/institutional/plan_sync_controller.dart';
 import '../../services/storage_service.dart';
 import '../../services/neon_api_client.dart';
 import '../../widgets/section_card.dart';
+import '../../widgets/account_header_menu.dart';
 
 class _ActionCancelled implements Exception {}
 
@@ -35,6 +36,7 @@ class _InstitutionalAccountScreenState extends State<InstitutionalAccountScreen>
   bool _busy = false;
   String _mode = 'login';
   bool _routeRead = false, _resetRequested = false;
+  bool _manage = false, _autoEnter = false;
   String? _localEmail, _localUbs;
   bool _localPrefill = false;
   String? _message, _ubs, _loadedSubject;
@@ -54,6 +56,7 @@ class _InstitutionalAccountScreenState extends State<InstitutionalAccountScreen>
         }
       } catch (_) { /* Do not overwrite local storage or prevent account access. */ }
       await _load();
+      if (mounted && _autoEnter && !_manage && _runtime?.auth.signedIn == true) await _openDestination();
     });
   }
 
@@ -64,6 +67,8 @@ class _InstitutionalAccountScreenState extends State<InstitutionalAccountScreen>
     _routeRead = true;
     final arg = ModalRoute.of(context)?.settings.arguments;
     if (arg == 'signup') _mode = 'signup';
+    _manage = arg == 'manage';
+    _autoEnter = arg == 'login' && !widget.syncOnly;
   }
 
   void _switchMode(String mode) {
@@ -246,7 +251,7 @@ class _InstitutionalAccountScreenState extends State<InstitutionalAccountScreen>
         _ubs = choice;
       }
     }
-    if (mounted) Navigator.pushReplacementNamed(context, AppRoutes.chat);
+    if (mounted) Navigator.pushNamedAndRemoveUntil(context, AppRoutes.chat, (route) => route.isFirst);
   }
 
   Future<void> _finishLogin() async {
@@ -256,8 +261,42 @@ class _InstitutionalAccountScreenState extends State<InstitutionalAccountScreen>
       // A partial profile/connection failure must be shown; don't force onboarding.
       if (_profile == null) rethrow;
     }
-    if (!widget.professional && !widget.syncOnly && _profile?['role'] == 'patient') {
+    if (!widget.syncOnly) await _openDestination();
+  }
+
+  Future<void> _openDestination() async {
+    if (!mounted || _runtime?.auth.signedIn != true) return;
+    final role = _profile?['role'];
+    if (role == 'admin' || role == 'ubs_team' || role == 'professional_pending') {
+      Navigator.pushNamedAndRemoveUntil(context, role == 'admin' ? AppRoutes.admin : AppRoutes.ubs, (route) => route.isFirst);
+    } else if (role == 'patient' && !widget.professional) {
       await _enterConversation();
+    }
+  }
+
+  Future<void> _recoverPassword(InstitutionalRuntime runtime) async {
+    final email = runtime.auth.user?['email'] as String?;
+    if (email == null || email.isEmpty) throw const NeonApiException(400);
+    if (!await _confirm('Alterar senha', 'Enviaremos um código de recuperação ao e-mail da sua conta.')) throw _ActionCancelled();
+    await runtime.auth.requestReset(email);
+    if (!mounted) return;
+    final code = TextEditingController(), password = TextEditingController();
+    try {
+      final result = await showDialog<bool>(context: context, builder: (ctx) => AlertDialog(
+        title: const Text('Nova senha'),
+        content: SingleChildScrollView(child: Column(mainAxisSize: MainAxisSize.min, children: [
+          TextField(controller: code, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Código recebido por e-mail')),
+          TextField(controller: password, obscureText: true, decoration: const InputDecoration(labelText: 'Nova senha (8 caracteres ou mais)')),
+        ])),
+        actions: [TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancelar')), FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Salvar'))],
+      ));
+      if (result != true) throw _ActionCancelled();
+      if (code.text.trim().isEmpty || password.text.length < 8) throw const NeonApiException(400);
+      await runtime.auth.reset(email, code.text, password.text);
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Senha alterada. Use a nova senha no próximo acesso.')));
+    } finally {
+      await Future<void>.delayed(const Duration(milliseconds: 250));
+      code.dispose(); password.dispose();
     }
   }
 
@@ -398,7 +437,12 @@ class _InstitutionalAccountScreenState extends State<InstitutionalAccountScreen>
   Widget build(BuildContext context) {
     final runtime = _runtime;
     return Scaffold(
-        appBar: AppBar(title: Text(widget.professional ? 'Acesso profissional' : widget.syncOnly ? 'Meu plano online' : 'Minha conta')),
+        appBar: AppBar(title: Text(widget.professional ? (_manage ? 'Configurações da conta' : 'Acesso profissional') : widget.syncOnly ? 'Meu plano online' : 'Minha conta'), actions: [
+          if (runtime?.auth.signedIn == true) AccountHeaderMenu(auth: runtime!.auth, professional: widget.professional, busy: _busy,
+            onManage: () => setState(() => _manage = true), onEdit: widget.professional ? null : _openLocalProfile,
+            onRefresh: () => _run(_load, success: 'Situação atualizada.'),
+            roleLabel: _profile?['role'] == 'admin' ? 'Administração PET Saúde' : widget.professional ? 'Equipe UBS' : 'Plano de parto'),
+        ]),
         body: SafeArea(
             child: ListView(padding: const EdgeInsets.all(20), children: [
           if (!widget.professional && !widget.syncOnly)
@@ -407,7 +451,7 @@ class _InstitutionalAccountScreenState extends State<InstitutionalAccountScreen>
               children: [
                 const Text('Meus dados', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
                 const SizedBox(height: 6),
-                const Text('Edite seu perfil e sua UBS para o plano de parto, mesmo sem internet. Não é necessário criar uma conta.'),
+                Text(runtime?.auth.signedIn == true ? 'Atualize os dados do seu plano de parto e suas preferências neste dispositivo.' : 'Edite seu perfil e sua UBS para o plano de parto, mesmo sem internet. Não é necessário criar uma conta.'),
                 const SizedBox(height: 8),
                 OutlinedButton.icon(
                   onPressed: _openLocalProfile,
@@ -530,58 +574,23 @@ class _InstitutionalAccountScreenState extends State<InstitutionalAccountScreen>
                         child: const Text('Voltar para entrar')),
                   ],
                 ])),
-            if (runtime.auth.user != null && !widget.syncOnly)
-              SectionCard(
-                  child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                    Text(widget.professional ? 'Sua conta' : 'Você entrou na sua conta', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 20)),
-                    const SizedBox(height: 8),
-                    Text('Conta: ${runtime.auth.user!['email'] ?? ''}'),
-                    if (_profile == null)
-                      Text(widget.professional ? 'Ainda não foi possível confirmar suas permissões.' : 'O perfil online ainda não foi carregado. Você pode usar o plano neste aparelho normalmente.'),
-                    if (widget.professional && _profile != null) ...[
-                      const SizedBox(height: 12),
-                      Text(_profile?['role'] == 'admin' ? 'Acesso administrativo liberado' : _profile?['role'] == 'ubs_team' ? 'Acesso profissional liberado' : _profile?['role'] == 'professional_pending' ? 'Etapa 2 de 2 • Solicitar acesso à UBS' : 'Esta conta é de gestante', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
-                      if (_profile?['role'] == 'professional_pending')
-                        const Text('Escolha sua UBS. A administração precisa aprovar seu cadastro antes de liberar o acesso às dúvidas.'),
-                      if (_profile?['role'] == 'patient')
-                        const Text('Saia desta conta e crie uma conta profissional com outro e-mail.'),
-                    ],
-                    if (!widget.professional && _profile != null)
-                      Text('UBS aprovada: ${_profile!['ubs_code'] ?? 'ainda sem vínculo'}'),
-                    if (_profile == null || widget.professional)
-                      _button(_profile == null ? 'Tentar carregar perfil novamente' : 'Atualizar situação', _load,
-                          success: 'Situação atualizada.'),
-                    if (!widget.professional && _profile?['role'] == 'patient')
-                      _button('Conversar com a Petita', _enterConversation),
-                    if (_profile != null && !widget.professional)
-                      TextButton(onPressed: _busy ? null : () => _run(_load, success: 'Situação atualizada.'), child: const Text('Atualizar conta')),
-                    _button('Sair da conta', () async {
-                      if (!await _confirm('Encerrar sessão?',
-                          'A sessão e os tokens deste acesso serão encerrados. O plano offline deste aparelho permanece salvo; para apagá-lo, use a ação de limpeza local.'))
-                        throw _ActionCancelled();
-                      try {
-                        await runtime.auth.logout();
-                      } finally {
-                        if (mounted)
-                          setState(() {
-                            _profile = null;
-                            _plans = [];
-                            _requests = [];
-                            _choices.clear();
-                            _units = [];
-                            _ubs = null;
-                            _loadedSubject = null;
-                            _consentKnown = false;
-                            _ubsKnown = false;
-                            _ubsChoiceSaved = false;
-                          });
-                      }
-                    },
-                        success:
-                            'Sessão encerrada. O plano offline permanece neste aparelho.'),
-                  ])),
+            if (runtime.auth.signedIn && !widget.syncOnly && (_profile == null || widget.professional || !_manage))
+              SectionCard(child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+                if (_profile == null) ...[
+                  const Text('Ainda não foi possível confirmar seu perfil.'),
+                  _button('Tentar carregar perfil novamente', () async { await _load(); if (!_manage) await _openDestination(); }),
+                ] else if (widget.professional) ...[
+                  Text(_profile?['role'] == 'admin' ? 'Administração PET Saúde' : _profile?['role'] == 'ubs_team' ? 'Equipe UBS' : _profile?['role'] == 'professional_pending' ? 'Etapa 2 de 2 • Solicitar acesso à UBS' : 'Esta conta é de gestante', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
+                  const SizedBox(height: 8),
+                  Text(_profile?['role'] == 'patient' ? 'Use uma conta profissional com outro e-mail.' : 'Sua conta está conectada. Consulte as informações e opções no ícone do cabeçalho.'),
+                  if (_manage) ...[
+                    const SizedBox(height: 12),
+                    const Text('Para alterar o nome ou e-mail institucional, solicite a atualização à administração.'),
+                    OutlinedButton.icon(onPressed: _busy ? null : () => _run(() => _recoverPassword(runtime)), icon: const Icon(Icons.lock_outline), label: const Text('Alterar senha')),
+                  ],
+                ] else if (_profile?['role'] == 'patient')
+                  _button('Conversar com a Petita', _enterConversation),
+              ])),
             if (!widget.professional && _profile?['role'] == 'patient' && runtime.auth.signedIn) ...[
               if (widget.syncOnly) SectionCard(
                   child: Column(
@@ -728,12 +737,12 @@ class _InstitutionalAccountScreenState extends State<InstitutionalAccountScreen>
                         }, success: 'Solicitação enviada. Aguarde a aprovação do vínculo.'),
                     ],
                     for (final request in _requests)
-                      Text('Solicitação ${request['ubs_code']}: ${request['status']}'),
+                      Text('Solicitação ${_units.where((u) => u['code'] == request['ubs_code']).map((u) => u['name']).firstOrNull ?? request['ubs_code']}: ${switch (request['status']) {'pending' => 'Em análise', 'approved' => 'Aprovada', 'rejected' => 'Recusada', 'revoked' => 'Revogada', _ => 'Situação indisponível'}}'),
                   ])),
             ],
             if (widget.professional && runtime.auth.signedIn && ['admin','ubs_team','professional_pending'].contains(_profile?['role']))
               _button(_profile?['role'] == 'admin' ? 'Abrir administração' : _profile?['role'] == 'ubs_team' ? 'Abrir painel da equipe' : 'Escolher minha UBS', () async {
-                await Navigator.pushNamed(context, _profile?['role'] == 'admin' ? AppRoutes.admin : AppRoutes.ubs);
+                await _openDestination();
               }),
           ],
         ])));
