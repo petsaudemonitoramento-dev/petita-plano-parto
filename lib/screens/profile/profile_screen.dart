@@ -28,7 +28,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
   bool _manualUbsWarningShown = false;
   bool _loading = true;
   bool _loadFailed = false;
-  bool _busy = false;
   String _onlineMessage = 'Modo offline ativo. Faça login para sincronizar quando houver internet.';
 
   @override
@@ -103,8 +102,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
     return true;
   }
 
-  Future<void> _openInstitutional(String mode) async {
-    await Navigator.pushNamed(context, AppRoutes.institutional, arguments: mode);
+  Future<void> _openInstitutional() async {
+    await Navigator.pushNamed(context, AppRoutes.institutional, arguments: 'login');
   }
 
   Future<void> _clear() async {
@@ -153,17 +152,20 @@ class _ProfileScreenState extends State<ProfileScreen> {
       ))),
     );
     return Scaffold(
-      appBar: AppBar(title: const Text('Perfil da gestante')),
+      appBar: AppBar(title: const Text('Meu perfil neste aparelho')),
       body: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(20),
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            AppButton(label: 'Entrar / minha conta', icon: Icons.account_circle_outlined,
+                outlined: true, onPressed: _openInstitutional),
+            const SizedBox(height: 12),
             SectionCard(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
               const Text('Cadastro neste aparelho', style: TextStyle(fontSize: 22, fontWeight: FontWeight.w900, color: AppColors.petDarkBlue)),
               const SizedBox(height: 8),
               Text(_onlineMessage),
               const SizedBox(height: 8),
-              const Text('Mesmo sem internet, a gestante consegue montar, editar e gerar o Plano de Parto. Com login, o plano pode ser sincronizado e dúvidas podem ser enviadas para a UBS.'),
+              const Text('Você pode montar, editar e gerar seu plano de parto sem internet. Para acessar sua conta online, use o botão Minha conta, sem precisar preencher este formulário.'),
             ])),
             SectionCard(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
               TextField(controller: _nameController, decoration: const InputDecoration(labelText: 'Nome da gestante')),
@@ -223,10 +225,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
               ],
             ])),
             AppButton(label: 'Salvar cadastro offline', icon: Icons.save_outlined, onPressed: _saveLocal),
-            const SizedBox(height: 10),
-            AppButton(label: 'Criar conta online', icon: Icons.cloud_upload_outlined, onPressed: _busy ? () {} : () => _openInstitutional('signup')),
-            const SizedBox(height: 10),
-            AppButton(label: 'Entrar / gerenciar minha conta', icon: Icons.login, outlined: true, onPressed: _busy ? () {} : () => _openInstitutional('login')),
             const SizedBox(height: 10),
             AppButton(label: 'Limpar cadastro local', icon: Icons.delete_outline, outlined: true, onPressed: _clear),
             if (_profile != null || _onlineProfile != null)

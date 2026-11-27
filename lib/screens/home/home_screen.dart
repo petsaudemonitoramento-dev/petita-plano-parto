@@ -66,7 +66,13 @@ class _HomeScreenState extends State<HomeScreen> {
                 decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(15)),
                 child: Image.asset('assets/images/ufcg_avatar.png', fit: BoxFit.contain)),
             ]),
-            const SizedBox(height: 18),
+            const SizedBox(height: 14),
+            _HomeAction(
+              icon: Icons.account_circle_outlined,
+              title: 'Minha conta',
+              subtitle: 'Entrar ou criar conta online',
+              onTap: () => Navigator.pushNamed(context, AppRoutes.institutional, arguments: 'login')),
+            const SizedBox(height: 14),
             Container(
               decoration: BoxDecoration(
                 gradient: const LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight,
@@ -127,8 +133,8 @@ class _HomeScreenState extends State<HomeScreen> {
             _HomeAction(icon: Icons.description_outlined, title: 'Meu plano de parto',
               subtitle: 'Veja suas escolhas e gere o PDF', onTap: () => Navigator.pushNamed(context, AppRoutes.summary)),
             const SizedBox(height: 10),
-            _HomeAction(icon: Icons.person_outline_rounded, title: 'Meu perfil',
-              subtitle: 'Informações da gestante', onTap: () => Navigator.pushNamed(context, AppRoutes.profile)),
+            _HomeAction(icon: Icons.person_outline_rounded, title: 'Meu perfil neste aparelho',
+              subtitle: 'Editar meus dados e minha UBS', onTap: () => Navigator.pushNamed(context, AppRoutes.profile)),
             const SizedBox(height: 10),
             _HomeAction(icon: Icons.chat_bubble_outline_rounded, title: 'Minhas dúvidas',
               subtitle: 'Informações e perguntas frequentes', onTap: () => Navigator.pushNamed(context, AppRoutes.myQuestions)),
