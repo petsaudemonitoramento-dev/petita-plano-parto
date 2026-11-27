@@ -1,4 +1,5 @@
 import '../models/chat_message.dart';
+import '../models/treatment_preferences.dart';
 import 'faq_search_service.dart';
 
 class ChatbotService {
@@ -6,16 +7,17 @@ class ChatbotService {
 
   final FaqSearchService _faqSearchService;
 
-  ChatMessage welcome() {
-    return const ChatMessage(
+  ChatMessage welcome({TreatmentPreferences? treatment}) {
+    final greeting = treatment?.address(neutral: 'Que bom ter você aqui.', feminine: 'Seja bem-vinda!', masculine: 'Seja bem-vindo!', inclusive: 'Que bom ter você aqui.') ?? 'Que bom ter você aqui.';
+    return ChatMessage(
       isUser: false,
       addressByName: true,
-      text: 'Oi! Que bom ter você aqui. 💜 Eu sou a Petita, e este é um espaço para conversar com calma sobre o seu parto.\n\nPodemos construir seu plano em conjunto, passo a passo. Se você tiver dúvidas ou não souber o que escolher, tudo bem: vou explicar com palavras simples. O que você gostaria de fazer primeiro?',
+      text: 'Oi! $greeting 💜 Eu sou a Petita, e este é um espaço para conversar com calma sobre o seu parto.\n\nPodemos construir seu plano em conjunto, passo a passo. Se você tiver dúvidas ou não souber o que escolher, tudo bem: vou explicar com palavras simples. O que você gostaria de fazer primeiro?',
       options: ['Montar meu plano', 'Minha conta', 'O que é plano de parto?', 'Sinais de atenção', 'Enviar dúvida à UBS'],
     );
   }
 
-  Future<ChatMessage> respond(String userText, {String? category}) async {
+  Future<ChatMessage> respond(String userText, {String? category, TreatmentPreferences? treatment}) async {
     final lower = userText.toLowerCase();
     if (lower.contains('cadastro') || lower.contains('login') || lower.contains('entrar')) {
       return const ChatMessage(
@@ -25,10 +27,11 @@ class ChatbotService {
       );
     }
     if (lower.contains('montar')) {
-      return const ChatMessage(
+      final invitation = treatment?.address(neutral: 'Quando quiser começar', feminine: 'Quando estiver pronta', masculine: 'Quando estiver pronto', inclusive: 'Quando quiser começar') ?? 'Quando quiser começar';
+      return ChatMessage(
         isUser: false,
         addressByName: true,
-        text: 'Com carinho, vamos construir seu plano passo a passo. 💜 Vou explicar cada etapa e você escolhe o que faz sentido para você. Quando quiser começar, toque em “Montar meu plano”.',
+        text: 'Com carinho, vamos construir seu plano passo a passo. 💜 Vou explicar cada etapa e você escolhe o que faz sentido para você. $invitation, toque em “Montar meu plano”.',
         options: ['Montar meu plano'],
       );
     }

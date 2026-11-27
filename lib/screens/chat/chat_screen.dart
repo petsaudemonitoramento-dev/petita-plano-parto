@@ -37,7 +37,29 @@ class _ChatScreenState extends State<ChatScreen> {
   final _online = InstitutionalQuestionService();
   late final ChatbotService _chatbot;
   late final InstitutionalAuth? _auth;
-  void _onAuthChanged() { if (mounted) setState(() {}); }
+  TreatmentPreferences? _treatment;
+  String? _treatmentAcknowledgement;
+  String get _conversationScope => _auth?.signedIn == true ? 'account:${_auth!.subject}' : 'guest';
+  TreatmentPreferences? get _currentTreatment => _treatment?.conversationScope == _conversationScope ? _treatment : null;
+  void _onAuthChanged() {
+    if (!mounted) return;
+    setState(() {
+      if (_treatment?.conversationScope != _conversationScope) {
+        _treatment = null;
+        _treatmentAcknowledgement = null;
+      }
+    });
+  }
+
+  String _address({required String neutral, required String feminine, required String masculine, required String inclusive}) =>
+      _currentTreatment?.address(neutral: neutral, feminine: feminine, masculine: masculine, inclusive: inclusive) ?? neutral;
+
+  Future<void> _loadTreatment() async {
+    final scope = _conversationScope;
+    final value = await _storage.loadTreatmentPreferences();
+    if (!mounted || scope != _conversationScope) return;
+    _treatment = value?.conversationScope == scope ? value : null;
+  }
 
   List<ChatMessage> _messages = [];
   List<BirthPlanQuestion> _questions = [];
@@ -107,7 +129,9 @@ class _ChatScreenState extends State<ChatScreen> {
   Future<void> _init() async {
     _questions = await BirthPlanFlowService().loadQuestions();
     _answers = await _storage.loadAnswers();
-    _messages = [_chatbot.welcome()];
+    await _loadTreatment();
+    if (!mounted) return;
+    _messages = [_chatbot.welcome(treatment: _currentTreatment)];
     if (mounted) setState(() => _loading = false);
     _scrollToBottom();
   }
@@ -213,7 +237,7 @@ class _ChatScreenState extends State<ChatScreen> {
 
     _setPetitaSearching(true);
     try {
-      final reply = await _chatbot.respond(text);
+      final reply = await _chatbot.respond(text, treatment: _currentTreatment);
       await Future.delayed(const Duration(milliseconds: 480));
       if (!mounted) return;
       setState(() => _messages.add(reply));
@@ -275,11 +299,15 @@ class _ChatScreenState extends State<ChatScreen> {
         if (!await confirmLocalChange(context, () => _storage.clearAnswers())) return;
         answers = [];
         restarting = true;
+        _treatment = null;
+        _treatmentAcknowledgement = null;
       }
     }
 
     if (!mounted) return;
     _answers = answers;
+    await _loadTreatment();
+    if (!mounted) return;
     final answeredIds = _answers.map((answer) => answer.questionId).toSet();
     final pending = await _storage.loadConsultationPending();
     final next = _questions.indexWhere((question) => !answeredIds.contains(question.id) && !pending.contains(question.id));
@@ -294,7 +322,7 @@ class _ChatScreenState extends State<ChatScreen> {
     _textInputEnabled = false;
     _controller.clear();
     setState(() {
-      if (restarting) _messages = [_chatbot.welcome()];
+      if (restarting) _messages = [_chatbot.welcome(treatment: _currentTreatment)];
       _messages.add(ChatMessage(
         addressByName: true,
         text: restarting
@@ -303,6 +331,10 @@ class _ChatScreenState extends State<ChatScreen> {
         isUser: false,
       ));
     });
+    if (_currentTreatment == null && next > 0) {
+      _showPronounsPrompt();
+      return;
+    }
     await _showCurrentQuestion();
   }
 
@@ -346,7 +378,7 @@ class _ChatScreenState extends State<ChatScreen> {
     final section = q.section.toLowerCase();
     if (q.id == 'nome_gestante') return 'Que bom ter você aqui! 💜 Vamos começar com calma. Primeiro, me conte algumas informações para identificar seu plano.';
     if (q.id == 'ubs_referencia') return 'Agradeço por compartilhar essas informações comigo. 💗 Agora vamos identificar a UBS que acompanha você. Se não souber, tudo bem: podemos conversar sobre isso.';
-    if (section.contains('acompanhante')) return 'Você merece receber acolhimento e companhia. 💜 Vamos conversar sobre quem você gostaria de ter ao seu lado nesse momento.';
+    if (section.contains('acompanhante')) return _address(neutral: 'Você merece receber acolhimento e companhia.', feminine: 'Você merece se sentir acolhida e acompanhada.', masculine: 'Você merece se sentir acolhido e acompanhado.', inclusive: 'Você merece receber acolhimento e companhia.') + ' 💜 Vamos conversar sobre quem você gostaria de ter ao seu lado nesse momento.';
     if (section.contains('trabalho')) return 'Cada parto tem seu próprio ritmo, e suas preferências importam. 🌷 Vamos conhecer algumas possibilidades para o trabalho de parto, sempre considerando sua segurança e a avaliação da equipe.';
     if (section.contains('alívio')) return 'É natural ter dúvidas sobre as sensações do parto. 💗 Existem formas diferentes de buscar conforto e aliviar a dor. Vou ajudar você a conhecer essas opções.';
     if (section.contains('nascimento')) return 'Estamos chegando a uma parte muito especial: o nascimento. 💜 Vamos registrar o que é importante para você nesse momento.';
@@ -383,11 +415,13 @@ class _ChatScreenState extends State<ChatScreen> {
   }
 
   Future<void> _savePronouns(String pronouns) async {
-    if (!await confirmLocalChange(context, () => _storage.saveTreatmentPreferences(
-      TreatmentPreferences(pronouns: pronouns),
-    ))) return;
-    if (!mounted) return;
+    final scope = _conversationScope;
+    final preference = TreatmentPreferences(pronouns: pronouns, conversationScope: scope, includeInPdf: _currentTreatment?.includeInPdf ?? false);
+    if (!await confirmLocalChange(context, () => _storage.saveTreatmentPreferences(preference))) return;
+    if (!mounted || scope != _conversationScope) return;
     setState(() {
+      _treatment = preference;
+      _treatmentAcknowledgement = _address(neutral: 'Combinado! Vou respeitar sua preferência. 💜', feminine: 'Combinado! Quero que você se sinta acolhida aqui. 💜', masculine: 'Combinado! Quero que você se sinta acolhido aqui. 💜', inclusive: 'Combinado! Quero que você se sinta acolhide aqui. 💜');
       _messages.add(ChatMessage(
         text: pronouns.isEmpty ? 'Prefiro não informar' : pronouns,
         isUser: true,
@@ -424,21 +458,21 @@ class _ChatScreenState extends State<ChatScreen> {
       await _storage.resolveQuestionForConsultation(q.id);
       if (!mounted) return;
 
+      _treatmentAcknowledgement = null;
       _currentQuestion++;
       if (q.id == 'dpp' && gestationalEstimate != null &&
           _currentQuestion < _questions.length &&
           _questions[_currentQuestion].id == 'semanas_gestacao') {
         _currentQuestion++;
       }
-      if (q.id == 'nome_gestante' &&
-          await _storage.loadTreatmentPreferences() == null) {
+      if (q.id == 'nome_gestante' && _currentTreatment == null) {
         _showPronounsPrompt();
         return;
       }
       if (_currentQuestion >= _questions.length) {
-        setState(() => _messages.add(const ChatMessage(
+        setState(() => _messages.add(ChatMessage(
             addressByName: true,
-            text: 'Você conseguiu! 💜 Agradeço por compartilhar suas escolhas comigo. Seu Plano de Parto está pronto para ser revisado com calma. Você pode conferir as respostas, conversar com a equipe de saúde e gerar o PDF quando quiser.',
+            text: _address(neutral: 'Você conseguiu!', feminine: 'Parabéns, você está pronta para revisar suas escolhas!', masculine: 'Parabéns, você está pronto para revisar suas escolhas!', inclusive: 'Parabéns por chegar até aqui!') + ' 💜 Agradeço por compartilhar suas escolhas comigo. Seu Plano de Parto está pronto para ser revisado com calma. Você pode conferir as respostas, conversar com a equipe de saúde e gerar o PDF quando quiser.',
             isUser: false,
             options: ['Ver meu plano'],
           )));
@@ -486,7 +520,7 @@ class _ChatScreenState extends State<ChatScreen> {
 
     _setPetitaSearching(true);
     try {
-      final reply = await _chatbot.respond(result.question, category: result.category);
+      final reply = await _chatbot.respond(result.question, category: result.category, treatment: _currentTreatment);
       final answerText = reply.text.contains('Ainda não encontrei uma resposta segura')
           ? 'Eu não encontrei uma resposta suficientemente segura na minha base validada para essa dúvida. Posso encaminhar sua pergunta, de forma pseudonimizada, para a Equipe UBS vinculada ao seu perfil.'
           : '${reply.text}\n\nEssa resposta foi satisfatória para você?';
@@ -664,7 +698,7 @@ class _ChatScreenState extends State<ChatScreen> {
           _textInputEnabled = true;
           _writingModeSelected = true;
           _messages.add(const ChatMessage(
-            text: 'Escreva como prefere ser tratada ou tratado. Por exemplo: “Use apenas meu nome”.',
+            text: 'Escreva como prefere que a Petita se refira a você. Por exemplo: “Use apenas meu nome”.',
             isUser: false,
           ));
         });
@@ -974,7 +1008,7 @@ class _ChatScreenState extends State<ChatScreen> {
     ];
     return _buildAdaptivePanel(
       child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-        const Text('COMO PREFERE SER TRATADA?', style: TextStyle(
+        const Text('COMO PREFERE QUE EU ME REFIRA A VOCÊ?', style: TextStyle(
           fontWeight: FontWeight.bold, color: AppColors.primaryPink,
         )),
         const SizedBox(height: 10),
@@ -1013,6 +1047,10 @@ class _ChatScreenState extends State<ChatScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
+          if (_treatmentAcknowledgement != null) ...[
+            Text(_treatmentAcknowledgement!, style: const TextStyle(color: AppColors.petDarkBlue, height: 1.3)),
+            const SizedBox(height: 14),
+          ],
           Text(q.section.toUpperCase(),
               style: const TextStyle(
                 color: AppColors.primaryPink,
